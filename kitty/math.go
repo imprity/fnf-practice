@@ -3,8 +3,8 @@ package kitty
 import (
 	"golang.org/x/exp/constraints"
 
-	"math"
 	"image"
+	"math"
 )
 
 // ============================================================
@@ -18,9 +18,9 @@ type Vec2 struct {
 func V(x, y float64) Vec2 { return Vec2{x, y} }
 
 func (v Vec2) Ints() (int, int) { return int(v.X), int(v.Y) }
-func I_V2(x, y int) Vec2        { return Vec2{X: float64(x), Y: float64(y)} }
+func IntsToV(x, y int) Vec2     { return Vec2{X: float64(x), Y: float64(y)} }
 
-func FromPt(pt image.Point) Vec2 { return I_V2(pt.X, pt.Y) }
+func FromPt(pt image.Point) Vec2 { return IntsToV(pt.X, pt.Y) }
 func (v Vec2) ToPt() image.Point { return image.Pt(int(v.X), int(v.Y)) }
 
 func Dot(ihs Vec2, rhs Vec2) float64  { return ihs.X*rhs.X + ihs.Y*rhs.Y }
@@ -136,19 +136,19 @@ type FRect struct {
 	X, Y, W, H float64
 }
 
-func R(x, y, w, h float64) FRect { return FRect{x, y, w, h} }
+func Fr(x, y, w, h float64) FRect { return FRect{x, y, w, h} }
 
 func (r FRect) Ints() (int, int, int, int) { return int(r.X), int(r.Y), int(r.W), int(r.H) }
-func I_FRect(x, y, w, h int) FRect          { return FRect{float64(x), float64(y), float64(w), float64(h)} }
+func IntsToFr(x, y, w, h int) FRect         { return FRect{float64(x), float64(y), float64(w), float64(h)} }
 
-func FromIRect(ir image.Rectangle) FRect{
+func FromIRect(ir image.Rectangle) FRect {
 	canon := ir.Canon()
-	return I_FRect(canon.Min.X, canon.Min.Y, canon.Dx(), canon.Dy())
+	return IntsToFr(canon.Min.X, canon.Min.Y, canon.Dx(), canon.Dy())
 }
 
 func (rect FRect) ToIRect() image.Rectangle {
 	return image.Rect(
-		int(rect.X), int(rect.Y), int(rect.X + rect.W), int(rect.Y + rect.H),
+		int(rect.X), int(rect.Y), int(rect.X+rect.W), int(rect.Y+rect.H),
 	)
 }
 
@@ -176,56 +176,56 @@ func (rect FRect) CenteredAt(v Vec2) FRect {
 	}
 }
 
-func (rect FRect) Empty() bool  {
+func (rect FRect) Empty() bool {
 	return rect.W <= 0 || rect.H <= 0
 }
 
-func (rect FRect) Add(v Vec2) FRect{
-	return R(rect.X + v.X, rect.Y + v.Y, rect.W, rect.H)
+func (rect FRect) Add(v Vec2) FRect {
+	return Fr(rect.X+v.X, rect.Y+v.Y, rect.W, rect.H)
 }
 
-func (rect FRect) Sub(v Vec2) FRect{
-	return R(rect.X - v.X, rect.Y - v.Y, rect.W, rect.H)
+func (rect FRect) Sub(v Vec2) FRect {
+	return Fr(rect.X-v.X, rect.Y-v.Y, rect.W, rect.H)
 }
 
-func (rect FRect) In(other FRect) bool{
-	return rect.X >= other.X && 
-		rect.Y >= other.Y && 
-		rect.X + rect.W <= other.X + other.W &&
-		rect.Y + rect.H <= other.Y + other.H
+func (rect FRect) In(other FRect) bool {
+	return rect.X >= other.X &&
+		rect.Y >= other.Y &&
+		rect.X+rect.W <= other.X+other.W &&
+		rect.Y+rect.H <= other.Y+other.H
 }
 
-func (rect FRect) Inset(n float64) FRect{
+func (rect FRect) Inset(n float64) FRect {
 	newR := FRect{}
 
-	if rect.W < n * 2{
-		newR.X = rect.X + rect.W * 0.5
+	if rect.W < n*2 {
+		newR.X = rect.X + rect.W*0.5
 		newR.W = 0.0
-	}else{
+	} else {
 		newR.X = rect.X + n
-		newR.W = rect.W - n * 2
+		newR.W = rect.W - n*2
 	}
 
-	if rect.H < n * 2{
-		newR.Y = rect.Y + rect.H * 0.5
+	if rect.H < n*2 {
+		newR.Y = rect.Y + rect.H*0.5
 		newR.H = 0.0
-	}else{
+	} else {
 		newR.Y = rect.Y + n
-		newR.H = rect.H - n * 2
+		newR.H = rect.H - n*2
 	}
 
 	return newR
 }
 
-func (rect FRect) Intersect(other FRect) FRect{
+func (rect FRect) Intersect(other FRect) FRect {
 	newR := FRect{}
 
 	newR.X = max(rect.X, other.X)
 	newR.Y = max(rect.Y, other.Y)
-	newR.W = min(rect.X + rect.W, other.X + other.W) - newR.X
-	newR.H = min(rect.Y + rect.H, other.Y + other.H) - newR.Y
+	newR.W = min(rect.X+rect.W, other.X+other.W) - newR.X
+	newR.H = min(rect.Y+rect.H, other.Y+other.H) - newR.Y
 
-	if newR.Empty(){
+	if newR.Empty() {
 		newR.X += newR.W * 0.5
 		newR.Y += newR.H * 0.5
 		newR.W, newR.H = 0.0, 0.0
@@ -234,17 +234,17 @@ func (rect FRect) Intersect(other FRect) FRect{
 	return newR
 }
 
-func (rect FRect) Union(other FRect) FRect{
+func (rect FRect) Union(other FRect) FRect {
 	minX := min(rect.X, other.X)
 	minY := min(rect.Y, other.Y)
 
-	maxX := max(rect.X + rect.W, other.X + other.W)
-	maxY := max(rect.Y + rect.H, other.Y + other.H)
+	maxX := max(rect.X+rect.W, other.X+other.W)
+	maxY := max(rect.Y+rect.H, other.Y+other.H)
 
-	return R(minX, minY, maxX - minX, maxY - minY)
+	return Fr(minX, minY, maxX-minX, maxY-minY)
 }
 
-func (rect FRect) Overlaps(other FRect) bool{
+func (rect FRect) Overlaps(other FRect) bool {
 	intersect := rect.Intersect(other)
 	return !intersect.Empty()
 }
@@ -255,13 +255,13 @@ func (rect FRect) Overlaps(other FRect) bool{
 
 type Circle struct {
 	X, Y float64
-	R float64
+	R    float64
 }
 
 func C(x, y, r float64) Circle { return Circle{x, y, r} }
 
-func (c  Circle) GetV() Vec2 {return V(c.X, c.Y)}
-func (c  Circle) At(v Vec2) Circle {
+func (c Circle) GetV() Vec2 { return V(c.X, c.Y) }
+func (c Circle) At(v Vec2) Circle {
 	c.X, c.Y = v.X, v.Y
 	return c
 }
@@ -363,6 +363,6 @@ func AbsI[N constraints.Signed](n N) N {
 	return n
 }
 
-func SameSign[N constraints.Signed](n1, n2 N) bool{
+func SameSign[N constraints.Signed](n1, n2 N) bool {
 	return (n1 < 0) == (n2 < 0)
 }

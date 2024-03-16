@@ -4,10 +4,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	
-	"com/game/kitty"
 
-	"fmt"	
+	"kitty"
+
+	"fmt"
 )
 
 const (
@@ -76,15 +76,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}else{
 			c = kitty.LerpRGB(COLOR1, COLOR2, t)
 		}
-	
+
 		kitty.DrawLine(
 			screen,
-			kitty.I_V2(i, 0),
-			kitty.I_V2(i, 100),
+			kitty.IntsToV(i, 0),
+			kitty.IntsToV(i, 100),
 			1,
 			c,
 		)
 	}
+	ebitenutil.DebugPrintAt(screen, "LerpRGB", 2, 100)
 
 	for i:=0; i<barWidth; i++{
 		t := float64(i) / float64(barWidth - 1)
@@ -94,15 +95,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}else{
 			c = kitty.LerpHSV(COLOR1, COLOR2, t)
 		}
-	
+
 		kitty.DrawLine(
 			screen,
-			kitty.I_V2(i, 120),
-			kitty.I_V2(i, 220),
+			kitty.IntsToV(i, 120),
+			kitty.IntsToV(i, 220),
 			1,
 			c,
 		)
 	}
+	ebitenutil.DebugPrintAt(screen, "LerpHSV", 2, 220)
 
 	for i:=0; i<barWidth; i++{
 		t := float64(i) / float64(barWidth - 1)
@@ -112,18 +114,19 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}else{
 			c = kitty.LerpOkLab(COLOR1, COLOR2, t)
 		}
-	
+
 		kitty.DrawLine(
 			screen,
-			kitty.I_V2(i, 240),
-			kitty.I_V2(i, 340),
+			kitty.IntsToV(i, 240),
+			kitty.IntsToV(i, 340),
 			1,
 			c,
 		)
 	}
+	ebitenutil.DebugPrintAt(screen, "LerpOkLab", 2, 340)
 
 	ebitenutil.DebugPrintAt(
-		screen, 
+		screen,
 		fmt.Sprintf("color 1 : r : %.3f, g : %.3f, b : %.3f, a : %.3f\n", COLOR1.R, COLOR1.G, COLOR1.B, COLOR1.A) +
 		fmt.Sprintf("color 2 : r : %.3f, g : %.3f, b : %.3f, a : %.3f\n", COLOR2.R, COLOR2.G, COLOR2.B, COLOR2.A) +
 		fmt.Sprintf("alpha on (Z): %v\n", ALPHA_ON) +
@@ -133,7 +136,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		fmt.Sprintf("color 2 : r : A, g : S, b : D, a : F\n") +
 		fmt.Sprintf("and scroll the mouse wheel\n"),
 		10,
-		360,
+		365,
 	)
 }
 

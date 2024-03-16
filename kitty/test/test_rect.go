@@ -6,7 +6,7 @@ import (
 
 	"fmt"
 
-	"com/game/kitty"
+	"kitty"
 )
 
 const (
@@ -14,8 +14,8 @@ const (
 	SCREEN_HEIGHT = 500
 )
 
-var Rect1 = kitty.R(0,0, 200, 100)
-var Rect2 = kitty.I_FRect(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 200, 100, 200)
+var Rect1 = kitty.Fr(0,0, 200, 100)
+var Rect2 = kitty.IntsToFr(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 200, 100, 200)
 
 var Inset float64
 
@@ -26,7 +26,7 @@ func (g *Game) Update() error {
 
 	dir1 := kitty.V(0,0)
 	dir2 := kitty.V(0,0)
-	
+
 	_= dir2
 
 	if ebiten.IsKeyPressed(ebiten.KeyW){dir1.Y -= moveSpeed}
@@ -61,7 +61,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	insetRect := intersect.Inset(Inset)
 	kitty.DrawRect(screen, insetRect, kitty.Color255(255, 255, 255, 90))
 
-	ebitenutil.DebugPrint(screen, 
+	ebitenutil.DebugPrint(screen,
 		fmt.Sprintf(
 			"Move rects with\n" +
 			"wasd and arrow keys\n" +

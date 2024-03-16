@@ -3,7 +3,7 @@ package main
 import (
 	"image/color"
 	"github.com/hajimehoshi/ebiten/v2"
-	"com/game/kitty"
+	"kitty"
 )
 
 const (
@@ -24,7 +24,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	from := kitty.Vec2{10, 12}
 	to := kitty.Vec2{100, 50}
-	point := kitty.I_V2(curX, curY)
+	point := kitty.IntsToV(curX, curY)
 
 	kitty.DrawLine(screen, from, to, 3, kitty.Color255(255,0,0,255))
 
@@ -46,7 +46,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		kitty.DrawLine(screen, f1, t1, 3, kitty.Color255(255,255,255,255))
 		kitty.DrawLine(screen, f2, t2, 3, kitty.Color255(255,255,255,255))
 	}
-	
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
