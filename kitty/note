@@ -1,0 +1,16 @@
+some utility functions for dealing with ebiten
+
+to include it put
+-------------
+require kitty v0.0.0
+
+replace kitty => ./kitty
+-------------
+in your go.mod file
+
+to update it type
+-------------
+go get -u
+go mod tidy
+-------------
+
