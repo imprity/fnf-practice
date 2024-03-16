@@ -1,14 +1,14 @@
 package kitty
 
 import (
-	"image"
-	"image/color"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"image"
+	"image/color"
 	"math"
 )
 
-func DrawLine(dst *ebiten.Image, from, to Vec2, stroke float64, c Color){
+func DrawLine(dst *ebiten.Image, from, to Vec2, stroke float64, c Color) {
 	vector.StrokeLine(
 		dst,
 		float32(from.X), float32(from.Y), float32(to.X), float32(to.Y),
@@ -18,7 +18,7 @@ func DrawLine(dst *ebiten.Image, from, to Vec2, stroke float64, c Color){
 	)
 }
 
-func DrawRect(dst *ebiten.Image, rect FRect, c Color){
+func DrawRect(dst *ebiten.Image, rect FRect, c Color) {
 	vector.DrawFilledRect(
 		dst,
 		float32(rect.X), float32(rect.Y),
@@ -28,7 +28,7 @@ func DrawRect(dst *ebiten.Image, rect FRect, c Color){
 	)
 }
 
-func StrokeRect(dst *ebiten.Image, rect FRect, stroke float64, c Color){
+func StrokeRect(dst *ebiten.Image, rect FRect, stroke float64, c Color) {
 	vector.StrokeRect(
 		dst,
 		float32(rect.X), float32(rect.Y),
@@ -39,33 +39,33 @@ func StrokeRect(dst *ebiten.Image, rect FRect, stroke float64, c Color){
 	)
 }
 
-func DrawCircle(dst *ebiten.Image, circle Circle, c Color){
+func DrawCircle(dst *ebiten.Image, circle Circle, c Color) {
 	vector.DrawFilledCircle(
-		dst, 
-		float32(circle.X), float32(circle.Y), 
-		float32(circle.R), 
-		ToImageColor(c), 
+		dst,
+		float32(circle.X), float32(circle.Y),
+		float32(circle.R),
+		ToImageColor(c),
 		true,
 	)
 }
 
-func StrokeCircle(dst *ebiten.Image, circle Circle, stroke float64, c Color){
+func StrokeCircle(dst *ebiten.Image, circle Circle, stroke float64, c Color) {
 	vector.StrokeCircle(
-		dst, 
-		float32(circle.X), float32(circle.Y), 
+		dst,
+		float32(circle.X), float32(circle.Y),
 		float32(circle.R),
 		float32(stroke),
-		ToImageColor(c), 
+		ToImageColor(c),
 		true,
 	)
 }
 
-func getRoundRectPath(rect FRect, radius float64) vector.Path{
-	radius = min(radius, min(rect.W * 0.5, rect.H * 0.5)) //clamp the radius to the size of rect
+func getRoundRectPath(rect FRect, radius float64) vector.Path {
+	radius = min(radius, min(rect.W*0.5, rect.H*0.5)) //clamp the radius to the size of rect
 
-	inLeftTop    := Vec2{rect.X + radius,          rect.Y + radius}
-	inRightTop   := Vec2{rect.X + rect.W - radius, rect.Y + radius}
-	inLeftBottom := Vec2{rect.X + radius,          rect.Y + rect.H - radius}
+	inLeftTop := Vec2{rect.X + radius, rect.Y + radius}
+	inRightTop := Vec2{rect.X + rect.W - radius, rect.Y + radius}
+	inLeftBottom := Vec2{rect.X + radius, rect.Y + rect.H - radius}
 	inRightBottom := Vec2{rect.X + rect.W - radius, rect.Y + rect.H - radius}
 
 	const (
@@ -79,13 +79,13 @@ func getRoundRectPath(rect FRect, radius float64) vector.Path{
 	var path vector.Path
 
 	path.Arc(float32(inLeftTop.X), float32(inLeftTop.Y), float32(radius), d180, d270, vector.Clockwise)
-	path.LineTo(float32(inRightTop.X), float32(inRightTop.Y - radius))
+	path.LineTo(float32(inRightTop.X), float32(inRightTop.Y-radius))
 
 	path.Arc(float32(inRightTop.X), float32(inRightTop.Y), float32(radius), d270, d0, vector.Clockwise)
-	path.LineTo(float32(inRightBottom.X + radius), float32(inRightBottom.Y))
+	path.LineTo(float32(inRightBottom.X+radius), float32(inRightBottom.Y))
 
 	path.Arc(float32(inRightBottom.X), float32(inRightBottom.Y), float32(radius), d0, d90, vector.Clockwise)
-	path.LineTo(float32(inLeftBottom.X), float32(inLeftBottom.Y + radius))
+	path.LineTo(float32(inLeftBottom.X), float32(inLeftBottom.Y+radius))
 
 	path.Arc(float32(inLeftBottom.X), float32(inLeftBottom.Y), float32(radius), d90, d180, vector.Clockwise)
 	path.Close()
@@ -93,14 +93,13 @@ func getRoundRectPath(rect FRect, radius float64) vector.Path{
 	return path
 }
 
-func DrawRoundRect(dst *ebiten.Image, rect FRect, radius float64, c Color){
+func DrawRoundRect(dst *ebiten.Image, rect FRect, radius float64, c Color) {
 	path := getRoundRectPath(rect, radius)
 	vs, is := path.AppendVerticesAndIndicesForFilling(nil, nil)
 	drawVerticesForUtil(dst, vs, is, ToImageColor(c), true)
 }
 
-
-func StrokeRoundRect(dst *ebiten.Image, rect FRect, radius float64, stroke float64, c Color){
+func StrokeRoundRect(dst *ebiten.Image, rect FRect, radius float64, stroke float64, c Color) {
 	path := getRoundRectPath(rect, radius)
 	strokeOp := &vector.StrokeOptions{}
 	strokeOp.Width = float32(stroke)
@@ -119,11 +118,11 @@ var (
 	whiteSubImage = whiteImage.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image)
 )
 
-func init(){
+func init() {
 	initWhiteImage()
 }
 
-func initWhiteImage(){
+func initWhiteImage() {
 	b := whiteImage.Bounds()
 	pix := make([]byte, 4*b.Dx()*b.Dy())
 	for i := range pix {
@@ -150,8 +149,8 @@ func drawVerticesForUtil(dst *ebiten.Image, vs []ebiten.Vertex, is []uint16, clr
 	dst.DrawTriangles(vs, is, whiteSubImage, op)
 }
 
-func DrawImageOnImageRect(src *ebiten.Image, dst *ebiten.Image, srcRect *FRect, dstRect *FRect){
-	if srcRect == nil{
+func DrawImageOnImageRect(src *ebiten.Image, dst *ebiten.Image, srcRect *FRect, dstRect *FRect) {
+	if srcRect == nil {
 		srcRect = new(FRect)
 		srcRect.X = 0
 		srcRect.Y = 0
@@ -159,7 +158,7 @@ func DrawImageOnImageRect(src *ebiten.Image, dst *ebiten.Image, srcRect *FRect, 
 		srcRect.H = float64(src.Bounds().Dy())
 	}
 
-	if dstRect == nil{
+	if dstRect == nil {
 		dstRect = new(FRect)
 		dstRect.X = 0
 		dstRect.Y = 0
@@ -167,11 +166,11 @@ func DrawImageOnImageRect(src *ebiten.Image, dst *ebiten.Image, srcRect *FRect, 
 		dstRect.H = float64(dst.Bounds().Dy())
 	}
 
-	if int(srcRect.W) == 0 || int(srcRect.H) == 0{
+	if int(srcRect.W) == 0 || int(srcRect.H) == 0 {
 		return
 	}
 
-	if int(dstRect.W) == 0 || int(dstRect.H) == 0{
+	if int(dstRect.W) == 0 || int(dstRect.H) == 0 {
 		return
 	}
 
@@ -180,10 +179,10 @@ func DrawImageOnImageRect(src *ebiten.Image, dst *ebiten.Image, srcRect *FRect, 
 
 	//go fucking sucks....
 	srcSubRect := image.Rect(
-		int(srcRect.X) + src.Bounds().Min.X,
-		int(srcRect.Y) + src.Bounds().Min.Y,
-		int(srcRect.X + srcRect.W) + src.Bounds().Min.X,
-		int(srcRect.Y + srcRect.H) + src.Bounds().Min.Y,
+		int(srcRect.X)+src.Bounds().Min.X,
+		int(srcRect.Y)+src.Bounds().Min.Y,
+		int(srcRect.X+srcRect.W)+src.Bounds().Min.X,
+		int(srcRect.Y+srcRect.H)+src.Bounds().Min.Y,
 	)
 	srcSubImage := src.SubImage(srcSubRect).(*ebiten.Image)
 
@@ -191,7 +190,7 @@ func DrawImageOnImageRect(src *ebiten.Image, dst *ebiten.Image, srcRect *FRect, 
 	op.Filter = ebiten.FilterLinear
 
 	op.GeoM.Scale(
-		dstRect.W / srcRect.W, dstRect.H / srcRect.H,
+		dstRect.W/srcRect.W, dstRect.H/srcRect.H,
 	)
 	op.GeoM.Translate(
 		dstRect.X, dstRect.Y,

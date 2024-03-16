@@ -2,11 +2,11 @@ package kitty
 
 import (
 	"errors"
-	"image/color"
 	"flag"
 	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text"
+	"image/color"
 	"io/fs"
 	"log"
 	"os"
@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 )
+
 // ================================================
 // test that performs image comparsions
 //
@@ -34,38 +35,38 @@ func TestDraw(t *testing.T) {
 	var japanFlag *ebiten.Image
 
 	japanFlag = ebiten.NewImage(200, 100)
-	japanFlag.Fill(color.NRGBA{255,255,255,255})
-	DrawCircle(japanFlag, Circle{100, 50, 35}, Color255(255,0,0,255))
+	japanFlag.Fill(color.NRGBA{255, 255, 255, 255})
+	DrawCircle(japanFlag, Circle{100, 50, 35}, Color255(255, 0, 0, 255))
 
 	img := ebiten.NewImage(imgW, imgH)
 
 	var offsetX, offsetY float64 = 0, 0
 	_ = offsetY
 
-	for offsetX < imgW + gridSize{
+	for offsetX < imgW+gridSize {
 		from, to := Vec2{}, Vec2{}
 
 		from.Y = 0
 		to.Y = imgH
 
 		from.X = offsetX
-		to.X   = offsetX
+		to.X = offsetX
 
-		DrawLine(img, from, to, 1, Color255(150,150,150,255))
+		DrawLine(img, from, to, 1, Color255(150, 150, 150, 255))
 
 		offsetX += gridSize
 	}
 
-	for offsetY < imgW + gridSize{
+	for offsetY < imgW+gridSize {
 		from, to := Vec2{}, Vec2{}
 
 		from.X = 0
 		to.X = imgW
 
 		from.Y = offsetY
-		to.Y   = offsetY
+		to.Y = offsetY
 
-		DrawLine(img, from, to, 1, Color255(150,150,150,255))
+		DrawLine(img, from, to, 1, Color255(150, 150, 150, 255))
 
 		offsetY += gridSize
 	}
@@ -76,7 +77,7 @@ func TestDraw(t *testing.T) {
 	roundRect1.W *= gridSize
 	roundRect1.H *= gridSize
 
-	DrawRoundRect(img, roundRect1, 30, Color255(150,150,150,100))
+	DrawRoundRect(img, roundRect1, 30, Color255(150, 150, 150, 100))
 
 	roundRect2 := FRect{8, 6, 10, 6}
 	roundRect2.X *= gridSize
@@ -84,14 +85,14 @@ func TestDraw(t *testing.T) {
 	roundRect2.W *= gridSize
 	roundRect2.H *= gridSize
 
-	StrokeRoundRect(img, roundRect2, 30, 5, Color255(230,230,230,100))
+	StrokeRoundRect(img, roundRect2, 30, 5, Color255(230, 230, 230, 100))
 
 	dstRect := FRect{280, 280, 200, 100}
 	DrawImageOnImageRect(japanFlag, img, nil, &dstRect)
 
 	dstRect.Y += dstRect.H
 	dstRect.W *= 0.8
-	srcRect := FRect{0,0, 100, 50}
+	srcRect := FRect{0, 0, 100, 50}
 	DrawImageOnImageRect(japanFlag, img, &srcRect, &dstRect)
 
 	atTestEnd(t, img, "TestDraw")
@@ -99,7 +100,7 @@ func TestDraw(t *testing.T) {
 
 func TestTextDraw(t *testing.T) {
 	const (
-		imgW  = 800
+		imgW = 800
 		imgH = 480
 	)
 
@@ -110,14 +111,13 @@ func TestTextDraw(t *testing.T) {
 	img.Fill(Color255(209, 241, 188, 255).ToImageColor())
 	textColor := Color255(86, 111, 70, 255)
 
-	var longText string =
-		"a really really long text\n" +
+	var longText string = "a really really long text\n" +
 		"so very very very very~~~ long\n" +
 		"so so long\n" +
 		"how long can it be?\n" +
 		"as long as it wants\n"
 
-	var rect1 FRect = FRect{100,10, 200,100}
+	var rect1 FRect = FRect{100, 10, 200, 100}
 	DrawRect(img, rect1, Color255(255, 255, 255, 255))
 	FitTextInRect(img, rect1, longText, fontFace, textColor)
 
@@ -125,7 +125,7 @@ func TestTextDraw(t *testing.T) {
 	DrawRect(img, rect2, Color255(255, 255, 255, 255))
 	FitTextInRectVert(img, rect2, longText, fontFace, textColor)
 
-	var rect3 FRect = FRect{100, 300, 200,100}
+	var rect3 FRect = FRect{100, 300, 200, 100}
 	DrawRect(img, rect3, Color255(255, 255, 255, 255))
 	FitTextInRectHoz(img, rect3, longText, fontFace, textColor)
 
@@ -179,7 +179,7 @@ func atTestEnd(t *testing.T, img *ebiten.Image, testName string) {
 	compImgPath := filepath.Join(imgDir, testName+".png")
 
 	if updateImages {
-		if err = SaveImageToPng(img, compImgPath); err != nil{
+		if err = SaveImageToPng(img, compImgPath); err != nil {
 			t.Errorf("failed to save \"%v\" : %v", compImgPath, err)
 			return
 		}
@@ -276,7 +276,7 @@ func imageEq(img1, img2 *ebiten.Image, coloreTolerance int, diffTolerance float6
 }
 
 var shaderCode []byte = []byte(
-`
+	`
 package main
 
 //kage:unit pixels

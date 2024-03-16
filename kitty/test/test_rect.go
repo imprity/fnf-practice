@@ -14,30 +14,46 @@ const (
 	SCREEN_HEIGHT = 500
 )
 
-var Rect1 = kitty.Fr(0,0, 200, 100)
-var Rect2 = kitty.IntsToFr(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 200, 100, 200)
+var Rect1 = kitty.Fr(0, 0, 200, 100)
+var Rect2 = kitty.IntsToFr(SCREEN_WIDTH-100, SCREEN_HEIGHT-200, 100, 200)
 
 var Inset float64
 
-type Game struct {}
+type Game struct{}
 
 func (g *Game) Update() error {
 	const moveSpeed float64 = 5.0
 
-	dir1 := kitty.V(0,0)
-	dir2 := kitty.V(0,0)
+	dir1 := kitty.V(0, 0)
+	dir2 := kitty.V(0, 0)
 
-	_= dir2
+	_ = dir2
 
-	if ebiten.IsKeyPressed(ebiten.KeyW){dir1.Y -= moveSpeed}
-	if ebiten.IsKeyPressed(ebiten.KeyS){dir1.Y += moveSpeed}
-	if ebiten.IsKeyPressed(ebiten.KeyD){dir1.X += moveSpeed}
-	if ebiten.IsKeyPressed(ebiten.KeyA){dir1.X -= moveSpeed}
+	if ebiten.IsKeyPressed(ebiten.KeyW) {
+		dir1.Y -= moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyS) {
+		dir1.Y += moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyD) {
+		dir1.X += moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyA) {
+		dir1.X -= moveSpeed
+	}
 
-	if ebiten.IsKeyPressed(ebiten.KeyUp){dir2.Y -= moveSpeed}
-	if ebiten.IsKeyPressed(ebiten.KeyDown){dir2.Y += moveSpeed}
-	if ebiten.IsKeyPressed(ebiten.KeyRight){dir2.X += moveSpeed}
-	if ebiten.IsKeyPressed(ebiten.KeyLeft){dir2.X -= moveSpeed}
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		dir2.Y -= moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		dir2.Y += moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		dir2.X += moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		dir2.X -= moveSpeed
+	}
 
 	Rect1 = Rect1.Add(dir1)
 	Rect2 = Rect2.Add(dir2)
@@ -63,11 +79,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	ebitenutil.DebugPrint(screen,
 		fmt.Sprintf(
-			"Move rects with\n" +
-			"wasd and arrow keys\n" +
-			"\n" +
-			"Inset Value : %.2f",
-		Inset),
+			"Move rects with\n"+
+				"wasd and arrow keys\n"+
+				"\n"+
+				"Inset Value : %.2f",
+			Inset),
 	)
 }
 

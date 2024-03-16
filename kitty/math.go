@@ -139,7 +139,7 @@ type FRect struct {
 func Fr(x, y, w, h float64) FRect { return FRect{x, y, w, h} }
 
 func (r FRect) Ints() (int, int, int, int) { return int(r.X), int(r.Y), int(r.W), int(r.H) }
-func IntsToFr(x, y, w, h int) FRect         { return FRect{float64(x), float64(y), float64(w), float64(h)} }
+func IntsToFr(x, y, w, h int) FRect        { return FRect{float64(x), float64(y), float64(w), float64(h)} }
 
 func FromIRect(ir image.Rectangle) FRect {
 	canon := ir.Canon()

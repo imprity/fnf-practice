@@ -1,41 +1,41 @@
 package kitty
 
 import (
-	"os"
 	"bufio"
+	"os"
 
 	"image"
-	"image/png"
 	_ "image/jpeg"
-	
+	"image/png"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-func SaveImageToPng(image image.Image, path string) error{
+func SaveImageToPng(image image.Image, path string) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	
+
 	encoder := png.Encoder{
-		CompressionLevel : png.NoCompression,
+		CompressionLevel: png.NoCompression,
 	}
 
 	writer := bufio.NewWriter(file)
 
-	if err = encoder.Encode(writer, image); err!= nil{
+	if err = encoder.Encode(writer, image); err != nil {
 		return err
 	}
 
-	if err = writer.Flush(); err!= nil{
+	if err = writer.Flush(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func LoadEbitenImage(path string) (*ebiten.Image, error){
+func LoadEbitenImage(path string) (*ebiten.Image, error) {
 	img, err := LoadImage(path)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func LoadEbitenImage(path string) (*ebiten.Image, error){
 	return ebiten.NewImageFromImage(img), nil
 }
 
-func LoadImage(path string) (image.Image, error){
+func LoadImage(path string) (image.Image, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
