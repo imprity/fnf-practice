@@ -20,7 +20,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	//"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"kitty"
 )
@@ -107,15 +107,35 @@ type FnfSong struct {
 }
 
 type App struct {
-	Song            FnfSong
-	CurrentTime     time.Duration
-	AudioPlayer     *audio.Player
+	Song FnfSong
+
+	CurrentTime   time.Duration
+	RenderingTime time.Duration
+
+	VoicePlayer *audio.Player
+	InstPlayer  *audio.Player
+
 	NoteKeyResolved [NoteDirSize]bool
+
+	NotesMarginLeft   float64
+	NotesMarginRight  float64
+	NotesMarginBottom float64
+
+	NoteSize float64
+}
+
+func (app *App) SetMarginsAndNoteSizeToDefaultValues() {
+	app.NotesMarginLeft = 90
+	app.NotesMarginRight = 90
+
+	app.NotesMarginBottom = 50
+
+	app.NoteSize = 50
 }
 
 const (
-	ScreenWidth  = 900
-	ScreenHeight = 600
+	SCREEN_WIDTH  = 900
+	SCREEN_HEIGHT = 600
 )
 
 const SampeRate = 44100
@@ -173,6 +193,7 @@ func NoteMatchesFilter(note FnfNote, filter NoteFilter) bool {
 	return true
 }
 
+// TODO : This function can be faster, make it faster
 func FindNextNoteIndex(notes []FnfNote, after time.Duration, filter NoteFilter) int {
 	for i, note := range notes {
 		if note.StartsAt > after {
@@ -185,6 +206,7 @@ func FindNextNoteIndex(notes []FnfNote, after time.Duration, filter NoteFilter) 
 	return -1
 }
 
+// TODO : This function can be faster, make it faster
 func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter) int {
 	for i := len(notes) - 1; i >= 0; i-- {
 		note := notes[i]
@@ -199,12 +221,16 @@ func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter)
 }
 
 func (app *App) Update() error {
+	// =====================================
+	// check if user hit any notes
+	// =====================================
 	filter := NoteFilter{
 		Player:    0,
 		IsHit:     BoolToInt(false),
 		Direction: NoteDirAny,
 	}
 
+	// try to find the first unhit note
 	var foundUnHitNote bool = false
 	var firstUnHitNote FnfNote
 
@@ -224,6 +250,8 @@ func (app *App) Update() error {
 	}
 
 	if foundUnHitNote {
+		// there may be multiple notes that are close together
+		// so we need to check them all
 		var notesToHit []FnfNote
 
 		notesToHit = append(notesToHit, firstUnHitNote)
@@ -239,29 +267,67 @@ func (app *App) Update() error {
 			}
 		}
 
-		var dirKeyPressed [NoteDirSize]bool
+		var noteKeyPressed [NoteDirSize]bool
 
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			if ebiten.IsKeyPressed(NoteKeys[dir]) {
-				dirKeyPressed[dir] = true
+				noteKeyPressed[dir] = true
 			}
 		}
 
 		for _, note := range notesToHit {
-			if dirKeyPressed[note.Direction] && !app.NoteKeyResolved[note.Direction] {
+			if noteKeyPressed[note.Direction] && !app.NoteKeyResolved[note.Direction] {
 				app.Song.Notes[note.Index].IsHit = true
 				app.NoteKeyResolved[note.Direction] = true
 				app.CurrentTime = note.StartsAt
 			}
 		}
 	}
+	// ===================================================================
+	// end of checking if user hit any notes
+	// ===================================================================
 
+	// reset NoteKeyResolved to false for any unpressed keys
 	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 		if !ebiten.IsKeyPressed(NoteKeys[dir]) {
 			app.NoteKeyResolved[dir] = false
 		}
 	}
 
+	// ==========================================================
+	// if there are no notes on screen for user to hit
+	// then skip to a section where there are notes to hit :)
+	// ==========================================================
+
+	var checkIfWeShouldSkip = false
+
+	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+		if inpututil.IsKeyJustReleased(NoteKeys[dir]) {
+			checkIfWeShouldSkip = true
+			break
+		}
+	}
+
+	if checkIfWeShouldSkip {
+		next := FindNextNoteIndex(app.Song.Notes, app.CurrentTime, filter)
+
+		if next >= 0 {
+			var shouldSkip = false
+
+			noteY := app.MapTimeToY(app.Song.Notes[next].StartsAt)
+
+			if noteY+app.NoteSize*0.5 < 0 {
+				shouldSkip = true
+			}
+
+			if shouldSkip {
+				note := app.Song.Notes[next]
+				app.CurrentTime = note.StartsAt - app.PixelsToTime(50)
+			}
+		}
+	}
+
+	// handle arbitrary change time
 	changedCurrentTime := false
 
 	if ebiten.IsKeyPressed(ebiten.KeyUp) {
@@ -276,15 +342,46 @@ func (app *App) Update() error {
 	}
 
 	if changedCurrentTime {
-		index := FindNextNoteIndex(app.Song.Notes, app.CurrentTime, NoteFilterAny)
-		if index > 0 {
-			for ; index < len(app.Song.Notes); index++ {
-				app.Song.Notes[index].IsHit = false
+		for i, note := range app.Song.Notes {
+			if note.StartsAt < app.CurrentTime {
+				app.Song.Notes[i].IsHit = true
+			} else {
+				app.Song.Notes[i].IsHit = false
 			}
 		}
 	}
 
 	return nil
+}
+
+func (app *App) TimeToPixels(t time.Duration) float64 {
+	var pixelsForMillis float64
+
+	if app.Song.Speed == 0 {
+		pixelsForMillis = 1.0
+	} else {
+		pixelsForMillis = 1.0 / app.Song.Speed
+	}
+
+	return pixelsForMillis * float64(t.Milliseconds())
+}
+
+func (app *App) PixelsToTime(p float64) time.Duration {
+	var pixelsForMillis float64
+
+	if app.Song.Speed == 0 {
+		pixelsForMillis = 1.0
+	} else {
+		pixelsForMillis = 1.0 / app.Song.Speed
+	}
+
+	millisForPixels := 1.0 / pixelsForMillis
+
+	return time.Duration(p*millisForPixels) * time.Millisecond
+}
+
+func (app *App) MapTimeToY(t time.Duration) float64 {
+	return (SCREEN_HEIGHT - app.NotesMarginBottom) - app.TimeToPixels(t-app.RenderingTime)
 }
 
 func DrawNoteArrow(dst *ebiten.Image, x, y float64, dir NoteDir, fill, stroke kitty.Color) {
@@ -341,25 +438,12 @@ func DrawNoteArrow(dst *ebiten.Image, x, y float64, dir NoteDir, fill, stroke ki
 }
 
 func (app *App) Draw(screen *ebiten.Image) {
-	//app.CurrentTime = app.AudioPlayer.Position()
+	//app.RenderingTime = app.AudioPlayer.Position()
 
-	//const noteBaseY = ScreenHeight - 50
-	const noteBaseY = ScreenHeight - 200
-
-	const player1NoteStartLeft = 90
-	const player0NoteStartRight = ScreenWidth - 90
+	player1NoteStartLeft := app.NotesMarginLeft
+	player0NoteStartRight := SCREEN_WIDTH - app.NotesMarginRight
 
 	const noteInterval = 70
-
-	var pixelsForMillis float64
-
-	if app.Song.Speed == 0 {
-		pixelsForMillis = 1.0
-	} else {
-		pixelsForMillis = 1.0 / app.Song.Speed
-	}
-
-	var noteIndex = FindNextNoteIndex(app.Song.Notes, app.CurrentTime, NoteFilterAny)
 
 	var getNoteX = func(dir NoteDir, player int) float64 {
 		var noteX float64 = 0
@@ -371,10 +455,6 @@ func (app *App) Draw(screen *ebiten.Image) {
 		}
 
 		return noteX
-	}
-
-	var timeToY = func(t time.Duration) float64 {
-		return noteBaseY - pixelsForMillis*float64((t-app.CurrentTime).Milliseconds())
 	}
 
 	dirFillColor := [4]kitty.Color{
@@ -391,18 +471,18 @@ func (app *App) Draw(screen *ebiten.Image) {
 	for p := 0; p <= 1; p++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			x := getNoteX(dir, p)
-			DrawNoteArrow(screen, x, noteBaseY, dir, grey, grey)
+			DrawNoteArrow(screen, x, SCREEN_HEIGHT-app.NotesMarginBottom, dir, grey, grey)
 		}
 	}
 
 	var drawNote = func(note FnfNote) {
 		noteX := getNoteX(note.Direction, note.Player)
-		noteStartY := timeToY(note.StartsAt)
+		noteStartY := app.MapTimeToY(note.StartsAt)
 
 		if note.Duration > 0 {
 			const barWidth = 10
 
-			durationEndY := timeToY(note.StartsAt + note.Duration)
+			durationEndY := app.MapTimeToY(note.StartsAt + note.Duration)
 
 			rect := kitty.FRect{
 				W: 10,
@@ -421,18 +501,24 @@ func (app *App) Draw(screen *ebiten.Image) {
 		}
 	}
 
+	var noteIndex = FindNextNoteIndex(app.Song.Notes, app.RenderingTime, NoteFilterAny)
+
 	if noteIndex >= 0 {
 		for i := noteIndex; i < len(app.Song.Notes); i++ {
 			note := app.Song.Notes[i]
 
 			drawNote(note)
 
-			noteStartY := timeToY(note.StartsAt)
+			noteStartY := app.MapTimeToY(note.StartsAt)
 
 			if noteStartY < -100 {
 				break
 			}
 		}
+	}
+
+	if noteIndex < 0 {
+		noteIndex = len(app.Song.Notes)
 	}
 
 	if noteIndex-1 >= 0 {
@@ -441,27 +527,31 @@ func (app *App) Draw(screen *ebiten.Image) {
 
 			drawNote(note)
 
-			noteEndY := timeToY(note.StartsAt + note.Duration)
+			noteEndY := app.MapTimeToY(note.StartsAt + note.Duration)
 
-			if noteEndY > ScreenHeight {
+			if noteEndY > SCREEN_HEIGHT {
 				break
 			}
 		}
 	}
 
+	// TODO : this is not frame independent even though ebiten runs in fixed frames
+	//        I know there is a better way to do this
+	// update rendering time
+	app.RenderingTime = time.Duration(float64(app.RenderingTime) + float64(app.CurrentTime-app.RenderingTime)*0.8)
+
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("%v/%v", app.Song.NotesEndsAt, app.CurrentTime))
 }
 
 func (app *App) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return ScreenWidth, ScreenHeight
+	return SCREEN_WIDTH, SCREEN_HEIGHT
 }
 
 func main() {
 	// =========================
 	// parse json
 	// =========================
-	const inputJsonPath string = "./smile-hard.json"
-	//const inputJsonPath string = "./tutorial.json"
+	const inputJsonPath string = "./song_smile/smile-hard.json"
 	var err error
 	var jsonBlob []byte
 
@@ -526,6 +616,7 @@ func main() {
 	}
 
 	app := new(App)
+	app.SetMarginsAndNoteSizeToDefaultValues()
 	app.Song = parsedSong
 
 	// =========================
@@ -533,8 +624,21 @@ func main() {
 	// =========================
 	context := audio.NewContext(SampeRate)
 
-	const audioFilePath = "./inst.ogg"
+	const instPath = "./song_smile/inst.ogg"
+	const voicePath = "./song_smile/Voices.ogg"
 
+	app.InstPlayer = LoadAudioAndCreatePlayer(instPath, context)
+	app.VoicePlayer = LoadAudioAndCreatePlayer(voicePath, context)
+
+	ebiten.SetWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT)
+	ebiten.SetWindowTitle("fnaf-practice")
+
+	if err = ebiten.RunGame(app); err != nil {
+		ErrorLogger.Fatal(err)
+	}
+}
+
+func LoadAudioAndCreatePlayer(audioFilePath string, context *audio.Context) *audio.Player {
 	audioFileBytes, err := os.ReadFile(audioFilePath)
 	if err != nil {
 		ErrorLogger.Fatal(err)
@@ -554,19 +658,12 @@ func main() {
 		ErrorLogger.Fatal(err)
 	}
 
-	app.AudioPlayer, err = context.NewPlayer(stream)
+	player, err := context.NewPlayer(stream)
 	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
 
-	//app.AudioPlayer.Play()
-
-	ebiten.SetWindowSize(ScreenWidth, ScreenHeight)
-	ebiten.SetWindowTitle("fnaf-practice")
-
-	if err = ebiten.RunGame(app); err != nil {
-		ErrorLogger.Fatal(err)
-	}
+	return player
 }
 
 func RotateAround(geom ebiten.GeoM, pivot kitty.Vec2, theta float64) ebiten.GeoM {
