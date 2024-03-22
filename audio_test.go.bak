@@ -1,0 +1,220 @@
+package main
+
+import(
+	"log"
+	"os"
+	"io"
+	"bytes"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+)
+
+var ErrorLogger *log.Logger = log.New(os.Stderr, "ERROR : ", log.Lshortfile)
+
+const SampleRate = 44100
+
+type VariableSpeedStream struct{
+	io.ReadSeeker
+	Speed float64
+
+	DecodedLeftover []byte //left overs when reading from decoded stream
+
+	TmpBuffer []byte          //temporary buffer to hold decoded bytes (should be initiallized with some large size (about 1 mb I think))
+	TmpBufferLeftover []byte
+}
+
+// returns read and written
+func ProcessAndWrite(read []byte, speed float64, write []byte) (int, int){
+	wCursor := 0
+	rCursor := 0
+
+	rCursorLimit := (len(read) / 4) * 4
+	wCursorLimit := (len(write) / 4) * 4
+
+	rCursorPosFloat := 0.0
+
+	for{
+		if rCursor + 4 >= rCursorLimit || wCursor + 4 >= wCursorLimit{
+			return rCursor, wCursor
+		}
+
+		write[wCursor+0] = read[rCursor+0];
+		write[wCursor+1] = read[rCursor+1];
+		write[wCursor+2] = read[rCursor+2];
+		write[wCursor+3] = read[rCursor+3];
+
+		wCursor += 4
+
+		rCursorPosFloat += speed * 4.0
+
+		rCursor = (int(rCursorPosFloat) / 4) * 4
+	}
+}
+
+/*
+type AligendReader struct{
+	Align int
+	Buffer []byte
+
+	io.Reader
+}
+
+func (a *AligendReader) Read(p []byte) (int, error){
+	var written int = 0
+	if (len(a.Buffer) > 0){
+		written = copy(p, a.Buffer)
+		a.Buffer = a.Buffer[written:]
+	}
+
+	var read int
+	var err error
+
+	if read, err = a.Reader.Read(p []byte); err != nil && err != io.EOF{
+		return 0, err
+	}
+
+	total = read + written
+	rest = total - (total /4) * 4
+
+	a.Buffer = append(a.Buffer, p[total-reset : total]...)
+
+	return total - rest, err
+}
+
+func (s *VariableSpeedStream) Read(p []byte) (int, error) {
+	speedInverse := 1.0 / s.Speed
+	tmpBufferSize = int(float64(len(p)) * speedInverse) / 4 * 4
+
+	tmpBuffer := s.TmpBuffer[:tmpBufferSize]
+
+	decoderRead, err := s.AligendDecoderReader.Read(tmpBuffer)
+
+	if err != nil && err != io.EOF{
+		return 0, err
+	}
+
+	read, written := ProcessAndWrite(tmpBuffer, s.Speed, p)
+
+	return written, err
+}
+
+func (s *VariableSpeedStream) Read(p []byte) (int, error) {
+
+}*/
+
+func (s *VariableSpeedStream) Read(p []byte) (int, error) {
+	var tmpLeftoverRead int
+	var writtenTotal int = 0
+
+	if len(s.TmpBufferLeftover) > 0 {
+		var written int
+
+		tmpLeftoverRead, written = ProcessAndWrite(s.TmpBufferLeftover, s.Speed, p)
+
+		writtenTotal += written
+
+		s.TmpBufferLeftover = s.TmpBufferLeftover[tmpLeftoverRead:]
+	}
+
+	var copiedToTmpN int
+
+	if len(s.DecodedLeftover) > 0 {
+		copiedToTmpN = copy(s.TmpBuffer, s.DecodedLeftover)
+		s.DecodedLeftover = s.DecodedLeftover[copiedToTmpN:]
+	}
+
+	decodedN, err := s.ReadSeeker.Read(s.TmpBuffer[copiedToTmpN:])
+	if err != nil && err != io.EOF {
+		return 0, err
+	}
+
+	totalN := copiedToTmpN + decodedN
+	unAlignedSize := totalN - totalN/4*4
+	s.DecodedLeftover = append(s.DecodedLeftover, s.TmpBuffer[totalN-unAlignedSize : totalN]...)
+
+	alignedN := totalN - unAlignedSize
+
+	tmpBufferRead, written := ProcessAndWrite(s.TmpBuffer[:alignedN], s.Speed, p[writtenTotal:])
+
+	s.TmpBufferLeftover = append(s.TmpBufferLeftover, s.TmpBuffer[tmpBufferRead : alignedN]...)
+
+	writtenTotal += written
+
+	if err == io.EOF && len(s.TmpBufferLeftover) <= 0{
+		err = io.EOF
+	}else{
+		err = nil
+	}
+
+	return writtenTotal, err
+}
+
+func (s *VariableSpeedStream) Seek(offset int64, whence int) (int64, error){
+	newOffset := int64(float64(offset) * s.Speed)
+
+	return s.ReadSeeker.Seek(newOffset, whence)
+}
+
+type Game struct{
+
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
+
+}
+
+func (g *Game) Update() error{
+	return nil
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return 500, 500
+}
+
+func main(){
+	ebiten.SetWindowSize(500, 500)
+
+	game := new(Game)
+
+	context := audio.NewContext(SampleRate)
+
+	const audioFilePath = "./song_smile/Inst.ogg"
+
+	audioFileBytes, err := os.ReadFile(audioFilePath)
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+
+	bReader := bytes.NewReader(audioFileBytes)
+
+	type audioStream interface {
+		io.ReadSeeker
+		Length() int64
+	}
+
+	var stream audioStream
+
+	stream, err = vorbis.DecodeWithoutResampling(bReader)
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+
+	vStream := new(VariableSpeedStream)
+	vStream.ReadSeeker = stream
+	vStream.Speed = 0.8
+
+	vStream.TmpBuffer = make([]byte, 1024 * 1024)
+
+	player, err := context.NewPlayer(vStream)
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+
+	player.Play()
+
+	if err := ebiten.RunGame(game); err != nil {
+		ErrorLogger.Fatal(err)
+	}
+}

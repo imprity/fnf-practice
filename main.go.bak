@@ -1,0 +1,806 @@
+package main
+
+import (
+	"bytes"
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"golang.org/x/exp/constraints"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
+	"log"
+	"math"
+	"os"
+	"sort"
+	"time"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+
+	"kitty"
+)
+
+var ErrorLogger *log.Logger = log.New(os.Stderr, "ERROR : ", log.Lshortfile)
+
+//go:embed arrow_outer.png
+var arrowOuterBytes []byte
+
+//go:embed arrow_inner.png
+var arrowInnerBytes []byte
+
+var ArrowOuterImg *ebiten.Image
+var ArrowInnerImg *ebiten.Image
+
+func init() {
+	img, _, err := image.Decode(bytes.NewReader(arrowOuterBytes))
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+	ArrowOuterImg = ebiten.NewImageFromImage(img)
+
+	img, _, err = image.Decode(bytes.NewReader(arrowInnerBytes))
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+	ArrowInnerImg = ebiten.NewImageFromImage(img)
+}
+
+type RawFnfNote struct {
+	MustHitSection bool
+	SectionNotes   [][]float64
+}
+
+type RawFnfSong struct {
+	Song  string
+	Notes []RawFnfNote
+	Speed float64
+}
+
+type RawFnfJson struct {
+	Song RawFnfSong
+}
+
+type NoteDir int
+
+const (
+	NoteDirLeft NoteDir = iota
+	NoteDirDown
+	NoteDirUp
+	NoteDirRight
+	NoteDirSize
+
+	NoteDirAny = -1
+)
+
+const (
+	NoteKeyLeft  = ebiten.KeyA
+	NoteKeyDown  = ebiten.KeyS
+	NoteKeyUp    = ebiten.KeySemicolon
+	NotekeyRight = ebiten.KeyQuote
+)
+
+var NoteKeys = [NoteDirSize]ebiten.Key{
+	NoteKeyLeft,
+	NoteKeyDown,
+	NoteKeyUp,
+	NotekeyRight,
+}
+
+type FnfNote struct {
+	Player    int
+	StartsAt  time.Duration
+	Duration  time.Duration
+	Direction NoteDir
+	IsHit     bool
+	Index     int
+}
+
+type FnfSong struct {
+	Notes       []FnfNote
+	NotesEndsAt time.Duration
+	Speed       float64
+}
+
+type PlayBackMode int
+
+const (
+	PlayBackModeNone = iota
+	PlayBackModeWait
+	PlayBackModeTrace
+)
+
+type App struct {
+	Song FnfSong
+
+	CurrentTime   time.Duration
+	RenderingTime time.Duration
+
+	PlayVoice bool
+
+	InstPlayer  *audio.Player
+	VoicePlayer *audio.Player
+
+	NoteKeyResolved     [NoteDirSize]bool
+	NoteKeyPlayBackTime [NoteDirSize]time.Duration
+
+	PlayBackMode      PlayBackMode
+	PlayBackStartedAt time.Duration
+
+	TmpPlayBackStartedAt time.Duration
+	TmpPlayBackPlaying bool
+
+	// variables about note rendering
+	NotesMarginLeft   float64
+	NotesMarginRight  float64
+	NotesMarginBottom float64
+
+	NoteSize float64
+}
+
+func (app *App) SetMarginsAndNoteSizeToDefaultValues() {
+	app.NotesMarginLeft = 90
+	app.NotesMarginRight = 90
+
+	app.NotesMarginBottom = 100
+
+	app.NoteSize = 50
+}
+
+const (
+	SCREEN_WIDTH  = 900
+	SCREEN_HEIGHT = 600
+)
+
+const SampleRate = 44100
+
+const PlayerAny = -1
+const IsHitAny = -1
+
+type NoteFilter struct {
+	Player    int
+	IsHit     int
+	Direction NoteDir
+}
+
+var NoteFilterAny = NoteFilter{
+	Player:    PlayerAny,
+	IsHit:     IsHitAny,
+	Direction: NoteDirAny,
+}
+
+func BoolToInt(b bool) int {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func IntToBool[N constraints.Integer](n N) bool {
+	if n == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
+func NoteMatchesFilter(note FnfNote, filter NoteFilter) bool {
+	if filter.Player >= 0 {
+		if !(note.Player == filter.Player) {
+			return false
+		}
+	}
+
+	if filter.IsHit >= 0 {
+		if !(filter.IsHit == BoolToInt(note.IsHit)) {
+			return false
+		}
+	}
+
+	if filter.Direction >= 0 {
+		if !(filter.Direction == note.Direction) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// TODO : This function can be faster, make it faster
+func FindNextNote(notes []FnfNote, after time.Duration, filter NoteFilter) (FnfNote, bool) {
+	for i, note := range notes {
+		if note.StartsAt > after {
+			if NoteMatchesFilter(note, filter) {
+				return note, true
+			}
+		}
+    }
+
+    return FnfNote{}, false
+}
+
+// TODO : This function can be faster, make it faster
+func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter) (FnfNote, bool) {
+	for i := len(notes) - 1; i >= 0; i-- {
+		note := notes[i]
+		if note.StartsAt <= before {
+			if NoteMatchesFilter(note, filter) {
+				return note, true
+			}
+		}
+	}
+
+    return FnfNote{}, false
+}
+
+func (app *App) Update() error {
+	var markNotesUnHit = func(){
+		for i, note := range app.Song.Notes {
+			if note.StartsAt <= app.CurrentTime {
+				app.Song.Notes[i].IsHit = true
+			} else {
+				app.Song.Notes[i].IsHit = false
+			}
+		}
+	}
+
+	var startPlayback = func(at time.Duration) error{
+		if err := app.InstPlayer.SetPosition(at); err != nil {
+			return err
+		}
+		if app.PlayVoice {
+			if err := app.VoicePlayer.SetPosition(at); err != nil {
+				return err
+			}
+		}
+
+		app.InstPlayer.Play()
+		if app.PlayVoice {
+			app.VoicePlayer.Play()
+		}
+
+		return nil
+	}
+
+	var pausePlayback = func(){
+		app.InstPlayer.Pause()
+		if app.PlayVoice {
+			app.VoicePlayer.Pause()
+		}
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		if app.PlayBackMode == PlayBackModeNone {
+			app.PlayBackMode = PlayBackModeWait
+			app.PlayBackStartedAt = app.CurrentTime
+
+			if err := startPlayback(app.CurrentTime); err!= nil{
+				return err
+			}
+		} else {
+			app.PlayBackMode = PlayBackModeNone
+			app.CurrentTime = app.PlayBackStartedAt
+			markNotesUnHit()
+			pausePlayback()
+		}
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		if app.PlayBackMode != PlayBackModeNone {
+			app.PlayBackMode = PlayBackModeNone
+			markNotesUnHit()
+			pausePlayback()
+		}
+	}
+
+	player0Unhit := NoteFilter{
+		Player:    0,
+		IsHit:     BoolToInt(false),
+		Direction: NoteDirAny,
+	}
+
+	var findFirstUnHitNote = func() (FnfNote, bool) {
+		index := FindNextNoteIndex(app.Song.Notes, 0, player0Unhit)
+		if index < 0 {
+			return FnfNote{}, false
+		}
+
+		return app.Song.Notes[index], true
+	}
+
+	var noteKeyPressed [NoteDirSize]bool
+
+	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+		if ebiten.IsKeyPressed(NoteKeys[dir]) {
+			noteKeyPressed[dir] = true
+		}
+	}
+
+	if app.InstPlayer.IsPlaying() {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			if inpututil.IsKeyJustPressed(NoteKeys[dir]) {
+				app.NoteKeyPlayBackTime[dir] = app.InstPlayer.Position()
+			}
+		}
+	}
+
+	if app.TmpPlayBackPlaying{
+		if app.InstPlayer.Position() - app.TmpPlayBackStartedAt > time.Millisecond * 500{
+			app.TmpPlayBackPlaying = false
+			pausePlayback()
+		}
+	}
+
+	if app.PlayBackMode == PlayBackModeNone {
+		// =====================================
+		// check if user hit any notes
+		// =====================================
+		firstUnHitNote, foundUnHitNote := findFirstUnHitNote()
+
+		if foundUnHitNote {
+			// there may be multiple notes that are close together
+			// so we need to check them all
+			var notesToHit []FnfNote
+
+			notesToHit = append(notesToHit, firstUnHitNote)
+
+			for i := firstUnHitNote.Index + 1; i < len(app.Song.Notes); i++ {
+				note := app.Song.Notes[i]
+				if note.StartsAt-firstUnHitNote.StartsAt < time.Millisecond {
+					if NoteMatchesFilter(note, player0Unhit) {
+						notesToHit = append(notesToHit, note)
+					}
+				} else {
+					break
+				}
+			}
+
+			resolvedKeys := app.NoteKeyResolved
+			hitAny := false
+
+			for _, note := range notesToHit {
+				if noteKeyPressed[note.Direction] && !app.NoteKeyResolved[note.Direction] {
+					app.Song.Notes[note.Index].IsHit = true
+					resolvedKeys[note.Direction] = true
+					app.CurrentTime = note.StartsAt
+					hitAny = true
+				}
+			}
+
+			if hitAny{
+				app.TmpPlayBackPlaying = true
+				if !app.InstPlayer.IsPlaying(){
+					startPlayback(app.CurrentTime)
+				}
+				app.TmpPlayBackStartedAt = app.CurrentTime
+			}
+
+			app.NoteKeyResolved = resolvedKeys
+		}
+		// ===================================================================
+		// end of checking if user hit any notes
+		// ===================================================================
+
+		// ==========================================================
+		// if there are no notes on screen for user to hit
+		// then skip to a section where there are notes to hit :)
+		// ==========================================================
+
+		var checkIfWeShouldSkip = false
+
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			if inpututil.IsKeyJustReleased(NoteKeys[dir]) {
+				checkIfWeShouldSkip = true
+				break
+			}
+		}
+
+		if checkIfWeShouldSkip {
+			next := FindNextNoteIndex(app.Song.Notes, app.CurrentTime, player0Unhit)
+
+			if next >= 0 {
+				var shouldSkip = false
+
+				noteY := app.MapTimeToY(app.Song.Notes[next].StartsAt)
+
+				if noteY+app.NoteSize*0.5 < 0 {
+					shouldSkip = true
+				}
+
+				if shouldSkip {
+					note := app.Song.Notes[next]
+					app.CurrentTime = note.StartsAt - app.PixelsToTime(50)
+				}
+			}
+		}
+	} else if app.PlayBackMode == PlayBackModeWait {
+		const errorMargin = time.Millisecond * 135
+
+		// =====================================
+		// check if user hit any notes
+		// =====================================
+
+		firstUnHitNote, foundUnHitNote := findFirstUnHitNote()
+
+		if foundUnHitNote {
+			if firstUnHitNote.StartsAt-app.InstPlayer.Position() > errorMargin {
+				app.CurrentTime = app.InstPlayer.Position()
+			} else {
+				var notesToHit []FnfNote
+
+				notesToHit = append(notesToHit, firstUnHitNote)
+
+				for i := firstUnHitNote.Index + 1; i < len(app.Song.Notes); i++ {
+					note := app.Song.Notes[i]
+					if note.StartsAt-firstUnHitNote.StartsAt < time.Millisecond {
+						if NoteMatchesFilter(note, player0Unhit) {
+							notesToHit = append(notesToHit, note)
+						}
+					} else {
+						break
+					}
+				}
+
+				resolvedKeys := app.NoteKeyResolved
+
+				if app.InstPlayer.Position()-app.CurrentTime > errorMargin {
+					for _, note := range notesToHit {
+						if noteKeyPressed[note.Direction] && !app.NoteKeyResolved[note.Direction] {
+							app.Song.Notes[note.Index].IsHit = true
+							resolvedKeys[note.Direction] = true
+						}
+					}
+				} else {
+					for _, note := range notesToHit {
+						inTime := kitty.AbsI(note.StartsAt-app.NoteKeyPlayBackTime[note.Direction]) < errorMargin
+						if noteKeyPressed[note.Direction] && !app.NoteKeyResolved[note.Direction] && inTime {
+							app.Song.Notes[note.Index].IsHit = true
+							resolvedKeys[note.Direction] = true
+						} else {
+							resolvedKeys[note.Direction] = true
+						}
+					}
+				}
+
+				app.NoteKeyResolved = resolvedKeys
+
+				firstUnHitNote, foundUnHitNote := findFirstUnHitNote()
+				if foundUnHitNote {
+					if kitty.AbsI(app.InstPlayer.Position()-firstUnHitNote.StartsAt) < errorMargin {
+						app.CurrentTime = app.InstPlayer.Position()
+					} else {
+						app.CurrentTime = min(app.InstPlayer.Position(), firstUnHitNote.StartsAt+errorMargin)
+					}
+				} else {
+					app.CurrentTime = app.InstPlayer.Position()
+				}
+			}
+		}
+	}
+
+	// reset NoteKeyResolved to false for any unpressed keys
+	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+		if !ebiten.IsKeyPressed(NoteKeys[dir]) {
+			app.NoteKeyResolved[dir] = false
+		}
+	}
+
+	// handle arbitrary change time
+	if app.PlayBackMode == PlayBackModeNone {
+		changedCurrentTime := false
+
+		if ebiten.IsKeyPressed(ebiten.KeyUp) {
+			app.CurrentTime += time.Millisecond * time.Duration(ebiten.TPS()/10)
+			changedCurrentTime = true
+		} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
+			app.CurrentTime -= time.Millisecond * time.Duration(ebiten.TPS()/10)
+			changedCurrentTime = true
+		} else if ebiten.IsKeyPressed(ebiten.KeyR) {
+			app.CurrentTime = 0
+			changedCurrentTime = true
+		}
+
+		if changedCurrentTime {
+			markNotesUnHit()
+		}
+	}
+
+	if app.PlayBackMode == PlayBackModeNone {
+		// TODO : this is not frame independent even though ebiten runs in fixed frames
+		//        I know there is a better way to do this
+		// update rendering time
+		app.RenderingTime = time.Duration(float64(app.RenderingTime) + float64(app.CurrentTime-app.RenderingTime)*0.2)
+	} else {
+		//app.RenderingTime = time.Duration(float64(app.RenderingTime) + float64(app.CurrentTime-app.RenderingTime)*0.8)
+		app.RenderingTime = app.CurrentTime
+	}
+
+	return nil
+}
+
+func (app *App) TimeToPixels(t time.Duration) float64 {
+	var pixelsForMillis float64
+
+	if app.Song.Speed == 0 {
+		pixelsForMillis = 2.0
+	} else {
+		pixelsForMillis = 2.0 / app.Song.Speed
+	}
+
+	return pixelsForMillis * float64(t.Milliseconds())
+}
+
+func (app *App) PixelsToTime(p float64) time.Duration {
+	var pixelsForMillis float64
+
+	if app.Song.Speed == 0 {
+		pixelsForMillis = 2.0
+	} else {
+		pixelsForMillis = 2.0 / app.Song.Speed
+	}
+
+	millisForPixels := 1.0 / pixelsForMillis
+
+	return time.Duration(p*millisForPixels) * time.Millisecond
+}
+
+func (app *App) MapTimeToY(t time.Duration) float64 {
+	return (SCREEN_HEIGHT - app.NotesMarginBottom) - app.TimeToPixels(t-app.RenderingTime)
+}
+
+func DrawNoteArrow(dst *ebiten.Image, x, y float64, dir NoteDir, fill, stroke kitty.Color) {
+	noteRotations := [4]float64{
+		math.Pi * 0.5,
+		math.Pi * 0,
+		math.Pi * 1.0,
+		math.Pi * -0.5,
+	}
+
+	const arrowSize = 50
+
+	at := kitty.V(x, y)
+
+	// draw outer arrow
+	op := new(ebiten.DrawImageOptions)
+	op.Filter = ebiten.FilterLinear
+
+	multiplied := stroke.MultiplyAlpha()
+	op.ColorScale.Scale(
+		float32(multiplied.R),
+		float32(multiplied.G),
+		float32(multiplied.B),
+		float32(multiplied.A))
+
+	op.GeoM.Scale(
+		arrowSize/float64(ArrowOuterImg.Bounds().Dx()),
+		arrowSize/float64(ArrowOuterImg.Bounds().Dy()))
+	op.GeoM.Translate(x-arrowSize*0.5, y-arrowSize*0.5)
+
+	op.GeoM = RotateAround(op.GeoM, at, noteRotations[dir])
+
+	dst.DrawImage(ArrowOuterImg, op)
+
+	// draw inner arrow
+	op = new(ebiten.DrawImageOptions)
+	op.Filter = ebiten.FilterLinear
+
+	multiplied = fill.MultiplyAlpha()
+	op.ColorScale.Scale(
+		float32(multiplied.R),
+		float32(multiplied.G),
+		float32(multiplied.B),
+		float32(multiplied.A))
+
+	op.GeoM.Scale(
+		arrowSize/float64(ArrowInnerImg.Bounds().Dx()),
+		arrowSize/float64(ArrowInnerImg.Bounds().Dy()))
+	op.GeoM.Translate(x-arrowSize*0.5, y-arrowSize*0.5)
+
+	op.GeoM = RotateAround(op.GeoM, at, noteRotations[dir])
+
+	dst.DrawImage(ArrowInnerImg, op)
+}
+
+func (app *App) Draw(screen *ebiten.Image) {
+	//app.RenderingTime = app.AudioPlayer.Position()
+
+	player1NoteStartLeft := app.NotesMarginLeft
+	player0NoteStartRight := SCREEN_WIDTH - app.NotesMarginRight
+
+	const noteInterval = 70
+
+	var getNoteX = func(dir NoteDir, player int) float64 {
+		var noteX float64 = 0
+
+		if player == 1 {
+			noteX = player1NoteStartLeft + noteInterval*float64(dir)
+		} else {
+			noteX = player0NoteStartRight - (noteInterval)*(3-float64(dir))
+		}
+
+		return noteX
+	}
+
+	dirFillColor := [4]kitty.Color{
+		kitty.Color255(0xC2, 0x4B, 0x99, 0xFF),
+		kitty.Color255(0x00, 0xFF, 0xFF, 0xFF),
+		kitty.Color255(0x12, 0xFA, 0x05, 0xFF),
+		kitty.Color255(0xF9, 0x39, 0x3F, 0xFF),
+	}
+
+	white := kitty.Col(1, 1, 1, 1)
+	grey := kitty.Col(0.6, 0.6, 0.6, 0.6)
+
+	// draw base notes
+	for p := 0; p <= 1; p++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			x := getNoteX(dir, p)
+			DrawNoteArrow(screen, x, SCREEN_HEIGHT-app.NotesMarginBottom, dir, grey, grey)
+		}
+	}
+
+	var drawNote = func(note FnfNote) {
+		noteX := getNoteX(note.Direction, note.Player)
+		noteStartY := app.MapTimeToY(note.StartsAt)
+
+		if note.Duration > 0 {
+			const barWidth = 10
+
+			durationEndY := app.MapTimeToY(note.StartsAt + note.Duration)
+
+			rect := kitty.FRect{
+				W: 10,
+				H: noteStartY - durationEndY,
+				X: noteX - barWidth*0.5,
+				Y: durationEndY,
+			}
+
+			kitty.DrawRect(screen, rect, kitty.Col(1, 1, 1, 1))
+		}
+
+		if note.IsHit {
+			DrawNoteArrow(screen, noteX, noteStartY, note.Direction, grey, grey)
+		} else {
+			DrawNoteArrow(screen, noteX, noteStartY, note.Direction, dirFillColor[note.Direction], white)
+		}
+	}
+
+	var noteIndex = FindNextNoteIndex(app.Song.Notes, app.RenderingTime, NoteFilterAny)
+
+	if noteIndex >= 0 {
+		for i := noteIndex; i < len(app.Song.Notes); i++ {
+			note := app.Song.Notes[i]
+
+			drawNote(note)
+
+			noteStartY := app.MapTimeToY(note.StartsAt)
+
+			if noteStartY < -100 {
+				break
+			}
+		}
+	}
+
+	if noteIndex < 0 {
+		noteIndex = len(app.Song.Notes)
+	}
+
+	if noteIndex-1 >= 0 {
+		for i := noteIndex - 1; i >= 0; i-- {
+			note := app.Song.Notes[i]
+
+			drawNote(note)
+
+			noteEndY := app.MapTimeToY(note.StartsAt + note.Duration)
+
+			if noteEndY > SCREEN_HEIGHT {
+				break
+			}
+		}
+	}
+
+	// draw player input
+	for dir := NoteDir(0); dir<NoteDirSize; dir++{
+		noteX := getNoteX(dir, 0)
+		noteY := SCREEN_HEIGHT - app.NotesMarginBottom
+
+		col := kitty.Col(1,1,1, 0.7)
+		transparent := kitty.Col(0,0,0, 0)
+		if ebiten.IsKeyPressed(NoteKeys[dir]) {
+			DrawNoteArrow(screen, noteX, noteY, dir, transparent, col)
+		}
+	}
+
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("%v/%v", app.Song.NotesEndsAt, app.CurrentTime))
+
+	SetWindowTitle()
+}
+
+func (app *App) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return SCREEN_WIDTH, SCREEN_HEIGHT
+}
+
+func main() {
+	app := new(App)
+	app.SetMarginsAndNoteSizeToDefaultValues()
+
+	// load song smile ====================================================
+	//const inputJsonPath string = "./song_smile/smile-hard.json"
+	//const instPath = "./song_smile/inst.ogg"
+	//const voicePath = "./song_smile/Voices.ogg"
+	//app.PlayVoice = true
+	// =====================================================================
+
+	// load song tutorial ====================================================
+	//const inputJsonPath string = "./song_tutorial/tutorial.json"
+	//const instPath = "./song_tutorial/inst.ogg"
+	//const voicePath = ""
+	//app.PlayVoice = false
+	// ======================================================================
+
+	// load song endless ====================================================
+	const inputJsonPath string = "./song_endless/endless-hard.json"
+	const instPath = "./song_endless/inst.ogg"
+	const voicePath = "./song_endless/Voices.ogg"
+	app.PlayVoice = true
+	// ======================================================================
+
+	ebiten.SetMaxTPS(240)
+
+    var err error
+
+    jsonBytes, err := os.ReadFile(inputJsonPath)
+    if err != nil{ ErrorLogger.Fatal(err) }
+
+    if parsedSong, err := ParseJsonToFnfSong(jsonBytes)
+    if err != nil{ ErrorLogger.Fatal(err) }
+
+	app.Song = parsedSong
+
+	// =========================
+	// init audio player
+	// =========================
+    context, err := audio.NewContext(SampleRate)
+    if err != nil{ ErrorLogger.Fatal(err) }
+
+    instBytes, err := os.ReadFile(instPath)
+    if err != nil{ ErrorLogger.Fatal(err) }
+
+    app.InstPlayer, err := NewVaryingSpeedStream(context, instBytes)
+    if err != nil{ ErrorLogger.Fatal(err) }
+
+    if app.PlayVoice{
+        voiceBytes, err := os.ReadFile(instPath)
+        if err != nil{ ErrorLogger.Fatal(err) }
+
+        app.VoicePlayer, err := NewVaryingSpeedStream(context, voiceBytes)
+        if err != nil{ ErrorLogger.Fatal(err) }
+    }
+
+
+	ebiten.SetWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT)
+	SetWindowTitle()
+
+	if err = ebiten.RunGame(app); err != nil {
+		ErrorLogger.Fatal(err)
+	}
+}
+
+func SetWindowTitle() {
+	ebiten.SetWindowTitle(fmt.Sprintf("fnf-practice %v/%v", ebiten.ActualTPS(), ebiten.TPS()))
+}
+
+func RotateAround(geom ebiten.GeoM, pivot kitty.Vec2, theta float64) ebiten.GeoM {
+	vToOrigin := kitty.V(-pivot.X, -pivot.Y)
+	rotated := vToOrigin.Rotate(theta)
+
+	geom.Rotate(theta)
+	geom.Translate(rotated.X-vToOrigin.X, rotated.Y-vToOrigin.Y)
+
+	return geom
+}

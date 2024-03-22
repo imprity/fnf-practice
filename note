@@ -15,3 +15,8 @@ bpm : beats per minute
     1 beat = 600 millis
 
 song speed determines arrow interval
+
+plan for playback mode
+
+playback wait : play the song until note comes and when that happens wait until user presses the button
+playback trace : play the song and track user's input, and mark mistakes

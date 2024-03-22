@@ -1,0 +1,204 @@
+package main
+
+import(
+	"log"
+	"os"
+	"io"
+	//"bytes"
+	"time"
+	"fmt"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+
+	"kitty"
+)
+
+var ErrorLogger *log.Logger = log.New(os.Stderr, "ERROR : ", log.Lshortfile)
+
+const (
+	SCREEN_WIDTH = 500
+	SCREEN_HEIGHT = 500
+)
+
+type App struct{
+	Player *VaryingSpeedPlayer
+
+	AudioBytes [][]byte
+	AudioBytesNames []string
+
+	CurrentAudio int
+}
+
+func (app *App) Update() error{
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace){
+		if app.Player.IsPlaying(){
+			app.Player.Pause()
+		}else{
+			app.Player.Play()
+		}
+	}
+
+	position := app.Player.Position()
+	positionChanged := false
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowRight){
+		position += time.Second
+		positionChanged = true
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft){
+		position -= time.Second
+		positionChanged = true
+	}
+
+	if positionChanged{
+		app.Player.SetPosition(position)
+	}
+
+	speed := app.Player.Speed()
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp){
+		speed += 0.25
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown){
+		speed -= 0.25
+	}
+
+	if speed < 0.25{
+		speed = 0.25
+	}
+
+	app.Player.SetSpeed(speed)
+
+	songChanged := false
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyBracketLeft){
+		songChanged = true
+		app.CurrentAudio -= 1
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyBracketRight){
+		songChanged = true
+		app.CurrentAudio += 1
+	}
+
+	if songChanged{
+		app.CurrentAudio = kitty.Clamp(app.CurrentAudio, 0, len(app.AudioBytes) - 1)
+		app.Player.ChangeAudio(app.AudioBytes[app.CurrentAudio])
+	}
+
+
+	return nil
+}
+
+func (app *App) Draw(dst *ebiten.Image){
+	dst.Clear()
+
+	progressBar := kitty.FRect{
+		0, 0,
+		float64(SCREEN_WIDTH) * 0.8, 30,
+	}
+
+	progressBar = progressBar.CenteredAt(kitty.V(float64(SCREEN_WIDTH) * 0.5, 0))
+	progressBar.Y = SCREEN_HEIGHT - progressBar.H - 50
+
+	kitty.StrokeRect(dst, progressBar, 2, kitty.Col(1,1,1,1))
+
+	position := app.Player.Position()
+
+	progressBar.W = float64(position) / (float64(app.Player.AudioDuration())) * progressBar.W
+
+	kitty.DrawRect(dst, progressBar, kitty.Col(1,1,1,1))
+
+	ebitenutil.DebugPrintAt(dst,
+		fmt.Sprintf(
+			"current position : %v\n" +
+			"song speed : %v\n" +
+			"current audio : %v\n" +
+			"\n" +
+			"up  , down  : change song speed\n" +
+			"left, right : change playback position\n",
+			position,
+			app.Player.Speed(),
+			app.AudioBytesNames[app.CurrentAudio],
+		),
+		0,0,
+	)
+}
+
+func (app *App) Layout(outsideWidth, outsideHeight int) (int, int){
+	return SCREEN_WIDTH, SCREEN_HEIGHT
+}
+
+func main(){
+	app := new(App)
+
+	const SampleRate = 44100
+
+	//create new context
+	context := audio.NewContext(SampleRate)
+
+	audioFilePaths := []string{
+		"./song_tutorial/Inst.ogg",
+		"./song_smile/inst.ogg",
+		"./song_endless/Inst.ogg",
+	}
+
+	for _, path := range audioFilePaths{
+		type audioStream interface {
+			io.ReadSeeker
+			Length() int64
+		}
+
+		var err error
+		var bytes []byte
+		var stream audioStream
+
+		file, err := os.Open(path)
+
+		if err != nil {
+			goto OPEN_FILE_END
+		}
+
+		//create decoder stream
+		stream, err = vorbis.DecodeWithSampleRate(context.SampleRate() , file)
+		if err != nil {
+			goto OPEN_FILE_END
+		}
+
+		bytes, err = io.ReadAll(stream)
+		if err != nil {
+			goto OPEN_FILE_END
+		}
+
+		app.AudioBytes = append(app.AudioBytes, bytes)
+		app.AudioBytesNames = append(app.AudioBytesNames, path)
+
+		OPEN_FILE_END:
+
+		file.Close()
+
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
+	}
+
+	//create new player
+	player, err := NewVaryingSpeedPlayer(context, app.AudioBytes[0])
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+
+	app.Player = player
+
+	ebiten.SetWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT)
+
+	if err = ebiten.RunGame(app); err!= nil{
+		ErrorLogger.Fatal(err)
+	}
+}
