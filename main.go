@@ -299,7 +299,7 @@ func (app *App) TimeToPixels(t time.Duration) float64 {
 	if app.Song.Speed == 0 {
 		pixelsForMillis = 2.0
 	} else {
-		pixelsForMillis = 2.0 / (app.Song.Speed * app.AudioSpeed() * zoomInverse)
+		pixelsForMillis = 2.0 / (app.Song.Speed * zoomInverse)
 	}
 
 	return pixelsForMillis * float64(t.Milliseconds())
@@ -312,7 +312,7 @@ func (app *App) PixelsToTime(p float64) time.Duration {
 	if app.Song.Speed == 0 {
 		pixelsForMillis = 2.0
 	} else {
-		pixelsForMillis = 2.0 / (app.Song.Speed * app.AudioSpeed() * zoomInverse)
+		pixelsForMillis = 2.0 / (app.Song.Speed * zoomInverse)
 	}
 
 	millisForPixels := 1.0 / pixelsForMillis
