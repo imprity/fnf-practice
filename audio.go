@@ -28,7 +28,7 @@ func NewVaryingSpeedPlayer(context *audio.Context, audioBytes []byte) (*VaryingS
 	// we need the ability to change the playback speed in real time
 	// so we need to make the buffer size smaller
 	// TODO : is this really the right size?
-	player.SetBufferSize(time.Millisecond * 25)
+	player.SetBufferSize(time.Second / 20)
 
 	player.Play()
 
