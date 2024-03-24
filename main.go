@@ -86,8 +86,18 @@ type FnfNote struct {
 	StartsAt  time.Duration
 	Duration  time.Duration
 	Direction NoteDir
-	IsHit     bool
 	Index     int
+
+	// variables that change during gameplay
+	IsHit     bool
+	IsMiss    bool
+
+	HoldReleaseAt time.Duration
+}
+
+
+func (n FnfNote) Equal(otherN FnfNote) bool{
+	return n.Index == otherN.Index
 }
 
 type FnfSong struct {
@@ -179,13 +189,12 @@ func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter)
 type App struct {
 	Song FnfSong
 
+	AudioPosition time.Duration
+
 	PlayVoice bool
 
 	InstPlayer  *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
-
-	NoteKeyResolved     [NoteDirSize]bool
-	NoteKeyPlayBackTime [NoteDirSize]time.Duration
 
 	PlayBackMarker    time.Duration
 	PlayBackMarkerSet bool
@@ -196,6 +205,22 @@ type App struct {
 
 	KeyRepeatMap map[ebiten.Key]time.Duration
 
+	BotPlay bool
+
+	HitWindow time.Duration
+
+	HoldingNote     [2][NoteDirSize]FnfNote
+	IsHoldingNote   [2][NoteDirSize]bool
+
+	// animation infos
+	IsHoldingKey    [2][NoteDirSize] bool
+	IsHoldingBadKey [2][NoteDirSize] bool
+
+	KeyPressedAt   [2][NoteDirSize] time.Duration
+	KeyReleasedAt [2][NoteDirSize] time.Duration
+
+	NoteMissAt     [2][NoteDirSize] time.Duration
+
 	// variables about note rendering
 	NotesMarginLeft   float64
 	NotesMarginRight  float64
@@ -205,6 +230,7 @@ type App struct {
 
 	NotesSize float64
 }
+
 
 func (app *App) AppInit() {
 	app.Zoom = 1.0
@@ -219,18 +245,20 @@ func (app *App) AppInit() {
 	app.NotesInterval = 70
 
 	app.NotesSize = 50
+
+	app.HitWindow = time.Millisecond * 135
+
+	//app.BotPlay = true
 }
 
 func (app *App) IsPlayingAudio() bool {
 	return app.InstPlayer.IsPlaying()
 }
 
-func (app *App) PlayAudio(at time.Duration) {
-	app.InstPlayer.SetPosition(at)
+func (app *App) PlayAudio() {
 	app.InstPlayer.Play()
 
 	if app.PlayVoice {
-		app.VoicePlayer.SetPosition(at)
 		app.VoicePlayer.Play()
 	}
 }
@@ -243,16 +271,14 @@ func (app *App) PauseAudio() {
 	}
 }
 
-func (app *App) AudioPosition() time.Duration {
-	return app.InstPlayer.Position()
-}
-
 func (app *App) SetAudioPosition(at time.Duration) {
 	app.InstPlayer.SetPosition(at)
 
 	if app.PlayVoice {
 		app.VoicePlayer.SetPosition(at)
 	}
+
+	app.AudioPosition = at
 }
 
 func (app *App) AudioSpeed() float64 {
@@ -261,7 +287,9 @@ func (app *App) AudioSpeed() float64 {
 
 func (app *App) SetAudioSpeed(speed float64) {
 	app.InstPlayer.SetSpeed(speed)
-	app.VoicePlayer.SetSpeed(speed)
+	if app.PlayVoice {
+		app.VoicePlayer.SetSpeed(speed)
+	}
 }
 
 func (app *App) TimeToPixels(t time.Duration) float64 {
@@ -289,26 +317,26 @@ func (app *App) PixelsToTime(p float64) time.Duration {
 
 	millisForPixels := 1.0 / pixelsForMillis
 
-	return time.Duration(p*millisForPixels * float64(time.Millisecond))
+	return time.Duration(p * millisForPixels * float64(time.Millisecond))
 }
 
-func (app *App) HandleKeyRepeat(key ebiten.Key, firstRate, repeatRate time.Duration) bool{
-	if !ebiten.IsKeyPressed(key){
+func (app *App) HandleKeyRepeat(key ebiten.Key, firstRate, repeatRate time.Duration) bool {
+	if !ebiten.IsKeyPressed(key) {
 		return false
 	}
 
-	if inpututil.IsKeyJustPressed(key){
+	if inpututil.IsKeyJustPressed(key) {
 		app.KeyRepeatMap[key] = firstRate
 		return true
 	}
 
 	timer, ok := app.KeyRepeatMap[key]
 
-	if !ok{
+	if !ok {
 		app.KeyRepeatMap[key] = repeatRate
 		return true
-	}else{
-		if timer <= 0{
+	} else {
+		if timer <= 0 {
 			app.KeyRepeatMap[key] = repeatRate
 			return true
 		}
@@ -317,26 +345,39 @@ func (app *App) HandleKeyRepeat(key ebiten.Key, firstRate, repeatRate time.Durat
 	return false
 }
 
+func (app *App) PressingKeys() [NoteDirSize]bool{
+	var pressingKeys [NoteDirSize]bool
+
+	for i, key := range NoteKeys{
+		if ebiten.IsKeyPressed(key){
+			pressingKeys[i] = true
+		}
+	}
+
+	return pressingKeys
+}
+
 func (app *App) Update() error {
+	// update audio players
+	app.InstPlayer.Update()
+	if app.PlayVoice {
+		app.VoicePlayer.Update()
+	}
+
 	deltaTime := time.Second / time.Duration(ebiten.TPS())
 
 	app.TimeSinceStart += deltaTime
 
 	// update key repeat map
-	for k, _ := range app.KeyRepeatMap{
+	for k, _ := range app.KeyRepeatMap {
 		app.KeyRepeatMap[k] -= deltaTime
 	}
 
-	// debug
-	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
-		go func(){
-			for i:=0; i<50; i++{
-				app.PauseAudio()
-				app.PlayAudio(app.AudioPosition())
-			}
-			app.PauseAudio()
-		}()
-	}
+	app.AudioPosition = app.InstPlayer.Position()
+
+	// =============================================
+	// handle user input
+	// =============================================
 
 	// pause unpause
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
@@ -346,7 +387,7 @@ func (app *App) Update() error {
 			if app.PlayBackMarkerSet {
 				app.SetAudioPosition(app.PlayBackMarker)
 			}
-			app.PlayAudio(app.AudioPosition())
+			app.PlayAudio()
 		}
 
 	}
@@ -365,7 +406,7 @@ func (app *App) Update() error {
 		audioSpeed += 0.1
 	}
 
-	if changedSpeed{
+	if changedSpeed {
 		if audioSpeed <= 0 {
 			audioSpeed = 0.1
 		}
@@ -374,16 +415,199 @@ func (app *App) Update() error {
 	}
 
 	// zoom in and out
-	if app.HandleKeyRepeat(ebiten.KeyLeftBracket, time.Millisecond * 500, time.Millisecond * 80) {
-		app.Zoom -= 0.1
+	if app.HandleKeyRepeat(ebiten.KeyLeftBracket, time.Millisecond*50, time.Millisecond*50) {
+		app.Zoom -= 0.01
 	}
 
-	if app.HandleKeyRepeat(ebiten.KeyRightBracket, time.Millisecond * 500, time.Millisecond * 80) {
-		app.Zoom += 0.1
+	if app.HandleKeyRepeat(ebiten.KeyRightBracket, time.Millisecond*50, time.Millisecond*50) {
+		app.Zoom += 0.01
 	}
 
-	if app.Zoom < 0{
-		app.Zoom = 0.1
+	if app.Zoom < 0.01 {
+		app.Zoom = 0.01
+	}
+
+	// changing time
+	changedPosition := false
+	pos := app.AudioPosition
+
+	if app.HandleKeyRepeat(ebiten.KeyArrowLeft, time.Millisecond*50, time.Millisecond*10) {
+		changedPosition = true
+		pos -= time.Millisecond * 100
+	}
+
+	if app.HandleKeyRepeat(ebiten.KeyArrowRight, time.Millisecond*50, time.Millisecond*10) {
+		changedPosition = true
+		pos += time.Millisecond * 100
+	}
+
+	if changedPosition {
+		app.SetAudioPosition(pos)
+
+		for index, _ := range app.Song.Notes{
+			app.Song.Notes[index].IsMiss = false
+			app.Song.Notes[index].IsHit = false
+			app.Song.Notes[index].HoldReleaseAt = 0
+		}
+
+		for dir := range NoteDirSize{
+			for player := 0; player <=1; player++{
+				app.IsHoldingNote[player][dir]   = false
+				app.IsHoldingKey[player][dir]    = false
+				app.IsHoldingBadKey[player][dir] = false
+
+				app.NoteMissAt[player][dir] = 0
+			}
+		}
+	}
+
+
+	// =============================================
+	// end of handling user input
+	// =============================================
+
+	if app.IsPlayingAudio() {
+		const tinyWindow = time.Millisecond * 10
+
+		tinyWindowStart := pos - tinyWindow / 2
+		tinyWindowEnd   := pos + tinyWindow / 2
+
+		windowStart := pos - app.HitWindow / 2
+		windowEnd   := pos + app.HitWindow / 2
+
+		inWindow := func(note FnfNote) bool {
+			return windowStart <= note.StartsAt && note.StartsAt <= windowEnd
+		}
+
+		inTinyWindow := func(note FnfNote) bool {
+			return tinyWindowStart <= note.StartsAt && note.StartsAt <= tinyWindowEnd
+		}
+
+		onNoteHold := func(note FnfNote) {
+			app.HoldingNote[note.Player][note.Direction]= note
+			app.IsHoldingNote[note.Player][note.Direction] = true
+
+			app.IsHoldingBadKey[note.Player][note.Direction] = false
+		}
+
+		onNoteHit := func(note FnfNote){
+			app.Song.Notes[note.Index].IsHit = true
+			app.IsHoldingBadKey[note.Player][note.Direction] = false
+		}
+
+		posAtNoteDuration := func(note FnfNote) bool{
+			return (
+				pos >= note.StartsAt - app.HitWindow / 2 &&
+				pos <= note.StartsAt + note.Duration + app.HitWindow /2)
+		}
+
+		if !app.BotPlay {
+			for dir, key := range NoteKeys{
+				if inpututil.IsKeyJustPressed(key){
+					app.IsHoldingKey[0][dir] = true
+					app.KeyPressedAt[0][dir] = app.TimeSinceStart
+
+					app.IsHoldingBadKey[0][dir] = true
+				}else if app.IsHoldingKey[0][dir] && !ebiten.IsKeyPressed(key){
+					app.IsHoldingKey[0][dir] = false
+					app.KeyReleasedAt[0][dir] = app.TimeSinceStart
+
+					app.IsHoldingBadKey[0][dir] = false
+				}
+			}
+		}
+
+		if !app.BotPlay{
+			for dir := range NoteDirSize{
+				if !app.IsHoldingKey[0][dir] && app.IsHoldingNote[0][dir]{
+					note := app.HoldingNote[0][dir]
+					app.Song.Notes[note.Index].HoldReleaseAt = pos
+
+					app.IsHoldingNote[0][dir] = false
+				}
+			}
+		}
+
+		botHitAny := false
+
+		for index, note := range app.Song.Notes{
+			// first hit the notes if note belongs to player 1 or we are in BotPlay mode
+			if note.Player == 1 || app.BotPlay{
+				if inTinyWindow(note){
+					onNoteHit(note)
+
+					app.IsHoldingKey[note.Player][note.Direction] = true
+					app.KeyPressedAt[note.Player][note.Direction] = app.TimeSinceStart
+
+					if note.Duration > 0 {
+						onNoteHold(note)
+					}
+
+					botHitAny = true
+				}else if !note.IsHit && !note.IsMiss && note.StartsAt < pos - tinyWindow * 2{
+					// TODO : THIS SHOULD NOT HAPPEN!!!!!!!!!!!!!!!!
+					// WE ARE CHECKING EVERY FRAME TO SEE IF WE HIT ANY NOTES!!!!!!
+					// AND IT SOME HOW MISSES !!!!!!!!!!!
+					// EVEN IF WE ARE ONLY CHECKING NOTES BETWEEN CERTAIN WINDOW FRAMES
+					// THIS IS NOT FUCKING ACCEPTABLE!!!!!!!
+					t := kitty.AbsI(note.StartsAt - pos) - 5
+
+					fmt.Printf("missed by %v\n", t)
+
+					app.Song.Notes[index].IsMiss = true
+					app.NoteMissAt[note.Player][note.Direction] = app.TimeSinceStart
+				}
+
+				if note.Duration > 0 && posAtNoteDuration(note){
+					botHitAny = true
+				}
+			}else { // note IS player 0 and we are not in bot play
+
+				//check if user missed note
+				if (
+					!app.IsHoldingKey[0][note.Direction] &&
+					!note.IsMiss && !note.IsHit &&
+					note.StartsAt < pos - app.HitWindow / 2){
+
+					app.Song.Notes[index].IsMiss = true
+					app.NoteMissAt[note.Player][note.Direction] = app.TimeSinceStart
+				}
+
+				if note.Duration > 0 && posAtNoteDuration(note) {
+					if inpututil.IsKeyJustPressed(NoteKeys[note.Direction]){
+						onNoteHit(note)
+						onNoteHold(note)
+					}
+				}
+
+				//check if user hit note
+				if inWindow(note) && inpututil.IsKeyJustPressed(NoteKeys[note.Direction]){
+					onNoteHit(note)
+				}
+
+			}
+		}
+
+		if !botHitAny{
+			pStart := 1
+			if app.BotPlay{
+				pStart = 0
+			}
+
+			for dir := range NoteDirSize{
+				for player := pStart; player <= 1; player++{
+					app.IsHoldingKey[player][dir] = false
+					app.KeyReleasedAt[player][dir] = app.TimeSinceStart
+
+					if app.IsHoldingNote[player][dir]{
+						note := app.HoldingNote[player][dir]
+						app.Song.Notes[note.Index].HoldReleaseAt = pos
+					}
+
+					app.IsHoldingNote[player][dir] = false
+				}
+			}
+		}
 	}
 
 	return nil
@@ -458,7 +682,7 @@ func (app *App) Draw(dst *ebiten.Image) {
 	}
 
 	var timeToY = func(t time.Duration) float64 {
-		relativeTime := t - app.AudioPosition()
+		relativeTime := t - app.AudioPosition
 
 		return SCREEN_HEIGHT - app.NotesMarginBottom - app.TimeToPixels(relativeTime)
 	}
@@ -470,47 +694,39 @@ func (app *App) Draw(dst *ebiten.Image) {
 		kitty.Color255(0xF9, 0x39, 0x3F, 0xFF),
 	}
 
-	var drawNote = func(note FnfNote){
-		x := noteX(note.Player, note.Direction)
-		startY := timeToY(note.StartsAt)
+	// ============================================
+	// draw input status
+	// ============================================
 
-		white := kitty.Col(1.0, 1.0, 1.0, 1.0)
+	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+		for player := 0; player <= 1; player++ {
+			color := kitty.Col(0.5, 0.5, 0.5, 1.0)
 
-		// draw hold note
-		if note.Duration > 0{
-			endY := timeToY(note.StartsAt + note.Duration)
+			if app.IsHoldingKey[player][dir] && app.IsHoldingBadKey[player][dir]{
+				color = kitty.Col(1,0,0,1)
+			}
 
-			holdRectW := app.NotesSize * 0.5
-
-			holdRect := kitty.Fr(
-				x - holdRectW * 0.5, endY,
-				holdRectW, startY - endY)
-
-			kitty.DrawRoundRect(dst, holdRect, holdRectW * 0.5, noteColors[note.Direction])
-			kitty.StrokeRoundRect(dst, holdRect, holdRectW * 0.5, 2, white)
-		}
-
-		DrawNoteArrow(dst, x, startY, app.NotesSize, note.Direction, noteColors[note.Direction], white)
-	}
-
-	for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-		for player:=0; player<=1; player++{
 			x := noteX(player, dir)
 			y := SCREEN_HEIGHT - app.NotesMarginBottom
-			DrawNoteArrow(dst, x, y, app.NotesSize, dir, kitty.Col(0.5, 0.5, 0.5, 1.0), kitty.Col(0,0,0,0,))
+			DrawNoteArrow(dst, x, y, app.NotesSize, dir, color, color)
 		}
 	}
 
+	// ============================================
+	// draw notes
+	// ============================================
+
 	if len(app.Song.Notes) > 0 {
+		// find the first note to draw
 		firstNote := app.Song.Notes[0]
 
-		for i := 1; i < len(app.Song.Notes); i++ {
+		for i := 0; i < len(app.Song.Notes); i++ {
 			note := app.Song.Notes[i]
 
 			time := note.StartsAt + note.Duration
 			y := timeToY(time)
 
-			if y < SCREEN_HEIGHT {
+			if y < SCREEN_HEIGHT + app.NotesSize * 2{
 				firstNote = note
 				break
 			}
@@ -518,22 +734,142 @@ func (app *App) Draw(dst *ebiten.Image) {
 
 		for i := firstNote.Index; i < len(app.Song.Notes); i++ {
 			note := app.Song.Notes[i]
-			drawNote(note)
 
-			if timeToY(note.StartsAt) < 0{
+			x := noteX(note.Player, note.Direction)
+			y := timeToY(note.StartsAt)
+
+			goodC := noteColors[note.Direction]
+			var badC kitty.Color
+
+			{
+				hsv := kitty.ToHSV(goodC)
+				hsv[1] *= 0.5
+				hsv[2] *= 0.5
+
+				badC = kitty.FromHSV(hsv)
+			}
+
+			white := kitty.Col(1,1,1,1)
+
+			if note.Duration > 0 { // draw hold note
+				if note.HoldReleaseAt < note.Duration + note.StartsAt {
+					holdingNote := (
+						app.HoldingNote[note.Player][note.Direction].Equal(note) &&
+						app.IsHoldingNote[note.Player][note.Direction])
+
+					endY := timeToY(note.StartsAt + note.Duration)
+					noteY := timeToY(max(note.StartsAt, note.HoldReleaseAt))
+
+					if holdingNote{
+						noteY = SCREEN_HEIGHT - app.NotesMarginBottom
+					}
+
+					holdRectW := app.NotesSize * 0.5
+
+					holdRect := kitty.Fr(
+						x-holdRectW*0.5, endY,
+						holdRectW, noteY-endY)
+
+					fill := goodC
+
+					if !holdingNote && note.StartsAt < app.AudioPosition - app.HitWindow / 2{
+						fill = badC
+					}
+
+					if holdRect.H > 0{
+						kitty.StrokeRoundRect(dst, holdRect, holdRectW*0.5, 2, white)
+						kitty.DrawRoundRect(dst, holdRect, holdRectW*0.5, fill)
+					}
+					DrawNoteArrow(dst, x, noteY, app.NotesSize, note.Direction, fill, white)
+				}
+			}else if !note.IsHit{ // draw regular note
+				if note.IsMiss{
+					DrawNoteArrow(dst, x, y, app.NotesSize, note.Direction, badC, white)
+				}else{
+					DrawNoteArrow(dst, x, y, app.NotesSize, note.Direction, goodC, white)
+				}
+			}
+
+			// if note is out of screen, we stop
+			if timeToY(note.StartsAt) < -app.NotesSize * 2 {
 				break
 			}
 		}
 	}
 
+	// ============================================
+	// draw overlay
+	// ============================================
+
+	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+		for player := 0; player <= 1; player++ {
+
+			x := noteX(player, dir)
+			y := SCREEN_HEIGHT - app.NotesMarginBottom
+
+			if app.IsHoldingKey[player][dir] && !app.IsHoldingBadKey[player][dir]{
+				noteC := noteColors[dir]
+
+				hsv := kitty.ToHSV(noteC)
+
+				hsv[2] *= 1.5
+				hsv[2] = kitty.Clamp(hsv[2], 0, 100)
+				hsv[1] *= 0.7
+
+				noteC = kitty.FromHSV(hsv)
+
+				DrawNoteArrow(dst, x, y, app.NotesSize * 1.25, dir, noteC, kitty.Col(1,1,1,1))
+			}
+
+			// draw glow
+			duration := time.Millisecond * 90
+			recenltyPressed := app.IsHoldingKey[player][dir] || app.TimeSinceStart - app.KeyReleasedAt[player][dir] < duration
+			if recenltyPressed && !app.IsHoldingBadKey[player][dir]{
+				t := app.TimeSinceStart - app.KeyPressedAt[player][dir]
+
+				if t < duration{
+					color := kitty.Color{}
+
+					glow := float64(t) / float64(duration)
+					glow = 1.0 - glow
+
+					color = kitty.Col(1.0, 1.0, 1.0, glow)
+
+
+					DrawNoteArrow(dst, x, y, app.NotesSize * 1.1, dir, color, color)
+				}
+			}
+
+		}
+	}
+
+	// ============================================
+	// print debug status
+	// ============================================
+	timeCalculatedByBytes := time.Duration(float64(app.InstPlayer.Stream.PositionInBytes) / float64(len(app.InstPlayer.Stream.AudioBytes)) * float64(app.InstPlayer.AudioDuration()))
+
+	// print status
 	ebitenutil.DebugPrintAt(dst,
 		fmt.Sprintf(
 			"audio speed : %v\n"+
-			"zoom        : %v\n",
+				"zoom        : %v\n"+
+				"\n"+
+				"time reported by player : %v\n"+
+				"time by caclulating bytes : %v\n"+
+				"\n"+
+				"acutal position in bytes : %v\n",
 			app.AudioSpeed(),
 			app.Zoom,
+			app.AudioPosition,
+			timeCalculatedByBytes,
+			app.InstPlayer.Stream.PositionInBytes,
 		),
-		0, 0)
+		5, 0)
+
+	ebitenutil.DebugPrintAt(dst,
+		"\"-\" \"+\" : chnage song speed\n"+
+			"\"[\" \"]\" : zoom in and out\n",
+		5, 150)
 
 	SetWindowTitle()
 }
@@ -557,7 +893,7 @@ func main() {
 	//const inputJsonPath string = "./song_tutorial/tutorial.json"
 	//const instPath = "./song_tutorial/inst.ogg"
 	//const voicePath = ""
-	app.PlayVoice = false
+	//app.PlayVoice = false
 	// ======================================================================
 
 	// load song endless ====================================================
@@ -567,7 +903,8 @@ func main() {
 	app.PlayVoice = true
 	// ======================================================================
 
-	ebiten.SetMaxTPS(240)
+	ebiten.SetMaxTPS(120)
+	ebiten.SetVsyncEnabled(false)
 
 	var err error
 
@@ -613,21 +950,21 @@ func main() {
 }
 
 // TODO : support mp3
-func LoadAudio(path string) ([]byte, error){
+func LoadAudio(path string) ([]byte, error) {
 	file, err := os.Open(path)
 	defer file.Close()
 
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
 	stream, err := vorbis.DecodeWithSampleRate(SampleRate, file)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
 	audioBytes, err := io.ReadAll(stream)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 

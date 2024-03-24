@@ -147,6 +147,11 @@ func LerpOkLabA(c1, c2 Color, t float64) Color {
 	return c3
 }
 
+// retured hsv range is
+//
+// h : 0 - 360
+// s : 0 - 100
+// v : 0 - 100
 func ToHSV(color Color) []float64 {
 	r, g, b, _ := color.R, color.G, color.B, color.A
 
