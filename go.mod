@@ -1,4 +1,4 @@
-module fnaf-practice
+module fnf-practice
 
 go 1.22.1
 
