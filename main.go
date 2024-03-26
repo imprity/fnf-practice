@@ -101,35 +101,6 @@ var NoteKeys = [NoteDirSize]ebiten.Key{
 	NotekeyRight,
 }
 
-type FnfNote struct {
-	Player    int
-	StartsAt  time.Duration
-	Duration  time.Duration
-	Direction NoteDir
-	Index     int
-
-	// variables that change during gameplay
-	IsHit  bool
-	IsMiss bool
-
-	HoldReleaseAt time.Duration
-}
-
-func (n FnfNote) Equal(otherN FnfNote) bool {
-	return n.Index == otherN.Index
-}
-
-func IsNoteOverlapped(n1, n2 FnfNote) bool{
-	if n1.Player != n2.Player{
-		return false
-	}
-	if n1.Direction != n2.Direction{
-		return false
-	}
-
-	return kitty.AbsI(n1.StartsAt - n2.StartsAt) < time.Millisecond * 2
-}
-
 type FnfSong struct {
 	Notes       []FnfNote
 	NotesEndsAt time.Duration
@@ -138,18 +109,6 @@ type FnfSong struct {
 
 const PlayerAny = -1
 const IsHitAny = -1
-
-type NoteFilter struct {
-	Player    int
-	IsHit     int
-	Direction NoteDir
-}
-
-var NoteFilterAny = NoteFilter{
-	Player:    PlayerAny,
-	IsHit:     IsHitAny,
-	Direction: NoteDirAny,
-}
 
 func BoolToInt(b bool) int {
 	if b {
@@ -167,56 +126,6 @@ func IntToBool[N constraints.Integer](n N) bool {
 	}
 }
 
-func NoteMatchesFilter(note FnfNote, filter NoteFilter) bool {
-	if filter.Player >= 0 {
-		if !(note.Player == filter.Player) {
-			return false
-		}
-	}
-
-	if filter.IsHit >= 0 {
-		if !(filter.IsHit == BoolToInt(note.IsHit)) {
-			return false
-		}
-	}
-
-	if filter.Direction >= 0 {
-		if !(filter.Direction == note.Direction) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// TODO : This function can be faster, make it faster
-func FindNextNote(notes []FnfNote, after time.Duration, filter NoteFilter) (FnfNote, bool) {
-	for _, note := range notes {
-		if note.StartsAt > after {
-			if NoteMatchesFilter(note, filter) {
-				return note, true
-			}
-		}
-	}
-
-	return FnfNote{}, false
-}
-
-// TODO : This function can be faster, make it faster
-func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter) (FnfNote, bool) {
-	for i := len(notes) - 1; i >= 0; i-- {
-		note := notes[i]
-		if note.StartsAt <= before {
-			if NoteMatchesFilter(note, filter) {
-				return note, true
-			}
-		}
-	}
-
-	return FnfNote{}, false
-}
-
-
 type App struct {
 	Song FnfSong
 
@@ -228,7 +137,6 @@ type App struct {
 	KeyRepeatMap map[ebiten.Key]time.Duration
 
 	PlayVoice bool
-	BotPlay bool
 	HitWindow time.Duration
 
 	Channels LoopChannels
@@ -246,6 +154,7 @@ type App struct {
 	audioPosition time.Duration
 	audioSpeed float64
 	isPlayingAudio bool
+	botPlay bool
 }
 
 func (app *App) AppInit() {
@@ -266,7 +175,7 @@ func (app *App) AppInit() {
 
 	app.audioSpeed = 1.0
 
-	//app.BotPlay = true
+	//app.botPlay = true
 }
 
 func (app *App) IsPlayingAudio() bool {
@@ -301,15 +210,23 @@ func (app *App) SetAudioSpeed(speed float64) {
 	app.audioSpeed = speed
 }
 
+func (app *App) IsBotPlay() bool{
+	return app.botPlay
+}
+
+func (app *App) SetBotPlay(bot bool){
+	app.botPlay = bot
+	app.Channels.SetBotPlay <- bot
+}
 
 func (app *App) TimeToPixels(t time.Duration) float64 {
 	var pixelsForMillis float64
 	zoomInverse := 1.0 / app.Zoom
 
 	if app.Song.Speed == 0 {
-		pixelsForMillis = 2.0
+		pixelsForMillis = 0.3
 	} else {
-		pixelsForMillis = 2.0 / (app.Song.Speed * zoomInverse)
+		pixelsForMillis = 0.3 / zoomInverse * app.Song.Speed
 	}
 
 	return pixelsForMillis * float64(t.Milliseconds())
@@ -320,9 +237,9 @@ func (app *App) PixelsToTime(p float64) time.Duration {
 	zoomInverse := 1.0 / app.Zoom
 
 	if app.Song.Speed == 0 {
-		pixelsForMillis = 2.0
+		pixelsForMillis = 0.3
 	} else {
-		pixelsForMillis = 2.0 / (app.Song.Speed * zoomInverse)
+		pixelsForMillis = 0.3 /  zoomInverse * app.Song.Speed
 	}
 
 	millisForPixels := 1.0 / pixelsForMillis
@@ -396,6 +313,11 @@ func (app *App) Update() error {
 
 	}
 
+	// set bot play
+	if inpututil.IsKeyJustPressed(ebiten.KeyB) {
+		app.SetBotPlay(!app.IsBotPlay())
+	}
+
 	// speed change
 	changedSpeed := false
 	audioSpeed := app.AudioSpeed()
@@ -447,31 +369,13 @@ func (app *App) Update() error {
 
 	if changedPosition {
 		app.SetAudioPosition(pos)
-
-		// TODO : Move this to the update game loop
-		/*
-		for index, _ := range app.Song.Notes {
-			app.Song.Notes[index].IsMiss = false
-			app.Song.Notes[index].IsHit = false
-			app.Song.Notes[index].HoldReleaseAt = 0
-		}
-
-		for dir := range NoteDirSize {
-			for player := 0; player <= 1; player++ {
-				app.IsHoldingNote[player][dir] = false
-				app.IsHoldingKey[player][dir] = false
-				app.IsHoldingBadKey[player][dir] = false
-
-				app.NoteMissAt[player][dir] = 0
-			}
-		}
-		*/
 	}
 
 	// =============================================
 	// end of handling user input
 	// =============================================
 
+	SetWindowTitle()
 
 	return nil
 }
@@ -525,8 +429,18 @@ func DrawNoteArrow(dst *ebiten.Image, x, y float64, arrowSize float64, dir NoteD
 	dst.DrawImage(ArrowInnerImg, op)
 }
 
+var counter int = 0
 func (app *App) Draw(dst *ebiten.Image) {
-	dst.Clear()
+	counter += 1
+	if counter  < 3{
+		return
+	}
+
+	if counter >= 3{
+		counter = 0
+	}
+
+	//dst.Clear()
 	bgColor := kitty.Col(0.2, 0.2, 0.2, 1.0)
 	dst.Fill(bgColor.ToImageColor())
 
@@ -705,12 +619,27 @@ func (app *App) Draw(dst *ebiten.Image) {
 		}
 	}
 
+	debugMsgFormat := "" +
+		"audio position : %v\n" +
+		"speed    : %v\n" +
+		"zoom     : %v\n" +
+		"bot play : %v\n"
+
+	debugMsg := fmt.Sprintf(debugMsgFormat,
+		app.AudioPosition(),
+		app.AudioSpeed(),
+		app.Zoom,
+		app.IsBotPlay())
+
+	ebitenutil.DebugPrintAt(dst,
+		debugMsg,
+		5, 0)
+
 	ebitenutil.DebugPrintAt(dst,
 		"\"-\" \"+\" : chnage song speed\n"+
-			"\"[\" \"]\" : zoom in and out\n",
-		5, 150)
-
-	//SetWindowTitle()
+		"\"[\" \"]\" : zoom in and out\n" +
+		"\"b\"       : set bot play\n",
+		5, 100)
 }
 
 func (app *App) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -800,6 +729,7 @@ func main() {
 	}
 
 	initData.PlayVoice = app.PlayVoice
+	initData.BotPlay = app.botPlay
 
 	StartAudioGameLoop(initData)
 
