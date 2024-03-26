@@ -124,6 +124,8 @@ func StartAudioGameLoop(initData LoopInitData) {
 		event.AudioPosition = instPlayer.Position()
 		audioPos := event.AudioPosition
 
+		var noteIndexStart int
+
 		for {
 			select{
 			case play := <- channels.SetPlayAudio:
@@ -149,14 +151,37 @@ func StartAudioGameLoop(initData LoopInitData) {
 					voicePlayer.SetPosition(position)
 				}
 
-				for index, _ := range notes {
+				newNoteIndexSet := false
+
+				// reset note state
+				for index, note := range notes {
 					notes[index].IsMiss = false
 					notes[index].IsHit = false
 					notes[index].HoldReleaseAt = 0
+					if (
+						!newNoteIndexSet &&
+						(note.IsInWindow(audioPos, hitWindow) ||note.IsAudioPositionInDuration(audioPos, hitWindow))){
+						newNoteIndexSet = true
+						noteIndexStart = note.Index
+						break
+					}
 				}
 
-				for dir := range NoteDirSize {
-					for player := 0; player <= 1; player++ {
+				// reset input state for bots
+				botStart := 0
+				if !botPlay{
+					botStart = 1
+				}
+
+				for bot := botStart; bot <= 1; bot++{
+					for dir := range NoteDirSize{
+						isKeyPressed[bot][dir] = false
+					}
+				}
+
+				// reset event state
+				for player := 0; player <= 1; player++ {
+					for dir := range NoteDirSize {
 						event.IsHoldingNote[player][dir] = false
 						event.IsHoldingKey[player][dir] = false
 						event.IsHoldingBadKey[player][dir] = false
@@ -191,7 +216,7 @@ func StartAudioGameLoop(initData LoopInitData) {
 				var isKeyJustReleased [2][NoteDirSize]bool
 
 				// update key state for bot
-				keyPressState := GetBotKeyPresseState(notes, audioPos, botPlay)
+				keyPressState := GetBotKeyPresseState(notes, noteIndexStart, audioPos, botPlay)
 
 				if !botPlay{
 					for dir, key := range NoteKeys{
@@ -273,13 +298,17 @@ func StartAudioGameLoop(initData LoopInitData) {
 					}
 				}
 
-				for index, note := range notes {
+				newNoteIndexStart := noteIndexStart
+				newNoteIndexSet := false
+
+				for ;noteIndexStart <len(notes); noteIndexStart ++ {
+					note := notes[noteIndexStart]
 					//check if user missed note
 					if !isKeyPressed[note.Player][note.Direction] &&
 						!note.IsMiss && !note.IsHit &&
 						note.StartsAt < audioPos-hitWindow/2 {
 
-						notes[index].IsMiss = true
+						notes[note.Index].IsMiss = true
 						event.NoteMissAt[note.Player][note.Direction] = TimeSinceStart()
 					}
 
@@ -298,7 +327,21 @@ func StartAudioGameLoop(initData LoopInitData) {
 							onNoteHit(note)
 						}
 					}
+
+					if !newNoteIndexSet &&
+						(
+							note.IsInWindow(audioPos, hitWindow) ||
+							note.IsAudioPositionInDuration(audioPos, hitWindow)){
+
+						newNoteIndexSet = true
+						newNoteIndexStart = note.Index
+					}
+
+					if note.StartsAt > audioPos + hitWindow{
+						break
+					}
 				}
+				noteIndexStart = newNoteIndexStart
 			}
 		}
 	}()
@@ -312,18 +355,22 @@ func isNoteForBot(note FnfNote, isBotPlay bool) bool{
 	return note.Player >= 1
 }
 
-func GetBotKeyPresseState(notes []FnfNote, audioPos time.Duration, isBotPlay bool) [2][NoteDirSize] bool{
+func GetBotKeyPresseState(notes []FnfNote, noteIndexStart int, audioPos time.Duration, isBotPlay bool) [2][NoteDirSize] bool{
 	var keyPressed [2][NoteDirSize] bool
 
 	const tinyWindow = time.Millisecond * 10
 
-	for _, note := range notes{
+	for ;noteIndexStart < len(notes); noteIndexStart++{
+		note := notes[noteIndexStart]
 		if isNoteForBot(note, isBotPlay){
 			if !note.IsHit && note.IsInWindow(audioPos, tinyWindow){
 				keyPressed[note.Player][note.Direction] = true
 			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow){
 				keyPressed[note.Player][note.Direction] = true
 			}
+		}
+		if note.StartsAt > audioPos + tinyWindow{
+			break
 		}
 	}
 

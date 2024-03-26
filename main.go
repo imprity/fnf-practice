@@ -432,17 +432,7 @@ func DrawNoteArrow(dst *ebiten.Image, x, y float64, arrowSize float64, dir NoteD
 	dst.DrawImage(ArrowInnerImg, op)
 }
 
-var counter int = 0
 func (app *App) Draw(dst *ebiten.Image) {
-	counter += 1
-	if counter  < 3{
-		return
-	}
-
-	if counter >= 3{
-		counter = 0
-	}
-
 	//dst.Clear()
 	bgColor := kitty.Col(0.2, 0.2, 0.2, 1.0)
 	dst.Fill(bgColor.ToImageColor())

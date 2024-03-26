@@ -20,3 +20,5 @@ plan for playback mode
 
 playback wait : play the song until note comes and when that happens wait until user presses the button
 playback trace : play the song and track user's input, and mark mistakes
+
+I think for this application to run faster it needs to run 1000 times for senconds
