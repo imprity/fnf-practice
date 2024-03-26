@@ -14,6 +14,9 @@ import (
 	"os"
 	"sync"
 	"time"
+	"flag"
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -646,15 +649,25 @@ func (app *App) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return SCREEN_WIDTH, SCREEN_HEIGHT
 }
 
+var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
+
 func main() {
+	flag.Parse()
+
+	if *FlagPProf{
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
+
 	app := new(App)
 	app.AppInit()
 
 	// load song smile ====================================================
-	const inputJsonPath string = "./song_smile/smile-hard.json"
-	const instPath = "./song_smile/inst.ogg"
-	const voicePath = "./song_smile/Voices.ogg"
-	app.PlayVoice = true
+	//const inputJsonPath string = "./song_smile/smile-hard.json"
+	//const instPath = "./song_smile/inst.ogg"
+	//const voicePath = "./song_smile/Voices.ogg"
+	//app.PlayVoice = true
 	// =====================================================================
 
 	// load song tutorial ====================================================
@@ -665,13 +678,13 @@ func main() {
 	// ======================================================================
 
 	// load song endless ====================================================
-	//const inputJsonPath string = "./song_endless/endless-hard.json"
-	//const instPath = "./song_endless/Inst.ogg"
-	//const voicePath = "./song_endless/Voices.ogg"
-	//app.PlayVoice = true
+	const inputJsonPath string = "./song_endless/endless-hard.json"
+	const instPath = "./song_endless/Inst.ogg"
+	const voicePath = "./song_endless/Voices.ogg"
+	app.PlayVoice = true
 	// ======================================================================
 
-	ebiten.SetMaxTPS(120)
+	ebiten.SetMaxTPS(1200)
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetScreenClearedEveryFrame(false)
 
