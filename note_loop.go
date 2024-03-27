@@ -26,19 +26,6 @@ type LoopEventData struct{
 	NoteMissAt [2][NoteDirSize]time.Duration
 }
 
-type ReadChannel[T any] struct{
-	RequestChannel chan bool
-	DataChannel    chan T
-}
-
-func (rc ReadChannel[T]) RequestRead(){
-    rc.RequestChannel <- true
-}
-
-func (rc ReadChannel[T]) Read() T{
-    return <- rc.DataChannel
-}
-
 type LoopChannels struct{
 	SetPlayAudio     chan bool
 	SetSpeed         chan float64
@@ -46,21 +33,24 @@ type LoopChannels struct{
 	SetBotPlay       chan bool
 
 	EventData ReadChannel[LoopEventData]
-	UpdatedNotes ReadChannel[FnfNote]
+	UpdatedNotes ReadManyChannel[FnfNote]
 }
 
 func MakeLoopChannels(notesSize int64) LoopChannels{
 	return LoopChannels{
-		SetPlayAudio : make(chan bool),
-		SetSpeed : make(chan float64),
+		SetPlayAudio     : make(chan bool),
+		SetSpeed         : make(chan float64),
 		SetAudioPosition : make(chan time.Duration),
-		SetBotPlay : make(chan bool),
+		SetBotPlay       : make(chan bool),
+
 		EventData : ReadChannel[LoopEventData]{
 			RequestChannel : make(chan bool),
 			DataChannel : make(chan LoopEventData),
 		},
-		UpdatedNotes : ReadChannel[FnfNote]{
+
+		UpdatedNotes : ReadManyChannel[FnfNote]{
 			RequestChannel : make(chan bool),
+			SizeChannel : make(chan int),
 			DataChannel : make(chan FnfNote, notesSize),
 		},
 	}
@@ -120,9 +110,9 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 		var isKeyPressed [2][NoteDirSize]bool
 
-		// update audio position
-		event.AudioPosition = instPlayer.Position()
-		audioPos := event.AudioPosition
+		audioPos     := instPlayer.Position()
+
+		event.AudioPosition = audioPos
 
 		var noteIndexStart int
 
@@ -163,7 +153,6 @@ func StartAudioGameLoop(initData LoopInitData) {
 						(note.IsInWindow(audioPos, hitWindow) ||note.IsAudioPositionInDuration(audioPos, hitWindow))){
 						newNoteIndexSet = true
 						noteIndexStart = note.Index
-						break
 					}
 				}
 
@@ -191,9 +180,12 @@ func StartAudioGameLoop(initData LoopInitData) {
 				}
 			case bot := <- channels.SetBotPlay :
 				botPlay = bot
+
 			case <- channels.EventData.RequestChannel:
 				channels.EventData.DataChannel <- event
+
 			case <- channels.UpdatedNotes.RequestChannel:
+				channels.UpdatedNotes.SizeChannel <- len(notes)
 				for _, note := range notes{
 					channels.UpdatedNotes.DataChannel <- note
 				}
@@ -207,8 +199,8 @@ func StartAudioGameLoop(initData LoopInitData) {
 			}
 
 			// update audio position
-			event.AudioPosition = instPlayer.Position()
-			audioPos = event.AudioPosition
+			audioPos = instPlayer.Position()
+			event.AudioPosition = audioPos
 
 			if instPlayer.IsPlaying() {
 

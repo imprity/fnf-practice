@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"golang.org/x/exp/constraints"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -33,6 +32,7 @@ const (
 )
 
 const SampleRate = 44100
+
 
 type Timer struct {
 	mu   sync.Mutex
@@ -112,22 +112,6 @@ type FnfSong struct {
 
 const PlayerAny = -1
 const IsHitAny = -1
-
-func BoolToInt(b bool) int {
-	if b {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-func IntToBool[N constraints.Integer](n N) bool {
-	if n == 0 {
-		return false
-	} else {
-		return true
-	}
-}
 
 type App struct {
 	Song FnfSong
@@ -286,18 +270,21 @@ func (app *App) Update() error {
 		app.KeyRepeatMap[k] -= deltaTime
 	}
 
-	// update app event
+	// recieve data from note loop
 
 	app.Channels.EventData.RequestRead()
 	app.Event = app.Channels.EventData.Read()
 
+
 	app.audioPosition = app.Event.AudioPosition
 
 	app.Channels.UpdatedNotes.RequestRead()
-	for _ = range(len(app.Song.Notes)){
+	noteSize := app.Channels.UpdatedNotes.ReadSize()
+	for _ = range noteSize{
 		note := app.Channels.UpdatedNotes.Read()
 		app.Song.Notes[note.Index] = note
 	}
+
 
 	// =============================================
 	// handle user input
@@ -612,6 +599,10 @@ func (app *App) Draw(dst *ebiten.Image) {
 		}
 	}
 
+	// ============================================
+	// print debug info
+	// ============================================
+
 	debugMsgFormat := "" +
 		"audio position : %v\n" +
 		"speed    : %v\n" +
@@ -622,7 +613,8 @@ func (app *App) Draw(dst *ebiten.Image) {
 		app.AudioPosition(),
 		app.AudioSpeed(),
 		app.Zoom,
-		app.IsBotPlay())
+		app.IsBotPlay(),
+	)
 
 	ebitenutil.DebugPrintAt(dst,
 		debugMsg,
@@ -770,12 +762,3 @@ func SetWindowTitle() {
 	ebiten.SetWindowTitle(fmt.Sprintf("fnf-practice TPS : %.2f/%v  FPS : %.2f", ebiten.ActualTPS(), ebiten.TPS(), ebiten.ActualFPS()))
 }
 
-func RotateAround(geom ebiten.GeoM, pivot kitty.Vec2, theta float64) ebiten.GeoM {
-	vToOrigin := kitty.V(-pivot.X, -pivot.Y)
-	rotated := vToOrigin.Rotate(theta)
-
-	geom.Rotate(theta)
-	geom.Translate(rotated.X-vToOrigin.X, rotated.Y-vToOrigin.Y)
-
-	return geom
-}
