@@ -646,23 +646,23 @@ func main() {
 	app.AppInit()
 
 	// load song smile ====================================================
-	//const inputJsonPath string = "./song_smile/smile-hard.json"
-	//const instPath = "./song_smile/inst.ogg"
-	//const voicePath = "./song_smile/Voices.ogg"
+	//const inputJsonPath string = "./test_songs/song_smile/smile-hard.json"
+	//const instPath = "./test_songs/song_smile/inst.ogg"
+	//const voicePath = "./test_songs/song_smile/Voices.ogg"
 	//app.PlayVoice = true
 	// =====================================================================
 
 	// load song tutorial ====================================================
-	//const inputJsonPath string = "./song_tutorial/tutorial.json"
-	//const instPath = "./song_tutorial/inst.ogg"
+	//const inputJsonPath string = "./test_songs/song_tutorial/tutorial.json"
+	//const instPath = "./test_songs/song_tutorial/inst.ogg"
 	//const voicePath = ""
 	//app.PlayVoice = false
 	// ======================================================================
 
 	// load song endless ====================================================
-	const inputJsonPath string = "./song_endless/endless-hard.json"
-	const instPath = "./song_endless/Inst.ogg"
-	const voicePath = "./song_endless/Voices.ogg"
+	const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
+	const instPath = "./test_songs/song_endless/Inst.ogg"
+	const voicePath = "./test_songs/song_endless/Voices.ogg"
 	app.PlayVoice = true
 	// ======================================================================
 
