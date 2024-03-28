@@ -39,18 +39,18 @@ type Timer struct {
 	time time.Duration
 }
 
-var GlobalTimer Timer
+var UpdateTimer Timer
 
-func TickGlobalTimer(amout time.Duration) {
-	GlobalTimer.mu.Lock()
-	GlobalTimer.time += amout
-	GlobalTimer.mu.Unlock()
+func TickUpdateTimer(amout time.Duration) {
+	UpdateTimer.mu.Lock()
+	UpdateTimer.time += amout
+	UpdateTimer.mu.Unlock()
 }
 
-func TimeSinceStart() time.Duration {
-	GlobalTimer.mu.Lock()
-	defer GlobalTimer.mu.Unlock()
-	return GlobalTimer.time
+func UpdateTimerNow() time.Duration {
+	UpdateTimer.mu.Lock()
+	defer UpdateTimer.mu.Unlock()
+	return UpdateTimer.time
 }
 
 var ErrorLogger *log.Logger = log.New(os.Stderr, "ERROR : ", log.Lshortfile)
@@ -263,7 +263,7 @@ func (app *App) Update() error {
 	// update audio players
 	deltaTime := time.Second / time.Duration(ebiten.TPS())
 
-	TickGlobalTimer(deltaTime)
+	TickUpdateTimer(deltaTime)
 
 	// update key repeat map
 	for k, _ := range app.KeyRepeatMap {
@@ -578,9 +578,9 @@ func (app *App) Draw(dst *ebiten.Image) {
 
 			// draw glow
 			duration := time.Millisecond * 90
-			recenltyPressed := app.Event.IsHoldingKey[player][dir] || TimeSinceStart()-app.Event.KeyReleasedAt[player][dir] < duration
+			recenltyPressed := app.Event.IsHoldingKey[player][dir] || UpdateTimerNow()-app.Event.KeyReleasedAt[player][dir] < duration
 			if recenltyPressed && !app.Event.IsHoldingBadKey[player][dir] {
-				t := TimeSinceStart() - app.Event.KeyPressedAt[player][dir]
+				t := UpdateTimerNow() - app.Event.KeyPressedAt[player][dir]
 
 				if t < duration {
 					color := kitty.Color{}

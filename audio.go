@@ -34,9 +34,6 @@ func NewVaryingSpeedPlayer(context *oto.Context, audioBytes []byte) (*VaryingSpe
 	return vp, nil
 }
 
-func (vp *VaryingSpeedPlayer) Update() {
-}
-
 func (vp *VaryingSpeedPlayer) ChangeAudio(audioBytes []byte) {
 	vp.Player.Pause()
 	vp.Stream.ChangeAudio(audioBytes)

@@ -193,11 +193,6 @@ func StartAudioGameLoop(initData LoopInitData) {
 				//pass
 			}
 
-			instPlayer.Update()
-			if playVoice {
-				voicePlayer.Update()
-			}
-
 			// update audio position
 			audioPos = instPlayer.Position()
 			event.AudioPosition = audioPos
@@ -266,12 +261,12 @@ func StartAudioGameLoop(initData LoopInitData) {
 					for dir := range NoteDirSize {
 						if isKeyPressed[player][dir] && !event.IsHoldingKey[player][dir] {
 							event.IsHoldingKey[player][dir] = true
-							event.KeyPressedAt[player][dir] = TimeSinceStart()
+							event.KeyPressedAt[player][dir] = UpdateTimerNow()
 
 							event.IsHoldingBadKey[player][dir] = true
 						} else if !isKeyPressed[player][dir] {
 							if event.IsHoldingKey[player][dir] {
-								event.KeyReleasedAt[player][dir] = TimeSinceStart()
+								event.KeyReleasedAt[player][dir] = UpdateTimerNow()
 							}
 
 							event.IsHoldingKey[player][dir] = false
@@ -303,7 +298,7 @@ func StartAudioGameLoop(initData LoopInitData) {
 						note.StartsAt < audioPos-hitWindow/2 {
 
 						notes[note.Index].IsMiss = true
-						event.NoteMissAt[note.Player][note.Direction] = TimeSinceStart()
+						event.NoteMissAt[note.Player][note.Direction] = UpdateTimerNow()
 					}
 
 					if note.Duration > 0 && note.IsAudioPositionInDuration(audioPos, hitWindow) {

@@ -16,9 +16,17 @@ bpm : beats per minute
 
 song speed determines arrow interval
 
-plan for playback mode
+I think for this application to run faster it needs to run 1000 times per senconds
 
-playback wait : play the song until note comes and when that happens wait until user presses the button
-playback trace : play the song and track user's input, and mark mistakes
+currently, audio reports interval of 10ms... which is not good
 
-I think for this application to run faster it needs to run 1000 times for senconds
+TODOS
+
+moving through song should be in pixels instead of time
+using scroll wheel to scroll through song
+
+after playing the song show user what note they hit miss etc....
+report miss bad good sick like fnf
+change note arrow to match fnf style better
+changing songs
+ability to scan directory and get song list
