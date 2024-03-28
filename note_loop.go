@@ -4,7 +4,8 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/audio"
+
+	"github.com/ebitengine/oto/v3"
 
 	"kitty"
 	"fmt"
@@ -63,7 +64,7 @@ type LoopInitData struct{
 
 	Song FnfSong
 
-	AudioContext *audio.Context
+	AudioContext *oto.Context
 
 	VoiceAudioBytes []byte
 	InstAudioBytes []byte

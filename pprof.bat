@@ -41,18 +41,18 @@ if "%2"=="" (
 goto :quit
 
 :display_help
-echo "batch file for pprof"
-echo "usage pprof to-profile time
-echo ""
-echo "things to profile"
-echo "    allocs"
-echo "    block"
-echo "    cmdline"
-echo "    goroutine"
-echo "    heap"
-echo "    mutex"
-echo "    profile"
-echo "    threadcreate"
-echo "    trace"
+echo batch file for pprof
+echo usage pprof to-profile time
+echo -
+echo things to profile
+echo     allocs
+echo     block
+echo     cmdline
+echo     goroutine
+echo     heap
+echo     mutex
+echo     profile
+echo     threadcreate
+echo     trace
 
 :quit

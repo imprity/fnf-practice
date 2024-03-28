@@ -18,10 +18,11 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+
+	"github.com/ebitengine/oto/v3"
 
 	"kitty"
 )
@@ -700,7 +701,16 @@ func main() {
 	initData.HitWindow = app.HitWindow
 	initData.Song = parsedSong
 
-	context := audio.NewContext(SampleRate)
+	contextOp := oto.NewContextOptions{
+		SampleRate : SampleRate,
+		ChannelCount : 2,
+		Format : oto.FormatSignedInt16LE,
+		BufferSize : 0, // use default
+	}
+
+	//context := audio.NewContext(SampleRate)
+	context, contextReady, err := oto.NewContext(&contextOp)
+	<-contextReady
 
 	var instBytes []byte
 	var voiceBytes []byte
