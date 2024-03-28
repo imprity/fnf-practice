@@ -240,14 +240,6 @@ func StartAudioGameLoop(initData LoopInitData) {
 				didHitNote := [2][NoteDirSize]bool{}
 				hitNote := [2][NoteDirSize]FnfNote{}
 
-				onNoteHold := func(note FnfNote) {
-					event.HoldingNote[note.Player][note.Direction] = note
-					event.IsHoldingNote[note.Player][note.Direction] = true
-
-					event.IsHoldingBadKey[note.Player][note.Direction] = false
-					didHitNote[note.Player][note.Direction] = true
-				}
-
 				onNoteHit := func(note FnfNote) {
 					// DEBUG!!!!!!!!!!!!!!!!!!!!!
 					if !notes[note.Index].IsHit && note.Player == 0{
@@ -255,10 +247,18 @@ func StartAudioGameLoop(initData LoopInitData) {
 						fmt.Printf("hit note, %v\n", diff)
 					}
 					// DEBUG!!!!!!!!!!!!!!!!!!!!!
+
 					notes[note.Index].IsHit = true
 					event.IsHoldingBadKey[note.Player][note.Direction] = false
 					didHitNote[note.Player][note.Direction] = true
 					hitNote[note.Player][note.Direction] = note
+				}
+
+				onNoteHold := func(note FnfNote) {
+					onNoteHit(note)
+
+					event.HoldingNote[note.Player][note.Direction] = note
+					event.IsHoldingNote[note.Player][note.Direction] = true
 				}
 
 				// we check if user pressed any key
@@ -270,10 +270,12 @@ func StartAudioGameLoop(initData LoopInitData) {
 							event.KeyPressedAt[player][dir] = TimeSinceStart()
 
 							event.IsHoldingBadKey[player][dir] = true
-						} else if event.IsHoldingKey[player][dir] && !isKeyPressed[player][dir] {
-							event.IsHoldingKey[player][dir] = false
-							event.KeyReleasedAt[player][dir] = TimeSinceStart()
+						}else if !isKeyPressed[player][dir] {
+							if event.IsHoldingKey[player][dir]{
+								event.KeyReleasedAt[player][dir] = TimeSinceStart()
+							}
 
+							event.IsHoldingKey[player][dir] = false
 							event.IsHoldingBadKey[player][dir] = false
 						}
 					}
@@ -307,14 +309,13 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 					if note.Duration > 0 && note.IsAudioPositionInDuration(audioPos, hitWindow) {
 						if isKeyJustPressed[note.Player][note.Direction] {
-							onNoteHit(note)
 							onNoteHold(note)
 						}
 					}
 
 					//check if user hit note
 					if note.IsInWindow(audioPos, hitWindow) && !note.IsHit && isKeyJustPressed[note.Player][note.Direction] {
-						if !didHitNote[note.Player][note.Direction]{
+						if !(didHitNote[note.Player][note.Direction] && hitNote[note.Player][note.Direction].Duration <= 0){
 							onNoteHit(note)
 						}else if note.IsOverlapped(hitNote[note.Player][note.Direction]){
 							onNoteHit(note)
