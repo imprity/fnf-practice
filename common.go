@@ -1,11 +1,12 @@
 package main
 
 import (
-	"golang.org/x/exp/constraints"
 	"github.com/hajimehoshi/ebiten/v2"
+	"golang.org/x/exp/constraints"
 
 	"kitty"
 )
+
 func BoolToInt(b bool) int {
 	if b {
 		return 1
@@ -24,8 +25,8 @@ func IntToBool[N constraints.Integer](n N) bool {
 
 type CircularQueue[T any] struct {
 	Length int
-	Start int
-	Data []T
+	Start  int
+	Data   []T
 }
 
 func (q *CircularQueue[T]) IsFull() bool {
@@ -36,12 +37,12 @@ func (q *CircularQueue[T]) IsEmpty() bool {
 	return q.Length <= 0
 }
 
-func (q *CircularQueue[T]) Enqueue(item T){
+func (q *CircularQueue[T]) Enqueue(item T) {
 	isFull := q.IsFull()
-	if isFull{
+	if isFull {
 		q.Start += 1
 		q.Start = q.Start % q.Length
-	}else{
+	} else {
 		q.Length += 1
 	}
 
@@ -49,7 +50,7 @@ func (q *CircularQueue[T]) Enqueue(item T){
 	q.Data[index] = item
 }
 
-func (q *CircularQueue[T]) Dequeue() T{
+func (q *CircularQueue[T]) Dequeue() T {
 	if q.Length <= 0 {
 		panic("CircularQueue:Dequeue: Dequeue on empty queue")
 	}
@@ -61,39 +62,39 @@ func (q *CircularQueue[T]) Dequeue() T{
 	return q.Data[returnIndex]
 }
 
-func (q *CircularQueue[T]) At(index int) T{
-	return q.Data[(q.Start + index) % q.Length]
+func (q *CircularQueue[T]) At(index int) T {
+	return q.Data[(q.Start+index)%q.Length]
 }
 
-type ReadChannel[T any] struct{
+type ReadChannel[T any] struct {
 	RequestChannel chan bool
 	DataChannel    chan T
 }
 
-func (rc ReadChannel[T]) RequestRead(){
-    rc.RequestChannel <- true
+func (rc ReadChannel[T]) RequestRead() {
+	rc.RequestChannel <- true
 }
 
-func (rc ReadChannel[T]) Read() T{
-    return <- rc.DataChannel
+func (rc ReadChannel[T]) Read() T {
+	return <-rc.DataChannel
 }
 
-type ReadManyChannel[T any] struct{
-	RequestChannel  chan bool
-	SizeChannel chan int
-	DataChannel     chan T
+type ReadManyChannel[T any] struct {
+	RequestChannel chan bool
+	SizeChannel    chan int
+	DataChannel    chan T
 }
 
-func (rm ReadManyChannel[T]) RequestRead(){
-    rm.RequestChannel <- true
+func (rm ReadManyChannel[T]) RequestRead() {
+	rm.RequestChannel <- true
 }
 
-func (rm ReadManyChannel[T]) ReadSize() int{
-    return <- rm.SizeChannel
+func (rm ReadManyChannel[T]) ReadSize() int {
+	return <-rm.SizeChannel
 }
 
-func (rm ReadManyChannel[T]) Read() T{
-    return <- rm.DataChannel
+func (rm ReadManyChannel[T]) Read() T {
+	return <-rm.DataChannel
 }
 
 func RotateAround(geom ebiten.GeoM, pivot kitty.Vec2, theta float64) ebiten.GeoM {

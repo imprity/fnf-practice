@@ -1,8 +1,8 @@
 package main
 
-import(
-	"io"
+import (
 	"errors"
+	"io"
 	"sync"
 	"time"
 
@@ -10,12 +10,12 @@ import(
 )
 
 // TODO : change all 4 into buffer size
-type VaryingSpeedPlayer struct{
+type VaryingSpeedPlayer struct {
 	Stream *VaryingSpeedStream
 	Player *oto.Player
 }
 
-func NewVaryingSpeedPlayer(context *oto.Context, audioBytes []byte) (*VaryingSpeedPlayer, error){
+func NewVaryingSpeedPlayer(context *oto.Context, audioBytes []byte) (*VaryingSpeedPlayer, error) {
 	vp := new(VaryingSpeedPlayer)
 
 	vp.Stream = NewVaryingSpeedStream(audioBytes, SampleRate)
@@ -34,11 +34,10 @@ func NewVaryingSpeedPlayer(context *oto.Context, audioBytes []byte) (*VaryingSpe
 	return vp, nil
 }
 
-
-func (vp *VaryingSpeedPlayer) Update(){
+func (vp *VaryingSpeedPlayer) Update() {
 }
 
-func (vp *VaryingSpeedPlayer) ChangeAudio(audioBytes []byte){
+func (vp *VaryingSpeedPlayer) ChangeAudio(audioBytes []byte) {
 	vp.Player.Pause()
 	vp.Stream.ChangeAudio(audioBytes)
 	vp.Player.Play()
@@ -52,90 +51,90 @@ func (vp *VaryingSpeedPlayer) ChangeAudio(audioBytes []byte){
 //        }
 //
 //        position will change
-func (vp *VaryingSpeedPlayer) Position() time.Duration{
+func (vp *VaryingSpeedPlayer) Position() time.Duration {
 	streamPos := vp.Stream.BytePosition()
 	buffSize := vp.Player.BufferedSize()
 
-	pos := float64(streamPos) - float64(buffSize) * vp.Speed()
+	pos := float64(streamPos) - float64(buffSize)*vp.Speed()
 
 	return ByteLengthToTimeDuration(int64(pos), SampleRate)
 }
 
-func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration){
+func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration) {
 	duration := vp.AudioDuration()
 
 	if offset >= duration {
 		offset = duration
-	}else if offset < 0 {
+	} else if offset < 0 {
 		offset = 0
 	}
 
-	bytePos :=  vp.Stream.TimeDurationToPos(offset)
+	bytePos := vp.Stream.TimeDurationToPos(offset)
 	vp.Player.Seek(bytePos, io.SeekStart)
 }
 
-func (vp *VaryingSpeedPlayer) IsPlaying() bool{
+func (vp *VaryingSpeedPlayer) IsPlaying() bool {
 	return vp.Player.IsPlaying()
 }
 
-func (vp *VaryingSpeedPlayer) Pause(){
+func (vp *VaryingSpeedPlayer) Pause() {
 	vp.Player.Pause()
 }
 
-func (vp *VaryingSpeedPlayer) Play(){
+func (vp *VaryingSpeedPlayer) Play() {
 	vp.Player.Play()
 }
 
-func (vp *VaryingSpeedPlayer) Rewind(){
+func (vp *VaryingSpeedPlayer) Rewind() {
 	vp.Stream.Seek(0, io.SeekStart)
 }
 
-func (vp *VaryingSpeedPlayer) SetVolume(volume float64){
+func (vp *VaryingSpeedPlayer) SetVolume(volume float64) {
 	vp.Player.SetVolume(volume)
 }
 
-func (vp *VaryingSpeedPlayer) Volume() float64{
+func (vp *VaryingSpeedPlayer) Volume() float64 {
 	return vp.Player.Volume()
 }
 
-func (vp *VaryingSpeedPlayer) Speed() float64{
+func (vp *VaryingSpeedPlayer) Speed() float64 {
 	return vp.Stream.Speed
 }
 
-func (vp *VaryingSpeedPlayer) SetSpeed(speed float64){
-	if speed <= 0{
+func (vp *VaryingSpeedPlayer) SetSpeed(speed float64) {
+	if speed <= 0 {
 		panic("VaryingSpeedStream: speed should be bigger than 0")
 	}
 	vp.Stream.Speed = speed
 }
 
-func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration{
+func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
 	return vp.Stream.AudioDuration()
 }
 
-func (vp *VaryingSpeedPlayer) AudioBytesSize() int64{
+func (vp *VaryingSpeedPlayer) AudioBytesSize() int64 {
 	return int64(len(vp.Stream.AudioBytes))
 }
 
-type VaryingSpeedStream struct{
+type VaryingSpeedStream struct {
 	io.ReadSeeker
 
-	Speed float64
+	Speed      float64
 	AudioBytes []byte
 
 	SampleRate int
 
 	bytePosition int64
-	mu sync.Mutex
+	mu           sync.Mutex
 }
 
-func (vs *VaryingSpeedStream) BytePosition() int64{
+func (vs *VaryingSpeedStream) BytePosition() int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 	return vs.bytePosition
 }
 
-func NewVaryingSpeedStream (audioBytes []byte, sampleRate int) *VaryingSpeedStream{
+func NewVaryingSpeedStream(audioBytes []byte, sampleRate int) *VaryingSpeedStream {
 	vs := new(VaryingSpeedStream)
 	vs.Speed = 1.0
 
@@ -146,7 +145,7 @@ func NewVaryingSpeedStream (audioBytes []byte, sampleRate int) *VaryingSpeedStre
 	return vs
 }
 
-func (vs *VaryingSpeedStream) Read(p []byte) (int, error){
+func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
@@ -155,19 +154,19 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error){
 
 	floatPosition := float64(vs.bytePosition)
 
-	for{
-		if vs.bytePosition + 4 >= int64(len(vs.AudioBytes)) {
+	for {
+		if vs.bytePosition+4 >= int64(len(vs.AudioBytes)) {
 			return len(p), io.EOF
 		}
 
-		if wCursor + 4 >= wCursorLimit{
+		if wCursor+4 >= wCursorLimit {
 			return wCursor, nil
 		}
 
-		p[wCursor+0] = vs.AudioBytes[vs.bytePosition+0];
-		p[wCursor+1] = vs.AudioBytes[vs.bytePosition+1];
-		p[wCursor+2] = vs.AudioBytes[vs.bytePosition+2];
-		p[wCursor+3] = vs.AudioBytes[vs.bytePosition+3];
+		p[wCursor+0] = vs.AudioBytes[vs.bytePosition+0]
+		p[wCursor+1] = vs.AudioBytes[vs.bytePosition+1]
+		p[wCursor+2] = vs.AudioBytes[vs.bytePosition+2]
+		p[wCursor+3] = vs.AudioBytes[vs.bytePosition+3]
 
 		wCursor += 4
 
@@ -177,7 +176,7 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error){
 	}
 }
 
-func (vs *VaryingSpeedStream) Seek(offset int64, whence int)(int64, error){
+func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
@@ -206,11 +205,11 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int)(int64, error){
 	return abs, nil
 }
 
-func (vs *VaryingSpeedStream) AudioDuration() time.Duration{
+func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	return ByteLengthToTimeDuration(int64(len(vs.AudioBytes)), vs.SampleRate)
 }
 
-func (vs *VaryingSpeedStream) ChangeAudio(audioBytes []byte){
+func (vs *VaryingSpeedStream) ChangeAudio(audioBytes []byte) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 	vs.bytePosition = 0
@@ -234,8 +233,8 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 	return o
 }
 
-func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration{
+func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 	const bytesForSample = 4
 	t := time.Duration(byteLength) / bytesForSample
-	return t * time.Second  / time.Duration(sampleRate)
+	return t * time.Second / time.Duration(sampleRate)
 }

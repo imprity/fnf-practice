@@ -13,6 +13,9 @@ indent_size = 4
 indent_style = tab
 indent_size = 4
 
+[{go.mod,go.sum,*.go}]
+end_of_line = lf
+
 [*.md]
 indent_size = 4
 trim_trailing_whitespace = false

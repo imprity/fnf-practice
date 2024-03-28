@@ -23,26 +23,26 @@ func (n FnfNote) Equal(otherN FnfNote) bool {
 	return n.Index == otherN.Index
 }
 
-func (n FnfNote) IsOverlapped(otherN FnfNote) bool{
-	if n.Player != otherN.Player{
+func (n FnfNote) IsOverlapped(otherN FnfNote) bool {
+	if n.Player != otherN.Player {
 		return false
 	}
-	if n.Direction != otherN.Direction{
+	if n.Direction != otherN.Direction {
 		return false
 	}
 
-	return kitty.AbsI(n.StartsAt - otherN.StartsAt) < time.Millisecond * 2
+	return kitty.AbsI(n.StartsAt-otherN.StartsAt) < time.Millisecond*2
 }
 
-func (n FnfNote) IsInWindow(audioPos, windowSize time.Duration) bool{
-	start := audioPos - windowSize / 2
-	end   := audioPos + windowSize / 2
+func (n FnfNote) IsInWindow(audioPos, windowSize time.Duration) bool {
+	start := audioPos - windowSize/2
+	end := audioPos + windowSize/2
 	return start <= n.StartsAt && n.StartsAt <= end
 }
 
-func (n FnfNote) IsAudioPositionInDuration (audioPos, windowSize time.Duration) bool{
-	start := n.StartsAt - windowSize / 2
-	end   := n.StartsAt + n.Duration + windowSize / 2
+func (n FnfNote) IsAudioPositionInDuration(audioPos, windowSize time.Duration) bool {
+	start := n.StartsAt - windowSize/2
+	end := n.StartsAt + n.Duration + windowSize/2
 
 	return start <= audioPos && audioPos <= end
 }

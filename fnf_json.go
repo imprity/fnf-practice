@@ -22,12 +22,12 @@ type RawFnfJson struct {
 	Song RawFnfSong
 }
 
-func ParseJsonToFnfSong(jsonBytes []byte) (FnfSong, error){
+func ParseJsonToFnfSong(jsonBytes []byte) (FnfSong, error) {
 	parsedSong := FnfSong{}
 
 	var rawFnfJson RawFnfJson
 
-	if err := json.Unmarshal(jsonBytes, &rawFnfJson); err != nil{
+	if err := json.Unmarshal(jsonBytes, &rawFnfJson); err != nil {
 		return parsedSong, err
 	}
 
@@ -64,14 +64,13 @@ func ParseJsonToFnfSong(jsonBytes []byte) (FnfSong, error){
 
 			// TODO : Maybe we should do some kind of error reporting like
 			//        compilers do...
-			if parsedNote.Direction >= NoteDirSize{
-				return parsedSong, fmt.Errorf("ParseJsonToFnfSong : note direction out of bounds");
+			if parsedNote.Direction >= NoteDirSize {
+				return parsedSong, fmt.Errorf("ParseJsonToFnfSong : note direction out of bounds")
 			}
 
 			parsedSong.Notes = append(parsedSong.Notes, parsedNote)
 		}
 	}
-
 
 	// we sort the notes just in case
 	sort.Slice(parsedSong.Notes, func(n1, n2 int) bool {

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"flag"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -10,12 +11,11 @@ import (
 	"io"
 	"log"
 	"math"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"sync"
 	"time"
-	"flag"
-	"net/http"
-	_ "net/http/pprof"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
@@ -33,7 +33,6 @@ const (
 )
 
 const SampleRate = 44100
-
 
 type Timer struct {
 	mu   sync.Mutex
@@ -128,7 +127,7 @@ type App struct {
 	HitWindow time.Duration
 
 	Channels LoopChannels
-	Event LoopEventData
+	Event    LoopEventData
 
 	// variables about note rendering
 	NotesMarginLeft   float64
@@ -139,10 +138,10 @@ type App struct {
 
 	NotesSize float64
 
-	audioPosition time.Duration
-	audioSpeed float64
+	audioPosition  time.Duration
+	audioSpeed     float64
 	isPlayingAudio bool
-	botPlay bool
+	botPlay        bool
 }
 
 func (app *App) AppInit() {
@@ -180,7 +179,7 @@ func (app *App) PauseAudio() {
 	app.isPlayingAudio = false
 }
 
-func (app *App) AudioPosition() time.Duration{
+func (app *App) AudioPosition() time.Duration {
 	return app.audioPosition
 }
 
@@ -189,7 +188,7 @@ func (app *App) SetAudioPosition(at time.Duration) {
 	app.Channels.SetAudioPosition <- at
 }
 
-func (app *App) AudioSpeed() float64{
+func (app *App) AudioSpeed() float64 {
 	return app.audioSpeed
 }
 
@@ -198,11 +197,11 @@ func (app *App) SetAudioSpeed(speed float64) {
 	app.audioSpeed = speed
 }
 
-func (app *App) IsBotPlay() bool{
+func (app *App) IsBotPlay() bool {
 	return app.botPlay
 }
 
-func (app *App) SetBotPlay(bot bool){
+func (app *App) SetBotPlay(bot bool) {
 	app.botPlay = bot
 	app.Channels.SetBotPlay <- bot
 }
@@ -227,7 +226,7 @@ func (app *App) PixelsToTime(p float64) time.Duration {
 	if app.Song.Speed == 0 {
 		pixelsForMillis = 0.3
 	} else {
-		pixelsForMillis = 0.3 /  zoomInverse * app.Song.Speed
+		pixelsForMillis = 0.3 / zoomInverse * app.Song.Speed
 	}
 
 	millisForPixels := 1.0 / pixelsForMillis
@@ -276,16 +275,14 @@ func (app *App) Update() error {
 	app.Channels.EventData.RequestRead()
 	app.Event = app.Channels.EventData.Read()
 
-
 	app.audioPosition = app.Event.AudioPosition
 
 	app.Channels.UpdatedNotes.RequestRead()
 	noteSize := app.Channels.UpdatedNotes.ReadSize()
-	for _ = range noteSize{
+	for _ = range noteSize {
 		note := app.Channels.UpdatedNotes.Read()
 		app.Song.Notes[note.Index] = note
 	}
-
 
 	// =============================================
 	// handle user input
@@ -530,7 +527,7 @@ func (app *App) Draw(dst *ebiten.Image) {
 
 					fill := goodC
 
-					if !holdingNote && note.StartsAt < app.AudioPosition() -app.HitWindow/2 {
+					if !holdingNote && note.StartsAt < app.AudioPosition()-app.HitWindow/2 {
 						fill = badC
 					}
 
@@ -623,7 +620,7 @@ func (app *App) Draw(dst *ebiten.Image) {
 
 	ebitenutil.DebugPrintAt(dst,
 		"\"-\" \"+\" : chnage song speed\n"+
-		"\"[\" \"]\" : zoom in and out\n" +
+		"\"[\" \"]\" : zoom in and out\n"+
 		"\"b\"       : set bot play\n",
 		5, 100)
 }
@@ -637,7 +634,7 @@ var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
 func main() {
 	flag.Parse()
 
-	if *FlagPProf{
+	if *FlagPProf {
 		go func() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
@@ -702,10 +699,10 @@ func main() {
 	initData.Song = parsedSong
 
 	contextOp := oto.NewContextOptions{
-		SampleRate : SampleRate,
-		ChannelCount : 2,
-		Format : oto.FormatSignedInt16LE,
-		BufferSize : 0, // use default
+		SampleRate:   SampleRate,
+		ChannelCount: 2,
+		Format:       oto.FormatSignedInt16LE,
+		BufferSize:   0, // use default
 	}
 
 	//context := audio.NewContext(SampleRate)
@@ -716,12 +713,12 @@ func main() {
 	var voiceBytes []byte
 
 	instBytes, err = LoadAudio(instPath)
-	if err != nil{
+	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
 	if app.PlayVoice {
 		voiceBytes, err = LoadAudio(voicePath)
-		if err != nil{
+		if err != nil {
 			ErrorLogger.Fatal(err)
 		}
 	}
@@ -729,7 +726,7 @@ func main() {
 	initData.AudioContext = context
 
 	initData.InstAudioBytes = instBytes
-	if app.PlayVoice{
+	if app.PlayVoice {
 		initData.VoiceAudioBytes = voiceBytes
 	}
 
@@ -771,4 +768,3 @@ func LoadAudio(path string) ([]byte, error) {
 func SetWindowTitle() {
 	ebiten.SetWindowTitle(fmt.Sprintf("fnf-practice TPS : %.2f/%v  FPS : %.2f", ebiten.ActualTPS(), ebiten.TPS(), ebiten.ActualFPS()))
 }
-

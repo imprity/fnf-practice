@@ -2,16 +2,16 @@ package main
 
 import (
 	"time"
+	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/ebitengine/oto/v3"
 
 	"kitty"
-	"fmt"
 )
 
-type LoopEventData struct{
+type LoopEventData struct {
 	AudioPosition time.Duration
 
 	HoldingNote   [2][NoteDirSize]FnfNote
@@ -27,37 +27,37 @@ type LoopEventData struct{
 	NoteMissAt [2][NoteDirSize]time.Duration
 }
 
-type LoopChannels struct{
+type LoopChannels struct {
 	SetPlayAudio     chan bool
 	SetSpeed         chan float64
 	SetAudioPosition chan time.Duration
 	SetBotPlay       chan bool
 
-	EventData ReadChannel[LoopEventData]
+	EventData    ReadChannel[LoopEventData]
 	UpdatedNotes ReadManyChannel[FnfNote]
 }
 
-func MakeLoopChannels(notesSize int64) LoopChannels{
+func MakeLoopChannels(notesSize int64) LoopChannels {
 	return LoopChannels{
-		SetPlayAudio     : make(chan bool),
-		SetSpeed         : make(chan float64),
-		SetAudioPosition : make(chan time.Duration),
-		SetBotPlay       : make(chan bool),
+		SetPlayAudio:     make(chan bool),
+		SetSpeed:         make(chan float64),
+		SetAudioPosition: make(chan time.Duration),
+		SetBotPlay:       make(chan bool),
 
-		EventData : ReadChannel[LoopEventData]{
-			RequestChannel : make(chan bool),
-			DataChannel : make(chan LoopEventData),
+		EventData: ReadChannel[LoopEventData]{
+			RequestChannel: make(chan bool),
+			DataChannel:    make(chan LoopEventData),
 		},
 
-		UpdatedNotes : ReadManyChannel[FnfNote]{
-			RequestChannel : make(chan bool),
-			SizeChannel : make(chan int),
-			DataChannel : make(chan FnfNote, notesSize),
+		UpdatedNotes: ReadManyChannel[FnfNote]{
+			RequestChannel: make(chan bool),
+			SizeChannel:    make(chan int),
+			DataChannel:    make(chan FnfNote, notesSize),
 		},
 	}
 }
 
-type LoopInitData struct{
+type LoopInitData struct {
 	Channels LoopChannels
 
 	HitWindow time.Duration
@@ -67,7 +67,7 @@ type LoopInitData struct{
 	AudioContext *oto.Context
 
 	VoiceAudioBytes []byte
-	InstAudioBytes []byte
+	InstAudioBytes  []byte
 
 	PlayVoice bool
 
@@ -87,7 +87,7 @@ func StartAudioGameLoop(initData LoopInitData) {
 	context := initData.AudioContext
 
 	go func() {
-		var instPlayer  *VaryingSpeedPlayer
+		var instPlayer *VaryingSpeedPlayer
 		var voicePlayer *VaryingSpeedPlayer
 
 		botPlay := initData.BotPlay
@@ -96,12 +96,12 @@ func StartAudioGameLoop(initData LoopInitData) {
 			var err error
 
 			instPlayer, err = NewVaryingSpeedPlayer(context, initData.InstAudioBytes)
-			if err != nil{
+			if err != nil {
 				ErrorLogger.Fatal(err)
 			}
-			if playVoice{
+			if playVoice {
 				voicePlayer, err = NewVaryingSpeedPlayer(context, initData.VoiceAudioBytes)
-				if err != nil{
+				if err != nil {
 					ErrorLogger.Fatal(err)
 				}
 			}
@@ -111,34 +111,34 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 		var isKeyPressed [2][NoteDirSize]bool
 
-		audioPos     := instPlayer.Position()
+		audioPos := instPlayer.Position()
 
 		event.AudioPosition = audioPos
 
 		var noteIndexStart int
 
 		for {
-			select{
-			case play := <- channels.SetPlayAudio:
-				if play{
+			select {
+			case play := <-channels.SetPlayAudio:
+				if play {
 					instPlayer.Play()
-					if playVoice{
+					if playVoice {
 						voicePlayer.Play()
 					}
-				}else{
+				} else {
 					instPlayer.Pause()
-					if playVoice{
+					if playVoice {
 						voicePlayer.Pause()
 					}
 				}
-			case speed := <- channels.SetSpeed :
+			case speed := <-channels.SetSpeed:
 				instPlayer.SetSpeed(speed)
-				if playVoice{
+				if playVoice {
 					voicePlayer.SetSpeed(speed)
 				}
-			case position := <- channels.SetAudioPosition:
+			case position := <-channels.SetAudioPosition:
 				instPlayer.SetPosition(position)
-				if playVoice{
+				if playVoice {
 					voicePlayer.SetPosition(position)
 				}
 
@@ -149,9 +149,8 @@ func StartAudioGameLoop(initData LoopInitData) {
 					notes[index].IsMiss = false
 					notes[index].IsHit = false
 					notes[index].HoldReleaseAt = 0
-					if (
-						!newNoteIndexSet &&
-						(note.IsInWindow(audioPos, hitWindow) ||note.IsAudioPositionInDuration(audioPos, hitWindow))){
+					if !newNoteIndexSet &&
+						(note.IsInWindow(audioPos, hitWindow) || note.IsAudioPositionInDuration(audioPos, hitWindow)) {
 						newNoteIndexSet = true
 						noteIndexStart = note.Index
 					}
@@ -159,12 +158,12 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 				// reset input state for bots
 				botStart := 0
-				if !botPlay{
+				if !botPlay {
 					botStart = 1
 				}
 
-				for bot := botStart; bot <= 1; bot++{
-					for dir := range NoteDirSize{
+				for bot := botStart; bot <= 1; bot++ {
+					for dir := range NoteDirSize {
 						isKeyPressed[bot][dir] = false
 					}
 				}
@@ -179,18 +178,18 @@ func StartAudioGameLoop(initData LoopInitData) {
 						event.NoteMissAt[player][dir] = 0
 					}
 				}
-			case bot := <- channels.SetBotPlay :
+			case bot := <-channels.SetBotPlay:
 				botPlay = bot
 
-			case <- channels.EventData.RequestChannel:
+			case <-channels.EventData.RequestChannel:
 				channels.EventData.DataChannel <- event
 
-			case <- channels.UpdatedNotes.RequestChannel:
+			case <-channels.UpdatedNotes.RequestChannel:
 				channels.UpdatedNotes.SizeChannel <- len(notes)
-				for _, note := range notes{
+				for _, note := range notes {
 					channels.UpdatedNotes.DataChannel <- note
 				}
-			default :
+			default:
 				//pass
 			}
 
@@ -205,28 +204,28 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 			if instPlayer.IsPlaying() {
 
-				var isKeyJustPressed  [2][NoteDirSize]bool
+				var isKeyJustPressed [2][NoteDirSize]bool
 				var isKeyJustReleased [2][NoteDirSize]bool
 
 				// update key state for bot
 				keyPressState := GetBotKeyPresseState(notes, noteIndexStart, audioPos, botPlay)
 
-				if !botPlay{
-					for dir, key := range NoteKeys{
+				if !botPlay {
+					for dir, key := range NoteKeys {
 						keyPressState[0][dir] = ebiten.IsKeyPressed(key)
 					}
 				}
 
-				for player := 0; player <=1; player ++{
-					for dir := range NoteDirSize{
-						if keyPressState[player][dir]{
-							if !isKeyPressed[player][dir]{
+				for player := 0; player <= 1; player++ {
+					for dir := range NoteDirSize {
+						if keyPressState[player][dir] {
+							if !isKeyPressed[player][dir] {
 								isKeyJustPressed[player][dir] = true
 							}
 
 							isKeyPressed[player][dir] = true
-						}else{
-							if isKeyPressed[player][dir]{
+						} else {
+							if isKeyPressed[player][dir] {
 								isKeyJustReleased[player][dir] = true
 							}
 
@@ -242,7 +241,7 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 				onNoteHit := func(note FnfNote) {
 					// DEBUG!!!!!!!!!!!!!!!!!!!!!
-					if !notes[note.Index].IsHit && note.Player == 0{
+					if !notes[note.Index].IsHit && note.Player == 0 {
 						diff := kitty.AbsI(note.StartsAt - audioPos)
 						fmt.Printf("hit note, %v\n", diff)
 					}
@@ -263,15 +262,15 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 				// we check if user pressed any key
 				// and if so mark all as bad hit (it will be overidden as not bad later)
-				for player := 0; player <= 1; player++{
-					for dir := range NoteDirSize{
+				for player := 0; player <= 1; player++ {
+					for dir := range NoteDirSize {
 						if isKeyPressed[player][dir] && !event.IsHoldingKey[player][dir] {
 							event.IsHoldingKey[player][dir] = true
 							event.KeyPressedAt[player][dir] = TimeSinceStart()
 
 							event.IsHoldingBadKey[player][dir] = true
-						}else if !isKeyPressed[player][dir] {
-							if event.IsHoldingKey[player][dir]{
+						} else if !isKeyPressed[player][dir] {
+							if event.IsHoldingKey[player][dir] {
 								event.KeyReleasedAt[player][dir] = TimeSinceStart()
 							}
 
@@ -282,7 +281,7 @@ func StartAudioGameLoop(initData LoopInitData) {
 				}
 
 				// update any notes that were held but now no longer being held
-				for player := 0; player <= 1; player++{
+				for player := 0; player <= 1; player++ {
 					for dir := range NoteDirSize {
 						if !isKeyPressed[player][dir] && event.IsHoldingNote[player][dir] {
 							note := event.HoldingNote[player][dir]
@@ -296,7 +295,7 @@ func StartAudioGameLoop(initData LoopInitData) {
 				newNoteIndexStart := noteIndexStart
 				newNoteIndexSet := false
 
-				for ;noteIndexStart <len(notes); noteIndexStart ++ {
+				for ; noteIndexStart < len(notes); noteIndexStart++ {
 					note := notes[noteIndexStart]
 					//check if user missed note
 					if !isKeyPressed[note.Player][note.Direction] &&
@@ -315,23 +314,22 @@ func StartAudioGameLoop(initData LoopInitData) {
 
 					//check if user hit note
 					if note.IsInWindow(audioPos, hitWindow) && !note.IsHit && isKeyJustPressed[note.Player][note.Direction] {
-						if !(didHitNote[note.Player][note.Direction] && hitNote[note.Player][note.Direction].Duration <= 0){
+						if !(didHitNote[note.Player][note.Direction] && hitNote[note.Player][note.Direction].Duration <= 0) {
 							onNoteHit(note)
-						}else if note.IsOverlapped(hitNote[note.Player][note.Direction]){
+						} else if note.IsOverlapped(hitNote[note.Player][note.Direction]) {
 							onNoteHit(note)
 						}
 					}
 
 					if !newNoteIndexSet &&
-						(
-							note.IsInWindow(audioPos, hitWindow) ||
-							note.IsAudioPositionInDuration(audioPos, hitWindow)){
+						(note.IsInWindow(audioPos, hitWindow) ||
+							note.IsAudioPositionInDuration(audioPos, hitWindow)) {
 
 						newNoteIndexSet = true
 						newNoteIndexStart = note.Index
 					}
 
-					if note.StartsAt > audioPos + hitWindow{
+					if note.StartsAt > audioPos+hitWindow {
 						break
 					}
 				}
@@ -341,29 +339,29 @@ func StartAudioGameLoop(initData LoopInitData) {
 	}()
 }
 
-func isNoteForBot(note FnfNote, isBotPlay bool) bool{
-	if isBotPlay{
+func isNoteForBot(note FnfNote, isBotPlay bool) bool {
+	if isBotPlay {
 		return true
 	}
 
 	return note.Player >= 1
 }
 
-func GetBotKeyPresseState(notes []FnfNote, noteIndexStart int, audioPos time.Duration, isBotPlay bool) [2][NoteDirSize] bool{
-	var keyPressed [2][NoteDirSize] bool
+func GetBotKeyPresseState(notes []FnfNote, noteIndexStart int, audioPos time.Duration, isBotPlay bool) [2][NoteDirSize]bool {
+	var keyPressed [2][NoteDirSize]bool
 
 	const tinyWindow = time.Millisecond * 10
 
-	for ;noteIndexStart < len(notes); noteIndexStart++{
+	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
-		if isNoteForBot(note, isBotPlay){
-			if !note.IsHit && note.IsInWindow(audioPos, tinyWindow){
+		if isNoteForBot(note, isBotPlay) {
+			if !note.IsHit && note.IsInWindow(audioPos, tinyWindow) {
 				keyPressed[note.Player][note.Direction] = true
-			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow){
+			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) {
 				keyPressed[note.Player][note.Direction] = true
 			}
 		}
-		if note.StartsAt > audioPos + tinyWindow{
+		if note.StartsAt > audioPos+tinyWindow {
 			break
 		}
 	}
