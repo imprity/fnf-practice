@@ -78,41 +78,6 @@ func init() {
 	ArrowInnerImg = ebiten.NewImageFromImage(img)
 }
 
-type NoteDir int
-
-const (
-	NoteDirLeft NoteDir = iota
-	NoteDirDown
-	NoteDirUp
-	NoteDirRight
-	NoteDirSize
-
-	NoteDirAny = -1
-)
-
-const (
-	NoteKeyLeft  = ebiten.KeyA
-	NoteKeyDown  = ebiten.KeyS
-	NoteKeyUp    = ebiten.KeySemicolon
-	NotekeyRight = ebiten.KeyQuote
-)
-
-var NoteKeys = [NoteDirSize]ebiten.Key{
-	NoteKeyLeft,
-	NoteKeyDown,
-	NoteKeyUp,
-	NotekeyRight,
-}
-
-type FnfSong struct {
-	Notes       []FnfNote
-	NotesEndsAt time.Duration
-	Speed       float64
-}
-
-const PlayerAny = -1
-const IsHitAny = -1
-
 type App struct {
 	Song FnfSong
 
@@ -126,7 +91,7 @@ type App struct {
 	PlayVoice bool
 	HitWindow time.Duration
 
-	Channels LoopChannels
+	Loop *NoteAudioLoop
 	Event    LoopEventData
 
 	// variables about note rendering
@@ -170,12 +135,12 @@ func (app *App) IsPlayingAudio() bool {
 }
 
 func (app *App) PlayAudio() {
-	app.Channels.SetPlayAudio <- true
+	app.Loop.PlayAudio()
 	app.isPlayingAudio = true
 }
 
 func (app *App) PauseAudio() {
-	app.Channels.SetPlayAudio <- false
+	app.Loop.PauseAudio()
 	app.isPlayingAudio = false
 }
 
@@ -184,8 +149,8 @@ func (app *App) AudioPosition() time.Duration {
 }
 
 func (app *App) SetAudioPosition(at time.Duration) {
+	app.Loop.SetPosition(at)
 	app.audioPosition = at
-	app.Channels.SetAudioPosition <- at
 }
 
 func (app *App) AudioSpeed() float64 {
@@ -193,7 +158,7 @@ func (app *App) AudioSpeed() float64 {
 }
 
 func (app *App) SetAudioSpeed(speed float64) {
-	app.Channels.SetSpeed <- speed
+	app.Loop.SetSpeed(speed)
 	app.audioSpeed = speed
 }
 
@@ -202,8 +167,8 @@ func (app *App) IsBotPlay() bool {
 }
 
 func (app *App) SetBotPlay(bot bool) {
+	app.Loop.SetBotPlay(bot)
 	app.botPlay = bot
-	app.Channels.SetBotPlay <- bot
 }
 
 func (app *App) TimeToPixels(t time.Duration) float64 {
@@ -272,15 +237,12 @@ func (app *App) Update() error {
 
 	// recieve data from note loop
 
-	app.Channels.EventData.RequestRead()
-	app.Event = app.Channels.EventData.Read()
-
+	app.Event = app.Loop.Event()
 	app.audioPosition = app.Event.AudioPosition
 
-	app.Channels.UpdatedNotes.RequestRead()
-	noteSize := app.Channels.UpdatedNotes.ReadSize()
+	noteSize := app.Loop.PrepareToSendNotes()
 	for _ = range noteSize {
-		note := app.Channels.UpdatedNotes.Read()
+		note := <- app.Loop.NoteChannel
 		app.Song.Notes[note.Index] = note
 	}
 
@@ -644,10 +606,10 @@ func main() {
 	app.AppInit()
 
 	// load song smile ====================================================
-	//const inputJsonPath string = "./test_songs/song_smile/smile-hard.json"
-	//const instPath = "./test_songs/song_smile/inst.ogg"
-	//const voicePath = "./test_songs/song_smile/Voices.ogg"
-	//app.PlayVoice = true
+	const inputJsonPath string = "./test_songs/song_smile/smile-hard.json"
+	const instPath = "./test_songs/song_smile/inst.ogg"
+	const voicePath = "./test_songs/song_smile/Voices.ogg"
+	app.PlayVoice = true
 	// =====================================================================
 
 	// load song tutorial ====================================================
@@ -658,14 +620,14 @@ func main() {
 	// ======================================================================
 
 	// load song endless ====================================================
-	const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
-	const instPath = "./test_songs/song_endless/Inst.ogg"
-	const voicePath = "./test_songs/song_endless/Voices.ogg"
-	app.PlayVoice = true
+	//const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
+	//const instPath = "./test_songs/song_endless/Inst.ogg"
+	//const voicePath = "./test_songs/song_endless/Voices.ogg"
+	//app.PlayVoice = true
 	// ======================================================================
 
 	ebiten.SetMaxTPS(1200)
-	ebiten.SetVsyncEnabled(false)
+	ebiten.SetVsyncEnabled(true)
 	ebiten.SetScreenClearedEveryFrame(false)
 
 	var err error
@@ -687,13 +649,9 @@ func main() {
 	// =====================================
 
 	// make channels
-	channels := MakeLoopChannels(int64(len(parsedSong.Notes)))
-	app.Channels = channels
 
 	// make init data
 	var initData LoopInitData
-
-	initData.Channels = channels
 
 	initData.HitWindow = app.HitWindow
 	initData.Song = parsedSong
@@ -733,7 +691,11 @@ func main() {
 	initData.PlayVoice = app.PlayVoice
 	initData.BotPlay = app.botPlay
 
-	StartAudioGameLoop(initData)
+	loop := NewNoteAudioLoop(initData)
+	loop.StartLoop()
+
+	app.Loop = loop
+
 
 	ebiten.SetWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT)
 	SetWindowTitle()
