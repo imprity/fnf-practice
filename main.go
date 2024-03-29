@@ -88,11 +88,13 @@ type App struct {
 
 	KeyRepeatMap map[ebiten.Key]time.Duration
 
+	InstPlayer *VaryingSpeedPlayer
+	VoicePlayer *VaryingSpeedPlayer
 	PlayVoice bool
+
 	HitWindow time.Duration
 
-	Loop *NoteAudioLoop
-	Event    LoopEventData
+	Event GameEvent
 
 	// variables about note rendering
 	NotesMarginLeft   float64
@@ -102,6 +104,9 @@ type App struct {
 	NotesInterval float64
 
 	NotesSize float64
+
+	wasKeyPressed [2][NoteDirSize] bool
+	noteIndexStart int
 
 	audioPosition  time.Duration
 	audioSpeed     float64
@@ -131,26 +136,31 @@ func (app *App) AppInit() {
 }
 
 func (app *App) IsPlayingAudio() bool {
-	return app.isPlayingAudio
+	return app.InstPlayer.IsPlaying()
 }
 
 func (app *App) PlayAudio() {
-	app.Loop.PlayAudio()
-	app.isPlayingAudio = true
+	app.InstPlayer.Play()
+	if app.PlayVoice{
+		app.VoicePlayer.Play()
+	}
 }
 
 func (app *App) PauseAudio() {
-	app.Loop.PauseAudio()
-	app.isPlayingAudio = false
+	app.InstPlayer.Pause()
+	if app.PlayVoice{
+		app.VoicePlayer.Pause()
+	}
 }
 
 func (app *App) AudioPosition() time.Duration {
-	return app.audioPosition
+	return app.InstPlayer.Position()
 }
 
 func (app *App) SetAudioPosition(at time.Duration) {
-	app.Loop.SetPosition(at)
-	app.audioPosition = at
+	ErrorLogger.Fatal("TODO : Not Implemented")
+	//app.Loop.SetPosition(at)
+	//app.audioPosition = at
 }
 
 func (app *App) AudioSpeed() float64 {
@@ -158,8 +168,9 @@ func (app *App) AudioSpeed() float64 {
 }
 
 func (app *App) SetAudioSpeed(speed float64) {
-	app.Loop.SetSpeed(speed)
-	app.audioSpeed = speed
+	ErrorLogger.Fatal("TODO : Not Implemented")
+	//app.Loop.SetSpeed(speed)
+	//app.audioSpeed = speed
 }
 
 func (app *App) IsBotPlay() bool {
@@ -167,8 +178,9 @@ func (app *App) IsBotPlay() bool {
 }
 
 func (app *App) SetBotPlay(bot bool) {
-	app.Loop.SetBotPlay(bot)
-	app.botPlay = bot
+	ErrorLogger.Fatal("TODO : Not Implemented")
+	//app.Loop.SetBotPlay(bot)
+	//app.botPlay = bot
 }
 
 func (app *App) TimeToPixels(t time.Duration) float64 {
@@ -237,6 +249,8 @@ func (app *App) Update() error {
 
 	// recieve data from note loop
 
+	// TODO : handle this properly once implemented
+	/*
 	app.Event = app.Loop.Event()
 	app.audioPosition = app.Event.AudioPosition
 
@@ -245,6 +259,7 @@ func (app *App) Update() error {
 		note := <- app.Loop.NoteChannel
 		app.Song.Notes[note.Index] = note
 	}
+	*/
 
 	// =============================================
 	// handle user input
@@ -324,6 +339,23 @@ func (app *App) Update() error {
 	// =============================================
 	// end of handling user input
 	// =============================================
+
+	audioPos := app.InstPlayer.Position()
+
+	isKeyPressed := GetKeyPressState(app.Song.Notes, app.noteIndexStart, audioPos, app.botPlay)
+	UpdateNotesAndEvents(
+		app.Song.Notes,
+		app.Event,
+		app.wasKeyPressed,
+		isKeyPressed,
+		audioPos,
+		app.InstPlayer.IsPlaying(),
+		app.HitWindow,
+		app.botPlay,
+		changedPosition,
+		app.noteIndexStart,
+	)
+	app.wasKeyPressed = isKeyPressed
 
 	SetWindowTitle()
 
@@ -606,10 +638,10 @@ func main() {
 	app.AppInit()
 
 	// load song smile ====================================================
-	const inputJsonPath string = "./test_songs/song_smile/smile-hard.json"
-	const instPath = "./test_songs/song_smile/inst.ogg"
-	const voicePath = "./test_songs/song_smile/Voices.ogg"
-	app.PlayVoice = true
+	//const inputJsonPath string = "./test_songs/song_smile/smile-hard.json"
+	//const instPath = "./test_songs/song_smile/inst.ogg"
+	//const voicePath = "./test_songs/song_smile/Voices.ogg"
+	//app.PlayVoice = true
 	// =====================================================================
 
 	// load song tutorial ====================================================
@@ -620,14 +652,14 @@ func main() {
 	// ======================================================================
 
 	// load song endless ====================================================
-	//const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
-	//const instPath = "./test_songs/song_endless/Inst.ogg"
-	//const voicePath = "./test_songs/song_endless/Voices.ogg"
-	//app.PlayVoice = true
+	const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
+	const instPath = "./test_songs/song_endless/Inst.ogg"
+	const voicePath = "./test_songs/song_endless/Voices.ogg"
+	app.PlayVoice = true
 	// ======================================================================
 
-	ebiten.SetMaxTPS(1200)
-	ebiten.SetVsyncEnabled(true)
+	ebiten.SetMaxTPS(420)
+	ebiten.SetVsyncEnabled(false)
 	ebiten.SetScreenClearedEveryFrame(false)
 
 	var err error
@@ -651,11 +683,6 @@ func main() {
 	// make channels
 
 	// make init data
-	var initData LoopInitData
-
-	initData.HitWindow = app.HitWindow
-	initData.Song = parsedSong
-
 	contextOp := oto.NewContextOptions{
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
@@ -681,21 +708,19 @@ func main() {
 		}
 	}
 
-	initData.AudioContext = context
+	var instPlayer *VaryingSpeedPlayer
+	var voicePlayer *VaryingSpeedPlayer
 
-	initData.InstAudioBytes = instBytes
-	if app.PlayVoice {
-		initData.VoiceAudioBytes = voiceBytes
+	instPlayer, err = NewVaryingSpeedPlayer(context, instBytes)
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+	if app.PlayVoice{
+		voicePlayer, err = NewVaryingSpeedPlayer(context, voiceBytes)
 	}
 
-	initData.PlayVoice = app.PlayVoice
-	initData.BotPlay = app.botPlay
-
-	loop := NewNoteAudioLoop(initData)
-	loop.StartLoop()
-
-	app.Loop = loop
-
+	app.InstPlayer = instPlayer
+	app.VoicePlayer = voicePlayer
 
 	ebiten.SetWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT)
 	SetWindowTitle()
