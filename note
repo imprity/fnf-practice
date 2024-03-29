@@ -22,6 +22,7 @@ currently, audio reports interval of 10ms... which is not good
 
 TODOS
 
+don't try to move back when it's at start
 moving through song should be in pixels instead of time
 using scroll wheel to scroll through song
 

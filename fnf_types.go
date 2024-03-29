@@ -1,9 +1,38 @@
 package main
 
 import (
-	"kitty"
 	"time"
+
+	"github.com/hajimehoshi/ebiten/v2"
+
+	"kitty"
 )
+
+type NoteDir int
+
+const (
+	NoteDirLeft NoteDir = iota
+	NoteDirDown
+	NoteDirUp
+	NoteDirRight
+	NoteDirSize
+
+	NoteDirAny = -1
+)
+
+const (
+	NoteKeyLeft  = ebiten.KeyA
+	NoteKeyDown  = ebiten.KeyS
+	NoteKeyUp    = ebiten.KeySemicolon
+	NotekeyRight = ebiten.KeyQuote
+)
+
+var NoteKeys = [NoteDirSize]ebiten.Key{
+	NoteKeyLeft,
+	NoteKeyDown,
+	NoteKeyUp,
+	NotekeyRight,
+}
 
 type FnfNote struct {
 	Player    int
@@ -46,6 +75,9 @@ func (n FnfNote) IsAudioPositionInDuration(audioPos, windowSize time.Duration) b
 
 	return start <= audioPos && audioPos <= end
 }
+
+const PlayerAny = -1
+const IsHitAny = -1
 
 type NoteFilter struct {
 	Player    int
@@ -106,4 +138,25 @@ func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter)
 	}
 
 	return FnfNote{}, false
+}
+
+type FnfSong struct {
+	Notes       []FnfNote
+	NotesEndsAt time.Duration
+	Speed       float64
+}
+
+func (fs FnfSong) Copy() FnfSong{
+	copy := FnfSong{}
+
+	copy.Notes = make([]FnfNote, len(fs.Notes))
+
+	for i := range len(fs.Notes){
+		copy.Notes[i] = fs.Notes[i]
+	}
+
+	copy.NotesEndsAt = fs.NotesEndsAt
+	copy.Speed = fs.Speed
+
+	return copy
 }
