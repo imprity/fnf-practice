@@ -143,6 +143,7 @@ type FnfSong struct {
 	Notes       []FnfNote
 	NotesEndsAt time.Duration
 	Speed       float64
+	NeedsVoices bool
 }
 
 func (fs FnfSong) Copy() FnfSong{
@@ -156,6 +157,7 @@ func (fs FnfSong) Copy() FnfSong{
 
 	copy.NotesEndsAt = fs.NotesEndsAt
 	copy.Speed = fs.Speed
+	copy.NeedsVoices = fs.NeedsVoices
 
 	return copy
 }

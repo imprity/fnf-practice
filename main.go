@@ -52,7 +52,6 @@ type App struct {
 
 	InstPlayer *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
-	PlayVoice bool
 
 	HitWindow time.Duration
 
@@ -101,14 +100,14 @@ func (app *App) IsPlayingAudio() bool {
 
 func (app *App) PlayAudio() {
 	app.InstPlayer.Play()
-	if app.PlayVoice{
+	if app.Song.NeedsVoices{
 		app.VoicePlayer.Play()
 	}
 }
 
 func (app *App) PauseAudio() {
 	app.InstPlayer.Pause()
-	if app.PlayVoice{
+	if app.Song.NeedsVoices{
 		app.VoicePlayer.Pause()
 	}
 }
@@ -119,7 +118,7 @@ func (app *App) AudioPosition() time.Duration {
 
 func (app *App) SetAudioPosition(at time.Duration) {
 	app.InstPlayer.SetPosition(at)
-	if app.PlayVoice{
+	if app.Song.NeedsVoices{
 		app.VoicePlayer.SetPosition(at)
 	}
 }
@@ -130,7 +129,7 @@ func (app *App) AudioSpeed() float64 {
 
 func (app *App) SetAudioSpeed(speed float64) {
 	app.InstPlayer.SetSpeed(speed)
-	if app.PlayVoice{
+	if app.Song.NeedsVoices{
 		app.VoicePlayer.SetSpeed(speed)
 	}
 }
@@ -588,17 +587,15 @@ func main() {
 	// =====================================================================
 
 	// load song tutorial ====================================================
-	//const inputJsonPath string = "./test_songs/song_tutorial/tutorial.json"
-	//const instPath = "./test_songs/song_tutorial/inst.ogg"
-	//const voicePath = ""
-	//app.PlayVoice = false
+	const inputJsonPath string = "./test_songs/song_tutorial/tutorial.json"
+	const instPath = "./test_songs/song_tutorial/inst.ogg"
+	const voicePath = ""
 	// ======================================================================
 
 	// load song endless ====================================================
-	const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
-	const instPath = "./test_songs/song_endless/Inst.ogg"
-	const voicePath = "./test_songs/song_endless/Voices.ogg"
-	app.PlayVoice = true
+	//const inputJsonPath string = "./test_songs/song_endless/endless-hard.json"
+	//const instPath = "./test_songs/song_endless/Inst.ogg"
+	//const voicePath = "./test_songs/song_endless/Voices.ogg"
 	// ======================================================================
 
 	var err error
@@ -640,7 +637,7 @@ func main() {
 	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
-	if app.PlayVoice {
+	if app.Song.NeedsVoices {
 		voiceBytes, err = LoadAudio(voicePath)
 		if err != nil {
 			ErrorLogger.Fatal(err)
@@ -654,7 +651,7 @@ func main() {
 	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
-	if app.PlayVoice{
+	if app.Song.NeedsVoices{
 		voicePlayer, err = NewVaryingSpeedPlayer(context, voiceBytes)
 	}
 

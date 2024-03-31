@@ -16,6 +16,7 @@ type RawFnfSong struct {
 	Song  string
 	Notes []RawFnfNote
 	Speed float64
+	NeedsVoices bool
 }
 
 type RawFnfJson struct {
@@ -85,6 +86,8 @@ func ParseJsonToFnfSong(jsonBytes []byte) (FnfSong, error) {
 		lastNote := parsedSong.Notes[len(parsedSong.Notes)-1]
 		parsedSong.NotesEndsAt = lastNote.StartsAt + lastNote.Duration
 	}
+
+	parsedSong.NeedsVoices = rawFnfJson.Song.NeedsVoices
 
 	return parsedSong, nil
 }
