@@ -4,12 +4,10 @@ import (
 	"time"
 	"fmt"
 
-	"github.com/hajimehoshi/ebiten/v2"
+	rl "github.com/gen2brain/raylib-go/raylib"
 
 	//"github.com/ebitengine/oto/v3"
 	//"sync"
-
-	"kitty"
 )
 
 type GameEvent struct {
@@ -106,7 +104,7 @@ func UpdateNotesAndEvents(
 	botPlay bool,
 	audioPosChanged bool,
 	noteIndexStart int,
-) {
+) GameEvent{
 	event.AudioPosition = audioPos
 
 	// things to do when position is arbitrarily changed
@@ -179,7 +177,7 @@ func UpdateNotesAndEvents(
 		onNoteHit := func(note FnfNote) {
 			// DEBUG!!!!!!!!!!!!!!!!!!!!!
 			if !notes[note.Index].IsHit && note.Player == 0 {
-				diff := kitty.AbsI(note.StartsAt - audioPos)
+				diff := AbsI(note.StartsAt - audioPos)
 				fmt.Printf("hit note, %v\n", diff)
 			}
 			// DEBUG!!!!!!!!!!!!!!!!!!!!!
@@ -203,12 +201,12 @@ func UpdateNotesAndEvents(
 			for dir := range NoteDirSize {
 				if isKeyPressed[player][dir] && !event.IsHoldingKey[player][dir] {
 					event.IsHoldingKey[player][dir] = true
-					event.KeyPressedAt[player][dir] = UpdateTimerNow()
+					event.KeyPressedAt[player][dir] = GlobalTimerNow()
 
 					event.IsHoldingBadKey[player][dir] = true
 				} else if !isKeyPressed[player][dir] {
 					if event.IsHoldingKey[player][dir] {
-						event.KeyReleasedAt[player][dir] = UpdateTimerNow()
+						event.KeyReleasedAt[player][dir] = GlobalTimerNow()
 					}
 
 					event.IsHoldingKey[player][dir] = false
@@ -240,7 +238,7 @@ func UpdateNotesAndEvents(
 			note.StartsAt < audioPos-hitWindow/2 {
 
 				notes[note.Index].IsMiss = true
-				event.NoteMissAt[note.Player][note.Direction] = UpdateTimerNow()
+				event.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
 			}
 
 			if note.Duration > 0 && note.IsAudioPositionInDuration(audioPos, hitWindow) {
@@ -272,6 +270,8 @@ func UpdateNotesAndEvents(
 		}
 		noteIndexStart = newNoteIndexStart
 	}
+
+	return event
 }
 
 
@@ -569,7 +569,7 @@ func GetKeyPressState(
 
 	if !isBotPlay{
 		for dir, key := range NoteKeys{
-			if ebiten.IsKeyPressed(key){
+			if rl.IsKeyDown(key){
 				keyPressState[0][dir] = true
 			}
 		}

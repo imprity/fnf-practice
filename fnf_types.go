@@ -3,9 +3,8 @@ package main
 import (
 	"time"
 
-	"github.com/hajimehoshi/ebiten/v2"
-
-	"kitty"
+	//"github.com/hajimehoshi/ebiten/v2"
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type NoteDir int
@@ -21,13 +20,13 @@ const (
 )
 
 const (
-	NoteKeyLeft  = ebiten.KeyA
-	NoteKeyDown  = ebiten.KeyS
-	NoteKeyUp    = ebiten.KeySemicolon
-	NotekeyRight = ebiten.KeyQuote
+	NoteKeyLeft  = rl.KeyA
+	NoteKeyDown  = rl.KeyS
+	NoteKeyUp    = rl.KeySemicolon
+	NotekeyRight = rl.KeyApostrophe
 )
 
-var NoteKeys = [NoteDirSize]ebiten.Key{
+var NoteKeys = [NoteDirSize]int32{
 	NoteKeyLeft,
 	NoteKeyDown,
 	NoteKeyUp,
@@ -60,7 +59,7 @@ func (n FnfNote) IsOverlapped(otherN FnfNote) bool {
 		return false
 	}
 
-	return kitty.AbsI(n.StartsAt-otherN.StartsAt) < time.Millisecond*2
+	return AbsI(n.StartsAt-otherN.StartsAt) < time.Millisecond*2
 }
 
 func (n FnfNote) IsInWindow(audioPos, windowSize time.Duration) bool {

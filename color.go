@@ -1,4 +1,4 @@
-package kitty
+package main
 
 import (
 	"image/color"
@@ -37,6 +37,20 @@ func ToImageColor(c Color) color.Color {
 
 func (c Color) ToImageColor() color.Color {
 	return ToImageColor(c)
+}
+
+func ToImageRGBA(c Color) color.RGBA {
+	multiplied := c.MultiplyAlpha()
+	return color.RGBA{
+		uint8(math.Round(multiplied.R * 0xFF)),
+		uint8(math.Round(multiplied.G * 0xFF)),
+		uint8(math.Round(multiplied.B * 0xFF)),
+		uint8(math.Round(multiplied.A * 0xFF)),
+	}
+}
+
+func (c Color) ToImageRGBA() color.RGBA {
+	return ToImageRGBA(c)
 }
 
 func Color255(r, g, b, a uint8) Color {

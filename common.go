@@ -1,10 +1,7 @@
 package main
 
 import (
-	"github.com/hajimehoshi/ebiten/v2"
 	"golang.org/x/exp/constraints"
-
-	"kitty"
 )
 
 func BoolToInt(b bool) int {
@@ -21,6 +18,28 @@ func IntToBool[N constraints.Integer](n N) bool {
 	} else {
 		return true
 	}
+}
+
+func AbsI[N constraints.Signed](n N) N {
+	if n < 0 {
+		return n * -1
+	}
+	return n
+}
+
+func SameSign[N constraints.Signed](n1, n2 N) bool {
+	return (n1 < 0) == (n2 < 0)
+}
+
+func Clamp[N constraints.Integer | constraints.Float](n, minN, maxN N) N {
+	n = min(n, maxN)
+	n = max(n, minN)
+
+	return n
+}
+
+func Lerp[F constraints.Float](a, b, t F) F{
+	return a + (b-a) * t
 }
 
 type CircularQueue[T any] struct {
@@ -97,12 +116,3 @@ func (rm ReadManyChannel[T]) Read() T {
 	return <-rm.DataChannel
 }
 
-func RotateAround(geom ebiten.GeoM, pivot kitty.Vec2, theta float64) ebiten.GeoM {
-	vToOrigin := kitty.V(-pivot.X, -pivot.Y)
-	rotated := vToOrigin.Rotate(theta)
-
-	geom.Rotate(theta)
-	geom.Translate(rotated.X-vToOrigin.X, rotated.Y-vToOrigin.Y)
-
-	return geom
-}
