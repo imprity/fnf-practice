@@ -4,7 +4,7 @@ import (
 	//"bytes"
 	_ "embed"
 	"flag"
-	//"fmt"
+	"fmt"
 	//"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -22,6 +22,8 @@ import (
 	"github.com/ebitengine/oto/v3"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+var _ = fmt.Print
 
 const (
 	SCREEN_WIDTH  = 1200
@@ -70,8 +72,7 @@ type App struct {
 	noteIndexStart int
 
 	audioPosition  time.Duration
-	audioSpeed     float64
-	isPlayingAudio bool
+	audioPositionSafetyCounter int
 	botPlay        bool
 }
 
@@ -88,8 +89,6 @@ func (app *App) AppInit() {
 	app.NotesSize = 110
 
 	app.HitWindow = time.Millisecond * 135 * 2
-
-	app.audioSpeed = 1.0
 
 	//app.botPlay = true
 }
@@ -113,10 +112,11 @@ func (app *App) PauseAudio() {
 }
 
 func (app *App) AudioPosition() time.Duration {
-	return app.InstPlayer.Position()
+	return app.audioPosition
 }
 
 func (app *App) SetAudioPosition(at time.Duration) {
+	app.audioPosition = at
 	app.InstPlayer.SetPosition(at)
 	if app.Song.NeedsVoices{
 		app.VoicePlayer.SetPosition(at)
@@ -255,7 +255,45 @@ func (app *App) Update() error {
 	// end of handling user input
 	// =============================================
 
-	audioPos := app.InstPlayer.Position()
+	// =============================================
+	// try to calculate audio position
+	// =============================================
+
+	// currently audio player position's delta is 0 or 10ms
+	// so we are trying to calculate better audio position
+	{
+		if !app.IsPlayingAudio(){
+			app.audioPosition = app.InstPlayer.Position()
+		}else if app.audioPositionSafetyCounter > 5{
+			//every 5 update
+			// we just believe what audio player says without asking
+			// !!! IF AUDIO PLAYER REPORTS TIME THAT IS BIGGER THAN PREVIOU TIME !!!
+			//
+			// else we just wait until audio player catches up
+
+			playerPos := app.InstPlayer.Position()
+
+			if playerPos > app.audioPosition {
+				app.audioPosition = playerPos
+				app.audioPositionSafetyCounter = 0
+			}
+		}else {
+			playerPos := app.InstPlayer.Position()
+
+			frameDelta := time.Duration(rl.GetFrameTime() * float32(time.Second) * float32(app.AudioSpeed()))
+			limit := time.Duration(float64(time.Millisecond * 5) * app.AudioSpeed())
+
+			if playerPos - app.audioPosition  < limit && frameDelta < limit{
+				app.audioPosition = app.audioPosition + frameDelta
+			}else {
+				app.audioPosition = playerPos
+			}
+
+		}
+		app.audioPositionSafetyCounter ++
+	}
+
+	audioPos := app.AudioPosition()
 
 	isKeyPressed := GetKeyPressState(app.Song.Notes, app.noteIndexStart, audioPos, app.botPlay)
 
@@ -378,8 +416,6 @@ func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Co
 	DrawTextureTransfromed(ArrowOuterImg, outerMat, stroke)
 	DrawTextureTransfromed(ArrowInnerImg, innerMat, fill)
 }
-
-var tmpLogger *log.Logger = log.New(os.Stdout, "", 0)
 
 func (app *App) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
@@ -559,10 +595,6 @@ func (app *App) Draw() {
 
 		}
 	}
-}
-
-func (app *App) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return SCREEN_WIDTH, SCREEN_HEIGHT
 }
 
 var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
