@@ -9,35 +9,64 @@ import (
 	"github.com/ebitengine/oto/v3"
 )
 
-// TODO : change all 4 into buffer size
+const SampleRate = 44100
+const BytesPerSample = 4
+
+var TheContext *oto.Context
+
+func InitAudio() error{
+	contextOp := oto.NewContextOptions{
+		SampleRate:   SampleRate,
+		ChannelCount: 2,
+		Format:       oto.FormatSignedInt16LE,
+		BufferSize:   0, // use default
+	}
+
+	//context := audio.NewContext(SampleRate)
+	var contextReady chan struct{}
+	var err error
+	TheContext, contextReady, err = oto.NewContext(&contextOp)
+
+	if err != nil{
+		return err
+	}
+
+	<-contextReady
+
+	return nil
+}
+
 type VaryingSpeedPlayer struct {
+	IsReady bool
 	Stream *VaryingSpeedStream
 	Player *oto.Player
 }
 
-func NewVaryingSpeedPlayer(context *oto.Context, audioBytes []byte) (*VaryingSpeedPlayer, error) {
-	vp := new(VaryingSpeedPlayer)
-
-	vp.Stream = NewVaryingSpeedStream(audioBytes, SampleRate)
-
-	player := context.NewPlayer(vp.Stream)
-
-	// we need the ability to change the playback speed in real time
-	// so we need to make the buffer size smaller
-	// TODO : is this really the right size?
-	buffSizeTime := time.Second / 20
-	buffSizeBytes := int(buffSizeTime) * SampleRate / int(time.Second) * 4
-	player.SetBufferSize(int(buffSizeBytes))
-
-	vp.Player = player
-
-	return vp, nil
+func NewVaryingSpeedPlayer() *VaryingSpeedPlayer{
+	return new(VaryingSpeedPlayer)
 }
 
-func (vp *VaryingSpeedPlayer) ChangeAudio(audioBytes []byte) {
-	vp.Player.Pause()
-	vp.Stream.ChangeAudio(audioBytes)
-	vp.Player.Play()
+func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte){
+	if !vp.IsReady{
+		vp.Stream = NewVaryingSpeedStream(audioBytes, SampleRate)
+
+		player := TheContext.NewPlayer(vp.Stream)
+
+		// we need the ability to change the playback speed in real time
+		// so we need to make the buffer size smaller
+		// TODO : is this really the right size?
+		const buffSizeTime = time.Second / 20
+		buffSizeBytes := int(buffSizeTime) * SampleRate / int(time.Second) * BytesPerSample
+		player.SetBufferSize(int(buffSizeBytes))
+
+		vp.Player = player
+
+		vp.IsReady = true
+	}else{
+		vp.Player.Pause()
+		vp.Stream.ChangeAudio(audioBytes)
+		vp.Player.Seek(0, io.SeekStart)
+	}
 }
 
 // TODO : Position and SetPosition is fucked
@@ -147,16 +176,16 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	defer vs.mu.Unlock()
 
 	wCursor := 0
-	wCursorLimit := (len(p) / 4) * 4
+	wCursorLimit := (len(p) / BytesPerSample) * BytesPerSample
 
 	floatPosition := float64(vs.bytePosition)
 
 	for {
-		if vs.bytePosition+4 >= int64(len(vs.AudioBytes)) {
+		if vs.bytePosition+BytesPerSample >= int64(len(vs.AudioBytes)) {
 			return len(p), io.EOF
 		}
 
-		if wCursor+4 >= wCursorLimit {
+		if wCursor+BytesPerSample >= wCursorLimit {
 			return wCursor, nil
 		}
 
@@ -165,11 +194,11 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 		p[wCursor+2] = vs.AudioBytes[vs.bytePosition+2]
 		p[wCursor+3] = vs.AudioBytes[vs.bytePosition+3]
 
-		wCursor += 4
+		wCursor += BytesPerSample
 
-		floatPosition += vs.Speed * 4.0
+		floatPosition += vs.Speed * BytesPerSample
 
-		vs.bytePosition = (int64(floatPosition) / 4) * 4
+		vs.bytePosition = (int64(floatPosition) / BytesPerSample) * BytesPerSample
 	}
 }
 
@@ -219,19 +248,17 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
-	const bytesForSample = 4
 
-	o := int64(offset) * bytesForSample * int64(SampleRate) / int64(time.Second)
+	o := int64(offset) * BytesPerSample * int64(SampleRate) / int64(time.Second)
 
 	// Align the byte position with the samples.
-	o -= o % bytesForSample
-	o += vs.bytePosition % bytesForSample
+	o -= o % BytesPerSample
+	o += vs.bytePosition % BytesPerSample
 
 	return o
 }
 
 func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
-	const bytesForSample = 4
-	t := time.Duration(byteLength) / bytesForSample
+	t := time.Duration(byteLength) / BytesPerSample
 	return t * time.Second / time.Duration(sampleRate)
 }

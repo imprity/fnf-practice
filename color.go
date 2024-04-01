@@ -61,15 +61,16 @@ func (c Color) ToImageRGBA() color.RGBA {
 
 func ToRlColor(c Color) RlColor{
 	return color.RGBA{
-		uint8(math.Round(multiplied.R * 0xFF)),
-		uint8(math.Round(multiplied.G * 0xFF)),
-		uint8(math.Round(multiplied.B * 0xFF)),
-		uint8(math.Round(multiplied.A * 0xFF)),
+		uint8(math.Round(c.R * 0xFF)),
+		uint8(math.Round(c.G * 0xFF)),
+		uint8(math.Round(c.B * 0xFF)),
+		uint8(math.Round(c.A * 0xFF)),
 	}
 }
 
 func (c Color)ToRlColor() RlColor{
 	return ToRlColor(c)
+}
 
 func Color255(r, g, b, a uint8) Color {
 	rf, gf, bf, af := float64(r), float64(g), float64(b), float64(a)
