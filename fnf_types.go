@@ -3,7 +3,6 @@ package main
 import (
 	"time"
 
-	//"github.com/hajimehoshi/ebiten/v2"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -140,6 +139,7 @@ func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter)
 }
 
 type FnfSong struct {
+	SongName    string
 	Notes       []FnfNote
 	NotesEndsAt time.Duration
 	Speed       float64

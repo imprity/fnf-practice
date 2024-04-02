@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -23,16 +24,19 @@ type RawFnfJson struct {
 	Song RawFnfSong
 }
 
-func ParseJsonToFnfSong(jsonBytes []byte) (FnfSong, error) {
+func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error){
 	parsedSong := FnfSong{}
 
 	var rawFnfJson RawFnfJson
 
-	if err := json.Unmarshal(jsonBytes, &rawFnfJson); err != nil {
+	decoder := json.NewDecoder(jsonReader)
+
+	if err := decoder.Decode(&rawFnfJson); err != nil{
 		return parsedSong, err
 	}
 
 	parsedSong.Speed = rawFnfJson.Song.Speed
+	parsedSong.SongName = rawFnfJson.Song.Song
 
 	for _, rawNote := range rawFnfJson.Song.Notes {
 		for _, sectionNote := range rawNote.SectionNotes {

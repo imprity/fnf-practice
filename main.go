@@ -13,6 +13,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"bufio"
 	//"sync"
 
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
@@ -33,7 +34,8 @@ var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile
 
 var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
 
-func main() {
+func main2() {
+//func main() {
 	flag.Parse()
 
 	if *FlagPProf {
@@ -68,17 +70,24 @@ func main() {
 
 	//load song
 	for _, path := range songJsonPaths{
-		jsonBytes, err := os.ReadFile(path)
+		jsonFile, err := os.Open(path)
+
 		if err != nil {
+			jsonFile.Close()
 			ErrorLogger.Fatal(err)
 		}
 
-		parsedSong, err := ParseJsonToFnfSong(jsonBytes)
+		reader := bufio.NewReader(jsonFile)
+
+		parsedSong, err := ParseJsonToFnfSong(reader)
 		if err != nil {
+			jsonFile.Close()
 			ErrorLogger.Fatal(err)
 		}
 
 		songs = append(songs, parsedSong)
+
+		jsonFile.Close()
 	}
 
 	//load instByte
