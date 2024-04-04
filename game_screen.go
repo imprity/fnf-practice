@@ -52,6 +52,8 @@ type GameScreen struct {
 
 	Event GameEvent
 
+	PausedBecausePositionChangeKey bool
+
 	// variables about note rendering
 	NotesMarginLeft   float32
 	NotesMarginRight  float32
@@ -398,14 +400,17 @@ func (gs *GameScreen) Update() bool {
 	{
 		pos := gs.AudioPosition()
 		keyT := gs.PixelsToTime(50)
+		changedUsingKey := false
 
 		if HandleKeyRepeat(rl.KeyLeft, time.Millisecond*50, time.Millisecond*10) {
 			changedPosition = true
+			changedUsingKey = true
 			pos -= keyT
 		}
 
 		if HandleKeyRepeat(rl.KeyRight, time.Millisecond*50, time.Millisecond*10) {
 			changedPosition = true
+			changedUsingKey = true
 			pos += keyT
 		}
 
@@ -418,7 +423,27 @@ func (gs *GameScreen) Update() bool {
 		}
 
 		if changedPosition {
+			if gs.IsPlayingAudio(){
+				gs.PauseAudio()
+				if changedUsingKey{
+					gs.PausedBecausePositionChangeKey = true
+				}
+			}
 			gs.SetAudioPosition(pos)
+		}
+
+		// if we changed position while playing the song we pause the song
+		// and we unpuase here
+		// NOTE : thought about doing this for mouse wheel as well but it's harder to
+		// detect whether mouse wheel stopped scrolling for reals
+		// TODO : Maybe we can do this by a timer
+		if (
+			gs.PausedBecausePositionChangeKey &&
+			rl.IsKeyUp(rl.KeyRight) &&
+			rl.IsKeyUp(rl.KeyLeft)){
+
+			gs.PlayAudio()
+			gs.PausedBecausePositionChangeKey = false
 		}
 	}
 
