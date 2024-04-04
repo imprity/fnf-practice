@@ -189,7 +189,6 @@ func main() {
 	}
 }
 
-// TODO : support mp3
 func LoadAudio(path string) ([]byte, error) {
 	file, err := os.Open(path)
 	defer file.Close()

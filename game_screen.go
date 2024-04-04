@@ -394,20 +394,32 @@ func (gs *GameScreen) Update() bool {
 
 	// changing time
 	changedPosition := false
-	pos := gs.AudioPosition()
 
-	if HandleKeyRepeat(rl.KeyLeft, time.Millisecond*50, time.Millisecond*10) {
-		changedPosition = true
-		pos -= time.Millisecond * 100
-	}
+	{
+		pos := gs.AudioPosition()
+		keyT := gs.PixelsToTime(50)
 
-	if HandleKeyRepeat(rl.KeyRight, time.Millisecond*50, time.Millisecond*10) {
-		changedPosition = true
-		pos += time.Millisecond * 100
-	}
+		if HandleKeyRepeat(rl.KeyLeft, time.Millisecond*50, time.Millisecond*10) {
+			changedPosition = true
+			pos -= keyT
+		}
 
-	if changedPosition {
-		gs.SetAudioPosition(pos)
+		if HandleKeyRepeat(rl.KeyRight, time.Millisecond*50, time.Millisecond*10) {
+			changedPosition = true
+			pos += keyT
+		}
+
+		wheelT := gs.PixelsToTime(40)
+		wheelmove := rl.GetMouseWheelMove()
+
+		if math.Abs(float64(wheelmove)) > 0.001{
+			changedPosition = true
+			pos += time.Duration(wheelmove * float32(-wheelT))
+		}
+
+		if changedPosition {
+			gs.SetAudioPosition(pos)
+		}
 	}
 
 	// =============================================
