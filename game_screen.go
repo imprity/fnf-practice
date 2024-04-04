@@ -2,11 +2,11 @@ package main
 
 import (
 	_ "embed"
+	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
 	"time"
-	"fmt"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -20,7 +20,7 @@ var arrowInnerBytes []byte
 var ArrowOuterImg rl.Texture2D
 var ArrowInnerImg rl.Texture2D
 
-func InitArrowTexture(){
+func InitArrowTexture() {
 	outerImg := rl.LoadImageFromMemory(".png", arrowOuterBytes, int32(len(arrowOuterBytes)))
 	innerImg := rl.LoadImageFromMemory(".png", arrowInnerBytes, int32(len(arrowInnerBytes)))
 
@@ -40,12 +40,12 @@ type GameScreen struct {
 
 	SelectedDifficulty FnfDifficulty
 
-	Song FnfSong
+	Song         FnfSong
 	IsSongLoaded bool
 
 	Zoom float32
 
-	InstPlayer *VaryingSpeedPlayer
+	InstPlayer  *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
 
 	HitWindow time.Duration
@@ -62,15 +62,15 @@ type GameScreen struct {
 	NotesSize float32
 
 	// private members
-	wasKeyPressed [2][NoteDirSize] bool
+	wasKeyPressed  [2][NoteDirSize]bool
 	noteIndexStart int
 
-	audioPosition  time.Duration
+	audioPosition              time.Duration
 	audioPositionSafetyCounter int
-	botPlay        bool
+	botPlay                    bool
 }
 
-func NewGameScreen() *GameScreen{
+func NewGameScreen() *GameScreen {
 	// set default various variables
 	gs := new(GameScreen)
 	gs.Zoom = 1.0
@@ -86,14 +86,14 @@ func NewGameScreen() *GameScreen{
 
 	gs.HitWindow = time.Millisecond * 135 * 2
 
-	gs.InstPlayer  = NewVaryingSpeedPlayer()
+	gs.InstPlayer = NewVaryingSpeedPlayer()
 	gs.VoicePlayer = NewVaryingSpeedPlayer()
 
 	return gs
 }
 
 func (gs *GameScreen) LoadSongs(
-	songs    [DifficultySize]FnfSong,
+	songs [DifficultySize]FnfSong,
 	hasSong [DifficultySize]bool,
 	startingDifficulty FnfDifficulty,
 	instBytes, voiceBytes []byte,
@@ -103,8 +103,8 @@ func (gs *GameScreen) LoadSongs(
 	gs.HasSong = hasSong
 	gs.SelectedDifficulty = startingDifficulty
 
-	for i:=FnfDifficulty(0); i<DifficultySize; i++{
-		if hasSong[i]{
+	for i := FnfDifficulty(0); i < DifficultySize; i++ {
+		if hasSong[i] {
 			gs.Songs[i] = songs[i].Copy()
 		}
 	}
@@ -113,29 +113,29 @@ func (gs *GameScreen) LoadSongs(
 
 	gs.Song = startingSong.Copy()
 
-	if gs.InstPlayer.IsReady{
+	if gs.InstPlayer.IsReady {
 		gs.InstPlayer.Pause()
 	}
 
-	if gs.VoicePlayer.IsReady{
+	if gs.VoicePlayer.IsReady {
 		gs.VoicePlayer.Pause()
 	}
 
 	gs.InstPlayer.LoadAudio(instBytes)
-	if gs.Song.NeedsVoices{
+	if gs.Song.NeedsVoices {
 		gs.VoicePlayer.LoadAudio(voiceBytes)
 	}
 
 	gs.InstPlayer.SetSpeed(1)
-	if gs.Song.NeedsVoices{
+	if gs.Song.NeedsVoices {
 		gs.VoicePlayer.SetSpeed(1)
 	}
 
 	gs.Zoom = 1.0
 
 	// clear input state
-	for player:=0; player <= 1; player++{
-		for dir := NoteDir(0); dir < NoteDirSize; dir++{
+	for player := 0; player <= 1; player++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			gs.wasKeyPressed[player][dir] = false
 		}
 	}
@@ -151,7 +151,7 @@ func (gs *GameScreen) LoadSongs(
 }
 
 func (gs *GameScreen) IsPlayingAudio() bool {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return false
 	}
@@ -159,31 +159,31 @@ func (gs *GameScreen) IsPlayingAudio() bool {
 }
 
 func (gs *GameScreen) PlayAudio() {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return
 	}
 
 	gs.InstPlayer.Play()
-	if gs.Song.NeedsVoices{
+	if gs.Song.NeedsVoices {
 		gs.VoicePlayer.Play()
 	}
 }
 
 func (gs *GameScreen) PauseAudio() {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return
 	}
 
 	gs.InstPlayer.Pause()
-	if gs.Song.NeedsVoices{
+	if gs.Song.NeedsVoices {
 		gs.VoicePlayer.Pause()
 	}
 }
 
 func (gs *GameScreen) AudioPosition() time.Duration {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return 0
 	}
@@ -192,20 +192,20 @@ func (gs *GameScreen) AudioPosition() time.Duration {
 }
 
 func (gs *GameScreen) SetAudioPosition(at time.Duration) {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return
 	}
 
 	gs.audioPosition = at
 	gs.InstPlayer.SetPosition(at)
-	if gs.Song.NeedsVoices{
+	if gs.Song.NeedsVoices {
 		gs.VoicePlayer.SetPosition(at)
 	}
 }
 
 func (gs *GameScreen) AudioSpeed() float64 {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return 0
 	}
@@ -214,13 +214,13 @@ func (gs *GameScreen) AudioSpeed() float64 {
 }
 
 func (gs *GameScreen) SetAudioSpeed(speed float64) {
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return
 	}
 
 	gs.InstPlayer.SetSpeed(speed)
-	if gs.Song.NeedsVoices{
+	if gs.Song.NeedsVoices {
 		gs.VoicePlayer.SetSpeed(speed)
 	}
 }
@@ -265,12 +265,11 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 	return time.Duration(p * millisForPixels * float32(time.Millisecond))
 }
 
-
 // returns true when it wants to quit
-func (gs *GameScreen) Update() bool{
+func (gs *GameScreen) Update() bool {
 	// handle quit
 	if rl.IsKeyPressed(rl.KeyEscape) {
-		if gs.IsSongLoaded{
+		if gs.IsSongLoaded {
 			gs.PauseAudio()
 		}
 
@@ -278,7 +277,7 @@ func (gs *GameScreen) Update() bool{
 	}
 
 	// is song is not loaded then don't do anything
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		return false
 	}
 
@@ -299,46 +298,46 @@ func (gs *GameScreen) Update() bool{
 	//changing difficulty
 	prevDifficulty := gs.SelectedDifficulty
 
-	if rl.IsKeyPressed(rl.KeyW){
+	if rl.IsKeyPressed(rl.KeyW) {
 		for gs.SelectedDifficulty+1 < DifficultySize {
-			gs.SelectedDifficulty ++
-			if gs.HasSong[gs.SelectedDifficulty]{
+			gs.SelectedDifficulty++
+			if gs.HasSong[gs.SelectedDifficulty] {
 				break
 			}
 		}
 	}
 
-	if rl.IsKeyPressed(rl.KeyQ){
-		for gs.SelectedDifficulty - 1>= 0 {
-			gs.SelectedDifficulty --
-			if gs.HasSong[gs.SelectedDifficulty]{
+	if rl.IsKeyPressed(rl.KeyQ) {
+		for gs.SelectedDifficulty-1 >= 0 {
+			gs.SelectedDifficulty--
+			if gs.HasSong[gs.SelectedDifficulty] {
 				break
 			}
 		}
 	}
 
-	if prevDifficulty != gs.SelectedDifficulty{
-		if gs.HasSong[gs.SelectedDifficulty]{
+	if prevDifficulty != gs.SelectedDifficulty {
+		if gs.HasSong[gs.SelectedDifficulty] {
 			gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-			if gs.InstPlayer.IsReady{
+			if gs.InstPlayer.IsReady {
 				gs.InstPlayer.Pause()
 			}
 
-			if gs.VoicePlayer.IsReady{
+			if gs.VoicePlayer.IsReady {
 				gs.VoicePlayer.Pause()
 			}
 
 			gs.InstPlayer.SetSpeed(1)
-			if gs.Song.NeedsVoices{
+			if gs.Song.NeedsVoices {
 				gs.VoicePlayer.SetSpeed(1)
 			}
 
 			gs.Zoom = 1.0
 
 			// clear input state
-			for player:=0; player <= 1; player++{
-				for dir := NoteDir(0); dir < NoteDirSize; dir++{
+			for player := 0; player <= 1; player++ {
+				for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 					gs.wasKeyPressed[player][dir] = false
 				}
 			}
@@ -348,7 +347,7 @@ func (gs *GameScreen) Update() bool{
 			gs.noteIndexStart = 0
 
 			gs.audioPositionSafetyCounter = 0
-		}else{			
+		} else {
 			gs.SelectedDifficulty = prevDifficulty
 		}
 	}
@@ -422,9 +421,9 @@ func (gs *GameScreen) Update() bool{
 	// currently audio player position's delta is 0 or 10ms
 	// so we are trying to calculate better audio position
 	{
-		if !gs.IsPlayingAudio(){
+		if !gs.IsPlayingAudio() {
 			gs.audioPosition = gs.InstPlayer.Position()
-		}else if gs.audioPositionSafetyCounter > 5{
+		} else if gs.audioPositionSafetyCounter > 5 {
 			//every 5 update
 			// we just believe what audio player says without asking
 			// !!! IF AUDIO PLAYER REPORTS TIME THAT IS BIGGER THAN PREVIOU TIME !!!
@@ -437,20 +436,20 @@ func (gs *GameScreen) Update() bool{
 				gs.audioPosition = playerPos
 				gs.audioPositionSafetyCounter = 0
 			}
-		}else {
+		} else {
 			playerPos := gs.InstPlayer.Position()
 
 			frameDelta := time.Duration(rl.GetFrameTime() * float32(time.Second) * float32(gs.AudioSpeed()))
-			limit := time.Duration(float64(time.Millisecond * 5) * gs.AudioSpeed())
+			limit := time.Duration(float64(time.Millisecond*5) * gs.AudioSpeed())
 
-			if playerPos - gs.audioPosition  < limit && frameDelta < limit{
+			if playerPos-gs.audioPosition < limit && frameDelta < limit {
 				gs.audioPosition = gs.audioPosition + frameDelta
-			}else {
+			} else {
 				gs.audioPosition = playerPos
 			}
 
 		}
-		gs.audioPositionSafetyCounter ++
+		gs.audioPositionSafetyCounter++
 	}
 
 	audioPos := gs.AudioPosition()
@@ -485,14 +484,14 @@ func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Co
 	}
 
 	outerMat := rl.MatrixTranslate(
-		-float32(ArrowOuterImg.Width) * 0.5,
-		-float32(ArrowOuterImg.Height) * 0.5,
+		-float32(ArrowOuterImg.Width)*0.5,
+		-float32(ArrowOuterImg.Height)*0.5,
 		0,
 	)
 
 	innerMat := rl.MatrixTranslate(
-		-float32(ArrowInnerImg.Width) * 0.5,
-		-float32(ArrowInnerImg.Height) * 0.5,
+		-float32(ArrowInnerImg.Width)*0.5,
+		-float32(ArrowInnerImg.Height)*0.5,
 		0,
 	)
 
@@ -513,14 +512,14 @@ func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Co
 	DrawTextureTransfromed(ArrowOuterImg, outerMat, stroke)
 	DrawTextureTransfromed(ArrowInnerImg, innerMat, fill)
 
-	rl.EndBlendMode();
+	rl.EndBlendMode()
 }
 
 func (gs *GameScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
-	if !gs.IsSongLoaded{
+	if !gs.IsSongLoaded {
 		return
 	}
 
@@ -624,8 +623,8 @@ func (gs *GameScreen) Draw() {
 					holdRectW := gs.NotesSize * 0.3
 
 					holdRect := rl.Rectangle{
-						x-holdRectW*0.5, endY,
-						holdRectW, noteY-endY}
+						x - holdRectW*0.5, endY,
+						holdRectW, noteY - endY}
 
 					fill := goodC
 
@@ -634,8 +633,8 @@ func (gs *GameScreen) Draw() {
 					}
 
 					if holdRect.Height > 0 {
-						rl.DrawRectangleRoundedLines(holdRect, holdRect.Width * 0.5, 5, 5, white.ToImageRGBA())
-						rl.DrawRectangleRounded(holdRect, holdRect.Width * 0.5, 5, fill.ToImageRGBA())
+						rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, white.ToImageRGBA())
+						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, fill.ToImageRGBA())
 					}
 					DrawNoteArrow(x, noteY, gs.NotesSize, note.Direction, fill, white)
 				}
@@ -703,12 +702,12 @@ func (gs *GameScreen) Draw() {
 	// draw debug msg
 	// ============================================
 
-	const format = "" + 
+	const format = "" +
 		"speed : %v\n" +
 		"zoom  : %v\n" +
-		"\n"+
+		"\n" +
 		"bot play : %v\n" +
-		"\n"+
+		"\n" +
 		"difficulty : %v\n"
 
 	msg := fmt.Sprintf(format,
@@ -717,5 +716,5 @@ func (gs *GameScreen) Draw() {
 		gs.IsBotPlay(),
 		DifficultyStrs[gs.SelectedDifficulty])
 
-	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, RlColor{255,255,255,255})
+	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, RlColor{255, 255, 255, 255})
 }

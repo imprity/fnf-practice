@@ -1,9 +1,9 @@
 package main
 
 import (
-	"io"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"time"
 )
@@ -14,9 +14,9 @@ type RawFnfNote struct {
 }
 
 type RawFnfSong struct {
-	Song  string
-	Notes []RawFnfNote
-	Speed float64
+	Song        string
+	Notes       []RawFnfNote
+	Speed       float64
 	NeedsVoices bool
 }
 
@@ -24,14 +24,14 @@ type RawFnfJson struct {
 	Song RawFnfSong
 }
 
-func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error){
+func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error) {
 	parsedSong := FnfSong{}
 
 	var rawFnfJson RawFnfJson
 
 	decoder := json.NewDecoder(jsonReader)
 
-	if err := decoder.Decode(&rawFnfJson); err != nil{
+	if err := decoder.Decode(&rawFnfJson); err != nil {
 		return parsedSong, err
 	}
 
@@ -77,7 +77,7 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error){
 		}
 	}
 
-	if len(parsedSong.Notes) <= 0{
+	if len(parsedSong.Notes) <= 0 {
 		return parsedSong, fmt.Errorf("ParseJsonToFnfSong : song contains no notes")
 	}
 

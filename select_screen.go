@@ -2,21 +2,21 @@ package main
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"github.com/sqweek/dialog"
 	"log"
 	"os"
 	"time"
-	"github.com/sqweek/dialog"
 )
 
-type SelectScreen struct{
-	LoadedGroups []FnfPathGroup
+type SelectScreen struct {
+	LoadedGroups  []FnfPathGroup
 	SelectedGroup int
 
 	PreferredDifficulty FnfDifficulty
-	SelectedDifficulty FnfDifficulty
+	SelectedDifficulty  FnfDifficulty
 }
 
-func NewSelectScreen() *SelectScreen{
+func NewSelectScreen() *SelectScreen {
 	ss := new(SelectScreen)
 
 	ss.PreferredDifficulty = DifficultyNormal
@@ -26,22 +26,23 @@ func NewSelectScreen() *SelectScreen{
 }
 
 func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDifficulty {
-	if group.HasSong[preferred]{
+	if group.HasSong[preferred] {
 		return preferred
 	}
 
-	switch preferred{
-	case DifficultyEasy: fallthrough
+	switch preferred {
+	case DifficultyEasy:
+		fallthrough
 	case DifficultyNormal:
-		for d := FnfDifficulty(0); d < DifficultySize; d++{
-			if group.HasSong[d]{
+		for d := FnfDifficulty(0); d < DifficultySize; d++ {
+			if group.HasSong[d] {
 				return d
 			}
 		}
 
 	case DifficultyHard:
-		for d := DifficultySize - 1; d >=0; d--{
-			if group.HasSong[d]{
+		for d := DifficultySize - 1; d >= 0; d-- {
+			if group.HasSong[d] {
 				return d
 			}
 		}
@@ -52,10 +53,10 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen)Update() (FnfPathGroup, FnfDifficulty, bool) {
-	if rl.IsKeyPressed(rl.KeyO){
+func (ss *SelectScreen) Update() (FnfPathGroup, FnfDifficulty, bool) {
+	if rl.IsKeyPressed(rl.KeyO) {
 		directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
-		if err != nil{
+		if err != nil {
 			ErrorLogger.Fatal(err)
 		}
 
@@ -71,19 +72,19 @@ func (ss *SelectScreen)Update() (FnfPathGroup, FnfDifficulty, bool) {
 			ss.SelectedGroup += 1
 		}
 
-		ss.SelectedGroup = Clamp(ss.SelectedGroup, 0, len(ss.LoadedGroups) - 1)
+		ss.SelectedGroup = Clamp(ss.SelectedGroup, 0, len(ss.LoadedGroups)-1)
 
-		if rl.IsKeyPressed(rl.KeyLeft){
+		if rl.IsKeyPressed(rl.KeyLeft) {
 			ss.PreferredDifficulty -= 1
 		}
 
-		if rl.IsKeyPressed(rl.KeyRight){
+		if rl.IsKeyPressed(rl.KeyRight) {
 			ss.PreferredDifficulty += 1
 		}
 
-		ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize - 1)
+		ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
 
-		if rl.IsKeyPressed(rl.KeyEnter){
+		if rl.IsKeyPressed(rl.KeyEnter) {
 			group := ss.LoadedGroups[ss.SelectedGroup]
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
@@ -94,25 +95,25 @@ func (ss *SelectScreen)Update() (FnfPathGroup, FnfDifficulty, bool) {
 	return FnfPathGroup{}, 0, false
 }
 
-func (ss *SelectScreen)Draw() {
+func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
 	if len(ss.LoadedGroups) <= 0 {
-		rl.DrawText("no song is loaded", 5, 50, 20, RlColor{255,255,255,255})
-		rl.DrawText("Press \"O\" to load directory", 5, 70, 20, RlColor{255,255,255,255})
-	}else{
+		rl.DrawText("no song is loaded", 5, 50, 20, RlColor{255, 255, 255, 255})
+		rl.DrawText("Press \"O\" to load directory", 5, 70, 20, RlColor{255, 255, 255, 255})
+	} else {
 		group := ss.LoadedGroups[ss.SelectedGroup]
 		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
-		rl.DrawText(DifficultyStrs[difficulty], SCREEN_WIDTH - 100, 30, 20, RlColor{255, 255, 255, 255})
+		rl.DrawText(DifficultyStrs[difficulty], SCREEN_WIDTH-100, 30, 20, RlColor{255, 255, 255, 255})
 		offsetX := int32(0)
 		offsetY := int32(0)
-		for i, group := range ss.LoadedGroups{
-			if i == ss.SelectedGroup{
-				rl.DrawText(group.SongName, offsetX, offsetY, 30, RlColor{255, 0, 0,255})
-			}else{
-				rl.DrawText(group.SongName, offsetX, offsetY, 30, RlColor{255,255,255,255})
+		for i, group := range ss.LoadedGroups {
+			if i == ss.SelectedGroup {
+				rl.DrawText(group.SongName, offsetX, offsetY, 30, RlColor{255, 0, 0, 255})
+			} else {
+				rl.DrawText(group.SongName, offsetX, offsetY, 30, RlColor{255, 255, 255, 255})
 			}
 			offsetY += 35
 		}

@@ -146,12 +146,12 @@ type FnfSong struct {
 	NeedsVoices bool
 }
 
-func (fs FnfSong) Copy() FnfSong{
+func (fs FnfSong) Copy() FnfSong {
 	copy := FnfSong{}
 
 	copy.Notes = make([]FnfNote, len(fs.Notes))
 
-	for i := range len(fs.Notes){
+	for i := range len(fs.Notes) {
 		copy.Notes[i] = fs.Notes[i]
 	}
 
@@ -178,7 +178,7 @@ var DifficultyStrs [DifficultySize]string = [DifficultySize]string{
 }
 
 type FnfPathGroup struct {
-	SongName  string
+	SongName string
 
 	Songs     [DifficultySize]FnfSong
 	SongPaths [DifficultySize]string

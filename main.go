@@ -17,8 +17,8 @@ import (
 	//"bufio"
 	//"sync"
 
-	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -46,77 +46,77 @@ func main() {
 	}
 
 	/*
-	songJsonPaths := []string{
-		"./test_songs/song_smile/smile-hard.json",
-		"./test_songs/song_tutorial/tutorial.json",
-		"./test_songs/song_endless/endless-hard.json",
-	}
+		songJsonPaths := []string{
+			"./test_songs/song_smile/smile-hard.json",
+			"./test_songs/song_tutorial/tutorial.json",
+			"./test_songs/song_endless/endless-hard.json",
+		}
 
-	instPaths := []string{
-		"./test_songs/song_smile/inst.ogg",
-		"./test_songs/song_tutorial/inst.ogg",
-		"./test_songs/song_endless/Inst.ogg",
-	}
+		instPaths := []string{
+			"./test_songs/song_smile/inst.ogg",
+			"./test_songs/song_tutorial/inst.ogg",
+			"./test_songs/song_endless/Inst.ogg",
+		}
 
-	voicePaths := []string{
-		"./test_songs/song_smile/Voices.ogg",
-		"",
-		"./test_songs/song_endless/Voices.ogg",
-	}
+		voicePaths := []string{
+			"./test_songs/song_smile/Voices.ogg",
+			"",
+			"./test_songs/song_endless/Voices.ogg",
+		}
 
-	var songs []FnfSong
-	var instByteArrays [][]byte
-	var voiceByteArrays [][]byte
+		var songs []FnfSong
+		var instByteArrays [][]byte
+		var voiceByteArrays [][]byte
 
-	var err error
+		var err error
 
-	//load song
-	for _, path := range songJsonPaths{
-		jsonFile, err := os.Open(path)
+		//load song
+		for _, path := range songJsonPaths{
+			jsonFile, err := os.Open(path)
 
-		if err != nil {
+			if err != nil {
+				jsonFile.Close()
+				ErrorLogger.Fatal(err)
+			}
+
+			reader := bufio.NewReader(jsonFile)
+
+			parsedSong, err := ParseJsonToFnfSong(reader)
+			if err != nil {
+				jsonFile.Close()
+				ErrorLogger.Fatal(err)
+			}
+
+			songs = append(songs, parsedSong)
+
 			jsonFile.Close()
-			ErrorLogger.Fatal(err)
 		}
 
-		reader := bufio.NewReader(jsonFile)
-
-		parsedSong, err := ParseJsonToFnfSong(reader)
-		if err != nil {
-			jsonFile.Close()
-			ErrorLogger.Fatal(err)
-		}
-
-		songs = append(songs, parsedSong)
-
-		jsonFile.Close()
-	}
-
-	//load instByte
-	for _, path := range instPaths{
-		instBytes, err := LoadAudio(path)
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-
-		instByteArrays = append(instByteArrays, instBytes)
-	}
-
-
-	//load instByte
-	for i:=0; i<len(songs); i++{
-		song := songs[i]
-		if song.NeedsVoices{
-			voiceBytes, err := LoadAudio(voicePaths[i])
+		//load instByte
+		for _, path := range instPaths{
+			instBytes, err := LoadAudio(path)
 			if err != nil {
 				ErrorLogger.Fatal(err)
 			}
 
-			voiceByteArrays = append(voiceByteArrays, voiceBytes)
-		}else{
-			voiceByteArrays = append(voiceByteArrays, make([]byte, 0))
+			instByteArrays = append(instByteArrays, instBytes)
 		}
-	}
+
+
+		//load instByte
+		for i:=0; i<len(songs); i++{
+			song := songs[i]
+			if song.NeedsVoices{
+				voiceBytes, err := LoadAudio(voicePaths[i])
+				if err != nil {
+					ErrorLogger.Fatal(err)
+				}
+
+				voiceByteArrays = append(voiceByteArrays, voiceBytes)
+			}else{
+				voiceByteArrays = append(voiceByteArrays, make([]byte, 0))
+			}
+		}
 	*/
 
 	var err error
@@ -127,7 +127,7 @@ func main() {
 	rl.SetExitKey(rl.KeyNull)
 
 	err = InitAudio()
-	if err != nil{
+	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
 
@@ -138,9 +138,9 @@ func main() {
 
 	InitArrowTexture()
 
-	debugPrintAt := func(msg string, x, y int32){
-		rl.DrawText(msg, x+1, y+1, 17, Col(0.1,0.1,0.1,1).ToRlColor())
-		rl.DrawText(msg, x, y, 17, Col(1,1,1,1).ToRlColor())
+	debugPrintAt := func(msg string, x, y int32) {
+		rl.DrawText(msg, x+1, y+1, 17, Col(0.1, 0.1, 0.1, 1).ToRlColor())
+		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
 	}
 
 	drawGameScreen := false
@@ -148,26 +148,26 @@ func main() {
 	var instBytes []byte
 	var voiceBytes []byte
 
-	for !rl.WindowShouldClose(){
-		if rl.IsKeyPressed(rl.KeyF1){
+	for !rl.WindowShouldClose() {
+		if rl.IsKeyPressed(rl.KeyF1) {
 			GlobalDebugFlag = !GlobalDebugFlag
 		}
 
 		rl.BeginDrawing()
 
-		if drawGameScreen{
-			if gs.Update(){
+		if drawGameScreen {
+			if gs.Update() {
 				drawGameScreen = false
 			}
 			gs.Draw()
-		}else{
+		} else {
 			group, difficulty, selected := ss.Update()
 
-			if selected{
+			if selected {
 				// TODO : We probably should use same slice for this
 				// we don't need to create new buffer
 				instBytes, err = LoadAudio(group.InstPath)
-				if group.VoicePath != ""{
+				if group.VoicePath != "" {
 					voiceBytes, err = LoadAudio(group.VoicePath)
 				}
 
@@ -181,14 +181,13 @@ func main() {
 			ss.Draw()
 		}
 
-		if GlobalDebugFlag{
+		if GlobalDebugFlag {
 			fps := fmt.Sprintf("FPS : %v", rl.GetFPS())
 			debugPrintAt(fps, 10, 10)
 		}
 		rl.EndDrawing()
 	}
 }
-
 
 // TODO : support mp3
 func LoadAudio(path string) ([]byte, error) {
@@ -206,9 +205,9 @@ func LoadAudio(path string) ([]byte, error) {
 
 	var stream audioStream
 
-	if strings.HasSuffix(strings.ToLower(path), ".mp3"){
+	if strings.HasSuffix(strings.ToLower(path), ".mp3") {
 		stream, err = mp3.DecodeWithSampleRate(SampleRate, file)
-	}else{
+	} else {
 		stream, err = vorbis.DecodeWithSampleRate(SampleRate, file)
 	}
 

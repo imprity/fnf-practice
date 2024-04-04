@@ -1,8 +1,8 @@
 package main
 
 import (
-	"time"
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"time"
 )
 
 var keyRepeatMap = make(map[int32]time.Duration)
@@ -24,7 +24,7 @@ func HandleKeyRepeat(key int32, firstRate, repeatRate time.Duration) bool {
 		return true
 	} else {
 		now := GlobalTimerNow()
-		if now - time > repeatRate {
+		if now-time > repeatRate {
 			keyRepeatMap[key] = now
 			return true
 		}

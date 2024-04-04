@@ -14,7 +14,7 @@ const BytesPerSample = 4
 
 var TheContext *oto.Context
 
-func InitAudio() error{
+func InitAudio() error {
 	contextOp := oto.NewContextOptions{
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
@@ -27,7 +27,7 @@ func InitAudio() error{
 	var err error
 	TheContext, contextReady, err = oto.NewContext(&contextOp)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -38,16 +38,16 @@ func InitAudio() error{
 
 type VaryingSpeedPlayer struct {
 	IsReady bool
-	Stream *VaryingSpeedStream
-	Player *oto.Player
+	Stream  *VaryingSpeedStream
+	Player  *oto.Player
 }
 
-func NewVaryingSpeedPlayer() *VaryingSpeedPlayer{
+func NewVaryingSpeedPlayer() *VaryingSpeedPlayer {
 	return new(VaryingSpeedPlayer)
 }
 
-func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte){
-	if !vp.IsReady{
+func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte) {
+	if !vp.IsReady {
 		vp.Stream = NewVaryingSpeedStream(audioBytes, SampleRate)
 
 		player := TheContext.NewPlayer(vp.Stream)
@@ -62,7 +62,7 @@ func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte){
 		vp.Player = player
 
 		vp.IsReady = true
-	}else{
+	} else {
 		vp.Player.Pause()
 		vp.Stream.ChangeAudio(audioBytes)
 		vp.Player.Seek(0, io.SeekStart)
@@ -70,13 +70,14 @@ func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte){
 }
 
 // TODO : Position and SetPosition is fucked
-//        if you do something like
-//        for i:=0; i<1000; i++{
-//            pos := vp.Positon()
-//            vp.SetPosition(pos)
-//        }
 //
-//        position will change
+//	if you do something like
+//	for i:=0; i<1000; i++{
+//	    pos := vp.Positon()
+//	    vp.SetPosition(pos)
+//	}
+//
+//	position will change
 func (vp *VaryingSpeedPlayer) Position() time.Duration {
 	streamPos := vp.Stream.BytePosition()
 	buffSize := vp.Player.BufferedSize()
@@ -247,7 +248,6 @@ func (vs *VaryingSpeedStream) ChangeAudio(audioBytes []byte) {
 func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-
 
 	o := int64(offset) * BytesPerSample * int64(SampleRate) / int64(time.Second)
 

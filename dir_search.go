@@ -55,7 +55,7 @@ func StringDistance(str1, str2 []byte) int {
 // TODO : rather than dumping a log,
 // I think this should really return grouped path
 // like I walked these paths and parsed these paths and so on and so forth...
-func TryToFindSongs(root string, logger *log.Logger)[]FnfPathGroup{
+func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 
 	// ===============================================
 	// collect song json file and audio candidates
@@ -86,7 +86,7 @@ func TryToFindSongs(root string, logger *log.Logger)[]FnfPathGroup{
 	}
 
 	err := filepath.Walk(root, onVisit)
-	_= err
+	_ = err
 
 	// ==========================================================
 	// try to parse collected json files and see what sticks
@@ -258,16 +258,16 @@ func TryToFindSongs(root string, logger *log.Logger)[]FnfPathGroup{
 			for _, child := range audioDir.Children {
 				childName := strings.ToLower(filepath.Base(child))
 
-				if strings.HasSuffix(childName, ".ogg"){
+				if strings.HasSuffix(childName, ".ogg") {
 					if strings.Contains(childName, "inst") {
 						group.InstPath = child
 					} else if strings.Contains(childName, "voice") {
 						group.VoicePath = child
 					}
-				}else if strings.HasSuffix(childName, ".mp3"){
-					if strings.Contains(childName, "inst")  && group.InstPath == ""{
+				} else if strings.HasSuffix(childName, ".mp3") {
+					if strings.Contains(childName, "inst") && group.InstPath == "" {
 						group.InstPath = child
-					} else if strings.Contains(childName, "voice") && group.VoicePath == ""{
+					} else if strings.Contains(childName, "voice") && group.VoicePath == "" {
 						group.VoicePath = child
 					}
 				}
@@ -282,10 +282,10 @@ func TryToFindSongs(root string, logger *log.Logger)[]FnfPathGroup{
 	{
 		var goodPathGroups []FnfPathGroup
 
-		for _, group := range pathGroups{
-			if err := isPathGroupGood(group); err != nil{
+		for _, group := range pathGroups {
+			if err := isPathGroupGood(group); err != nil {
 				logger.Printf("group %v is bad : %v\n", group.SongName, err)
-			}else{
+			} else {
 				goodPathGroups = append(goodPathGroups, group)
 			}
 		}
@@ -320,28 +320,28 @@ func TryToFindSongs(root string, logger *log.Logger)[]FnfPathGroup{
 	return pathGroups
 }
 
-func isPathGroupGood(group FnfPathGroup) error{
+func isPathGroupGood(group FnfPathGroup) error {
 	// first check if it has any song
 	hasSong := false
 
-	for i := range len(group.Songs){
-		if group.HasSong[i]{
+	for i := range len(group.Songs) {
+		if group.HasSong[i] {
 			hasSong = true
 			break
 		}
 	}
 
-	if !hasSong{
+	if !hasSong {
 		return fmt.Errorf("group has no song")
 	}
-	
+
 	// check if song.SongName matches group.SongName
-	for i, song := range group.Songs{
-		if group.HasSong[i]{
-			if song.SongName != group.SongName{
-				return fmt.Errorf("%v song name %v != group song name %v", 
+	for i, song := range group.Songs {
+		if group.HasSong[i] {
+			if song.SongName != group.SongName {
+				return fmt.Errorf("%v song name %v != group song name %v",
 					DifficultyStrs[i],
-					song.SongName, 
+					song.SongName,
 					group.SongName)
 			}
 		}
@@ -350,16 +350,16 @@ func isPathGroupGood(group FnfPathGroup) error{
 
 	needsVoices := false
 
-	for i, song := range group.Songs{
-		if group.HasSong[i]{
-			if song.NeedsVoices{
+	for i, song := range group.Songs {
+		if group.HasSong[i] {
+			if song.NeedsVoices {
 				needsVoices = true
 				break
 			}
 		}
 	}
 
-	if needsVoices && group.VoicePath == ""{
+	if needsVoices && group.VoicePath == "" {
 		return fmt.Errorf("group %v needs voice but has no voice path", group.SongName)
 	}
 

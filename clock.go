@@ -6,10 +6,10 @@ import (
 
 var globalTimerStartedAt time.Time
 
-func GlobalTimerStart(){
+func GlobalTimerStart() {
 	globalTimerStartedAt = time.Now()
 }
 
-func GlobalTimerNow() time.Duration{
+func GlobalTimerNow() time.Duration {
 	return time.Since(globalTimerStartedAt)
 }

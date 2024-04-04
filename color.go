@@ -59,7 +59,7 @@ func (c Color) ToImageRGBA() color.RGBA {
 	return ToImageRGBA(c)
 }
 
-func ToRlColor(c Color) RlColor{
+func ToRlColor(c Color) RlColor {
 	return color.RGBA{
 		uint8(math.Round(c.R * 0xFF)),
 		uint8(math.Round(c.G * 0xFF)),
@@ -68,7 +68,7 @@ func ToRlColor(c Color) RlColor{
 	}
 }
 
-func (c Color)ToRlColor() RlColor{
+func (c Color) ToRlColor() RlColor {
 	return ToRlColor(c)
 }
 

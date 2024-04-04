@@ -1,11 +1,10 @@
 package main
 
 import (
-	"time"
 	"fmt"
+	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-
 	//"github.com/ebitengine/oto/v3"
 	//"sync"
 )
@@ -30,14 +29,14 @@ func UpdateNotesAndEvents(
 	notes []FnfNote,
 	event GameEvent,
 	wasKeyPressed [2][NoteDirSize]bool,
-	isKeyPressed  [2][NoteDirSize]bool,
+	isKeyPressed [2][NoteDirSize]bool,
 	audioPos time.Duration,
 	isPlayingAudio bool,
 	hitWindow time.Duration,
 	botPlay bool,
 	audioPosChanged bool,
 	noteIndexStart int,
-) GameEvent{
+) GameEvent {
 	event.AudioPosition = audioPos
 
 	// things to do when position is arbitrarily changed
@@ -52,7 +51,7 @@ func UpdateNotesAndEvents(
 			notes[index].IsHit = false
 			notes[index].HoldReleaseAt = 0
 			if !newNoteIndexSet &&
-			(note.IsInWindow(audioPos, hitWindow) || note.IsAudioPositionInDuration(audioPos, hitWindow)) {
+				(note.IsInWindow(audioPos, hitWindow) || note.IsAudioPositionInDuration(audioPos, hitWindow)) {
 				newNoteIndexSet = true
 				noteIndexStart = note.Index
 			}
@@ -83,19 +82,18 @@ func UpdateNotesAndEvents(
 		}
 	}
 
-
-	if isPlayingAudio{
+	if isPlayingAudio {
 
 		var isKeyJustPressed [2][NoteDirSize]bool
 		var isKeyJustReleased [2][NoteDirSize]bool
 
 		for player := 0; player <= 1; player++ {
 			for dir := range NoteDirSize {
-				if !wasKeyPressed[player][dir] && isKeyPressed[player][dir]{
+				if !wasKeyPressed[player][dir] && isKeyPressed[player][dir] {
 					isKeyJustPressed[player][dir] = true
 				}
 
-				if wasKeyPressed[player][dir] && !isKeyPressed[player][dir]{
+				if wasKeyPressed[player][dir] && !isKeyPressed[player][dir] {
 					isKeyJustReleased[player][dir] = true
 				}
 
@@ -167,8 +165,8 @@ func UpdateNotesAndEvents(
 			note := notes[noteIndexStart]
 			//check if user missed note
 			if !isKeyPressed[note.Player][note.Direction] &&
-			!note.IsMiss && !note.IsHit &&
-			note.StartsAt < audioPos-hitWindow/2 {
+				!note.IsMiss && !note.IsHit &&
+				note.StartsAt < audioPos-hitWindow/2 {
 
 				notes[note.Index].IsMiss = true
 				event.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
@@ -190,8 +188,8 @@ func UpdateNotesAndEvents(
 			}
 
 			if !newNoteIndexSet &&
-			(note.IsInWindow(audioPos, hitWindow) ||
-			note.IsAudioPositionInDuration(audioPos, hitWindow)) {
+				(note.IsInWindow(audioPos, hitWindow) ||
+					note.IsAudioPositionInDuration(audioPos, hitWindow)) {
 
 				newNoteIndexSet = true
 				newNoteIndexStart = note.Index
@@ -212,13 +210,13 @@ func GetKeyPressState(
 	noteIndexStart int,
 	audioPos time.Duration,
 	isBotPlay bool,
-) [2][NoteDirSize]bool{
+) [2][NoteDirSize]bool {
 
 	keyPressState := GetBotKeyPresseState(notes, noteIndexStart, audioPos, isBotPlay)
 
-	if !isBotPlay{
-		for dir, key := range NoteKeys{
-			if rl.IsKeyDown(key){
+	if !isBotPlay {
+		for dir, key := range NoteKeys {
+			if rl.IsKeyDown(key) {
 				keyPressState[0][dir] = true
 			}
 		}
