@@ -1,14 +1,12 @@
 package main
 
 import (
-	//"bytes"
 	_ "embed"
-	//"image/color"
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
-	//"sync"
 	"time"
+	"fmt"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -37,6 +35,11 @@ func InitArrowTexture(){
 }
 
 type GameScreen struct {
+	Songs   [DifficultySize]FnfSong
+	HasSong [DifficultySize]bool
+
+	SelectedDifficulty FnfDifficulty
+
 	Song FnfSong
 	IsSongLoaded bool
 
@@ -89,11 +92,26 @@ func NewGameScreen() *GameScreen{
 	return gs
 }
 
-// TODO : check if there's something wrong with song and audio bytes
-func (gs *GameScreen) LoadSong(song FnfSong, instBytes, voiceBytes []byte) error{
+func (gs *GameScreen) LoadSongs(
+	songs    [DifficultySize]FnfSong,
+	hasSong [DifficultySize]bool,
+	startingDifficulty FnfDifficulty,
+	instBytes, voiceBytes []byte,
+) {
 	gs.IsSongLoaded = true
 
-	gs.Song = song.Copy()
+	gs.HasSong = hasSong
+	gs.SelectedDifficulty = startingDifficulty
+
+	for i:=FnfDifficulty(0); i<DifficultySize; i++{
+		if hasSong[i]{
+			gs.Songs[i] = songs[i].Copy()
+		}
+	}
+
+	startingSong := songs[startingDifficulty].Copy()
+
+	gs.Song = startingSong.Copy()
 
 	if gs.InstPlayer.IsReady{
 		gs.InstPlayer.Pause()
@@ -130,8 +148,6 @@ func (gs *GameScreen) LoadSong(song FnfSong, instBytes, voiceBytes []byte) error
 	gs.audioPositionSafetyCounter = 0
 
 	gs.botPlay = false
-
-	return nil
 }
 
 func (gs *GameScreen) IsPlayingAudio() bool {
@@ -278,6 +294,63 @@ func (gs *GameScreen) Update() bool{
 			gs.PlayAudio()
 		}
 
+	}
+
+	//changing difficulty
+	prevDifficulty := gs.SelectedDifficulty
+
+	if rl.IsKeyPressed(rl.KeyW){
+		for gs.SelectedDifficulty+1 < DifficultySize {
+			gs.SelectedDifficulty ++
+			if gs.HasSong[gs.SelectedDifficulty]{
+				break
+			}
+		}
+	}
+
+	if rl.IsKeyPressed(rl.KeyQ){
+		for gs.SelectedDifficulty - 1>= 0 {
+			gs.SelectedDifficulty --
+			if gs.HasSong[gs.SelectedDifficulty]{
+				break
+			}
+		}
+	}
+
+	if prevDifficulty != gs.SelectedDifficulty{
+		if gs.HasSong[gs.SelectedDifficulty]{
+			gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+
+			if gs.InstPlayer.IsReady{
+				gs.InstPlayer.Pause()
+			}
+
+			if gs.VoicePlayer.IsReady{
+				gs.VoicePlayer.Pause()
+			}
+
+			gs.InstPlayer.SetSpeed(1)
+			if gs.Song.NeedsVoices{
+				gs.VoicePlayer.SetSpeed(1)
+			}
+
+			gs.Zoom = 1.0
+
+			// clear input state
+			for player:=0; player <= 1; player++{
+				for dir := NoteDir(0); dir < NoteDirSize; dir++{
+					gs.wasKeyPressed[player][dir] = false
+				}
+			}
+
+			gs.Event = GameEvent{}
+
+			gs.noteIndexStart = 0
+
+			gs.audioPositionSafetyCounter = 0
+		}else{			
+			gs.SelectedDifficulty = prevDifficulty
+		}
 	}
 
 	// set bot play
@@ -625,4 +698,24 @@ func (gs *GameScreen) Draw() {
 
 		}
 	}
+
+	// ============================================
+	// draw debug msg
+	// ============================================
+
+	const format = "" + 
+		"speed : %v\n" +
+		"zoom  : %v\n" +
+		"\n"+
+		"bot play : %v\n" +
+		"\n"+
+		"difficulty : %v\n"
+
+	msg := fmt.Sprintf(format,
+		gs.AudioSpeed(),
+		gs.Zoom,
+		gs.IsBotPlay(),
+		DifficultyStrs[gs.SelectedDifficulty])
+
+	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, RlColor{255,255,255,255})
 }

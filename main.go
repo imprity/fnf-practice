@@ -147,7 +147,6 @@ func main() {
 
 	var instBytes []byte
 	var voiceBytes []byte
-	var song FnfSong
 
 	for !rl.WindowShouldClose(){
 		if rl.IsKeyPressed(rl.KeyF1){
@@ -172,13 +171,11 @@ func main() {
 					voiceBytes, err = LoadAudio(group.VoicePath)
 				}
 
-				song = group.Songs[difficulty]
+				// TODO : dosomething with this error
+
 				drawGameScreen = true
 
-				// TODO : handle this properly, don't just fucking crash
-				if err := gs.LoadSong(song, instBytes, voiceBytes); err != nil{
-					ErrorLogger.Fatal(err)
-				}
+				gs.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
 			}
 
 			ss.Draw()
