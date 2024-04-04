@@ -77,6 +77,10 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error){
 		}
 	}
 
+	if len(parsedSong.Notes) <= 0{
+		return parsedSong, fmt.Errorf("ParseJsonToFnfSong : song contains no notes")
+	}
+
 	// we sort the notes just in case
 	sort.Slice(parsedSong.Notes, func(n1, n2 int) bool {
 		return parsedSong.Notes[n1].StartsAt < parsedSong.Notes[n2].StartsAt

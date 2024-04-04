@@ -13,10 +13,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"bufio"
+	"strings"
+	//"bufio"
 	//"sync"
 
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -34,8 +36,7 @@ var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile
 
 var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
 
-func main2() {
-//func main() {
+func main() {
 	flag.Parse()
 
 	if *FlagPProf {
@@ -44,6 +45,7 @@ func main2() {
 		}()
 	}
 
+	/*
 	songJsonPaths := []string{
 		"./test_songs/song_smile/smile-hard.json",
 		"./test_songs/song_tutorial/tutorial.json",
@@ -115,9 +117,14 @@ func main2() {
 			voiceByteArrays = append(voiceByteArrays, make([]byte, 0))
 		}
 	}
+	*/
+
+	var err error
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
+
+	rl.SetExitKey(rl.KeyNull)
 
 	err = InitAudio()
 	if err != nil{
@@ -127,8 +134,7 @@ func main2() {
 	GlobalTimerStart()
 
 	gs := NewGameScreen()
-
-	songIndex := 0
+	ss := NewSelectScreen()
 
 	InitArrowTexture()
 
@@ -137,28 +143,50 @@ func main2() {
 		rl.DrawText(msg, x, y, 17, Col(1,1,1,1).ToRlColor())
 	}
 
+	drawGameScreen := false
+
+	var instBytes []byte
+	var voiceBytes []byte
+	var song FnfSong
+
 	for !rl.WindowShouldClose(){
 		if rl.IsKeyPressed(rl.KeyF1){
 			GlobalDebugFlag = !GlobalDebugFlag
 		}
 
-		if rl.IsKeyPressed(rl.KeyF2){
-			songIndex ++
-			if songIndex >= len(songs){
-				songIndex = 0
-			}
-			gs.LoadSong(songs[songIndex], instByteArrays[songIndex], voiceByteArrays[songIndex])
-		}
-
 		rl.BeginDrawing()
-		gs.Update()
-		gs.Draw()
+
+		if drawGameScreen{
+			if gs.Update(){
+				drawGameScreen = false
+			}
+			gs.Draw()
+		}else{
+			group, difficulty, selected := ss.Update()
+
+			if selected{
+				// TODO : We probably should use same slice for this
+				// we don't need to create new buffer
+				instBytes, err = LoadAudio(group.InstPath)
+				if group.VoicePath != ""{
+					voiceBytes, err = LoadAudio(group.VoicePath)
+				}
+
+				song = group.Songs[difficulty]
+				drawGameScreen = true
+
+				// TODO : handle this properly, don't just fucking crash
+				if err := gs.LoadSong(song, instBytes, voiceBytes); err != nil{
+					ErrorLogger.Fatal(err)
+				}
+			}
+
+			ss.Draw()
+		}
 
 		if GlobalDebugFlag{
 			fps := fmt.Sprintf("FPS : %v", rl.GetFPS())
-			songPath := songJsonPaths[songIndex]
 			debugPrintAt(fps, 10, 10)
-			debugPrintAt(songPath, 10, 25)
 		}
 		rl.EndDrawing()
 	}
@@ -174,7 +202,19 @@ func LoadAudio(path string) ([]byte, error) {
 		return nil, err
 	}
 
-	stream, err := vorbis.DecodeWithSampleRate(SampleRate, file)
+	type audioStream interface {
+		io.ReadSeeker
+		Length() int64
+	}
+
+	var stream audioStream
+
+	if strings.HasSuffix(strings.ToLower(path), ".mp3"){
+		stream, err = mp3.DecodeWithSampleRate(SampleRate, file)
+	}else{
+		stream, err = vorbis.DecodeWithSampleRate(SampleRate, file)
+	}
+
 	if err != nil {
 		return nil, err
 	}

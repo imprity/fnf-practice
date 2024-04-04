@@ -4,28 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 )
-
-const (
-	DifficultyEasy = iota
-	DifficultyNormal
-	DifficultyHard
-	DifficultySize
-)
-
-type FnfPathGroup struct {
-	SongName  string
-	Songs     [3]FnfSong
-	SongPaths [3]string
-	HasSong   [3]bool
-
-	InstPath  string
-	VoicePath string
-}
 
 // NOTE : This doesn't properly work on multibyte characters (eg: like koreans)
 // and pretty slow, but for what we are doing, I think this is fine
@@ -68,11 +52,10 @@ func StringDistance(str1, str2 []byte) int {
 	return matrix[0]
 }
 
-func main() {
-	if len(os.Args) <= 1 {
-		fmt.Printf("please provide directory to walk")
-		return
-	}
+// TODO : rather than dumping a log,
+// I think this should really return grouped path
+// like I walked these paths and parsed these paths and so on and so forth...
+func TryToFindSongs(root string, logger *log.Logger)[]FnfPathGroup{
 
 	// ===============================================
 	// collect song json file and audio candidates
@@ -83,7 +66,7 @@ func main() {
 	jsonPaths := make([]string, 0)
 
 	onVisit := func(path string, f fs.FileInfo, err error) error {
-		//fmt.Printf("vsited : %v\n", path)
+		logger.Printf("visited %v\n", path)
 
 		if err != nil {
 			failedDirectories[f] = err
@@ -102,21 +85,8 @@ func main() {
 		return nil
 	}
 
-	root := os.Args[1]
 	err := filepath.Walk(root, onVisit)
-	fmt.Printf("filepath.Walk() returned %v\n", err)
-
-	fmt.Printf("Audio count : %v\n", len(audioPaths))
-
-	for _, path := range audioPaths {
-		fmt.Printf("-    %v\n", path)
-	}
-
-	fmt.Printf("Json count : %v\n", len(jsonPaths))
-
-	for _, path := range jsonPaths {
-		fmt.Printf("-    %v\n", path)
-	}
+	_= err
 
 	// ==========================================================
 	// try to parse collected json files and see what sticks
@@ -131,26 +101,21 @@ func main() {
 		if err != nil {
 			pathToParseErrors[path] = err
 		} else {
-			if len(song.Notes) > 0 {
-				pathToSong[path] = song
-			} else {
-				err = fmt.Errorf("song contains no notes")
-				pathToParseErrors[path] = err
-			}
+			pathToSong[path] = song
 		}
 	}
 
-	fmt.Printf("%v of %v parsed\n", len(pathToSong), len(jsonPaths))
+	logger.Printf("%v of %v parsed\n", len(pathToSong), len(jsonPaths))
 
 	for path, song := range pathToSong {
-		fmt.Printf("-    path : %v\n", path)
-		fmt.Printf("-    name : %v\n", song.SongName)
+		logger.Printf("-    path : %v\n", path)
+		logger.Printf("-    name : %v\n", song.SongName)
 	}
 
-	fmt.Printf("parse errors %v:\n", len(pathToParseErrors))
+	logger.Printf("parse errors %v:\n", len(pathToParseErrors))
 	for path, err := range pathToParseErrors {
-		fmt.Printf("-    path  : %v\n", path)
-		fmt.Printf("-    error : %v\n", err)
+		logger.Printf("-    path  : %v\n", path)
+		logger.Printf("-    error : %v\n", err)
 	}
 
 	// ==========================================================
@@ -165,9 +130,9 @@ func main() {
 		}
 	}
 
-	fmt.Printf("song names %v:\n", len(songNames))
+	logger.Printf("song names %v:\n", len(songNames))
 	for _, name := range songNames {
-		fmt.Printf("-    name  : %v\n", name)
+		logger.Printf("-    name  : %v\n", name)
 	}
 
 	// ==========================================================
@@ -313,29 +278,92 @@ func main() {
 		pathGroups = append(pathGroups, group)
 	}
 
+	//check if pathgroup is good
+	{
+		var goodPathGroups []FnfPathGroup
+
+		for _, group := range pathGroups{
+			if err := isPathGroupGood(group); err != nil{
+				logger.Printf("group %v is bad : %v\n", group.SongName, err)
+			}else{
+				goodPathGroups = append(goodPathGroups, group)
+			}
+		}
+
+		pathGroups = goodPathGroups
+	}
+
 	printGroup := func(group FnfPathGroup) {
-		fmt.Printf("%v :\n", group.SongName)
-		fmt.Printf("difficulties : \n")
-		for difficulty := 0; difficulty < DifficultySize; difficulty++ {
+		logger.Printf("%v :\n", group.SongName)
+		logger.Printf("difficulties : \n")
+		for difficulty := FnfDifficulty(0); difficulty < DifficultySize; difficulty++ {
 			if group.HasSong[difficulty] {
 				switch difficulty {
 				case DifficultyEasy:
-					fmt.Printf("    easy   - %v\n", group.SongPaths[difficulty])
+					logger.Printf("    easy   - %v\n", group.SongPaths[difficulty])
 				case DifficultyNormal:
-					fmt.Printf("    normal - %v\n", group.SongPaths[difficulty])
+					logger.Printf("    normal - %v\n", group.SongPaths[difficulty])
 				case DifficultyHard:
-					fmt.Printf("    hard   - %v\n", group.SongPaths[difficulty])
+					logger.Printf("    hard   - %v\n", group.SongPaths[difficulty])
 				}
 			}
 		}
-		fmt.Printf("inst path  : %v\n", group.InstPath)
-		fmt.Printf("voice path : %v\n", group.VoicePath)
+		logger.Printf("inst path  : %v\n", group.InstPath)
+		logger.Printf("voice path : %v\n", group.VoicePath)
 	}
 
 	for _, group := range pathGroups {
-		fmt.Printf("\n")
+		logger.Printf("\n")
 		printGroup(group)
 	}
+
+	return pathGroups
+}
+
+func isPathGroupGood(group FnfPathGroup) error{
+	// first check if it has any song
+	hasSong := false
+
+	for i := range len(group.Songs){
+		if group.HasSong[i]{
+			hasSong = true
+			break
+		}
+	}
+
+	if !hasSong{
+		return fmt.Errorf("group has no song")
+	}
+	
+	// check if song.SongName matches group.SongName
+	for i, song := range group.Songs{
+		if group.HasSong[i]{
+			if song.SongName != group.SongName{
+				return fmt.Errorf("%v song name %v != group song name %v", 
+					DifficultyStrs[i],
+					song.SongName, 
+					group.SongName)
+			}
+		}
+	}
+	// if song usese voices, group needs a voice path
+
+	needsVoices := false
+
+	for i, song := range group.Songs{
+		if group.HasSong[i]{
+			if song.NeedsVoices{
+				needsVoices = true
+				break
+			}
+		}
+	}
+
+	if needsVoices && group.VoicePath == ""{
+		return fmt.Errorf("group %v needs voice but has no voice path", group.SongName)
+	}
+
+	return nil
 }
 
 func tryParseFile(path string) (FnfSong, error) {

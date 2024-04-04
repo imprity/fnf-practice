@@ -161,3 +161,29 @@ func (fs FnfSong) Copy() FnfSong{
 
 	return copy
 }
+
+type FnfDifficulty int
+
+const (
+	DifficultyEasy FnfDifficulty = iota
+	DifficultyNormal
+	DifficultyHard
+	DifficultySize
+)
+
+var DifficultyStrs [DifficultySize]string = [DifficultySize]string{
+	"easy",
+	"normal",
+	"hard",
+}
+
+type FnfPathGroup struct {
+	SongName  string
+
+	Songs     [DifficultySize]FnfSong
+	SongPaths [DifficultySize]string
+	HasSong   [DifficultySize]bool
+
+	InstPath  string
+	VoicePath string
+}

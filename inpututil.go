@@ -13,14 +13,14 @@ func HandleKeyRepeat(key int32, firstRate, repeatRate time.Duration) bool {
 	}
 
 	if rl.IsKeyPressed(key) {
-		keyRepeatMap[key] = GlobalTimerNow()
+		keyRepeatMap[key] = GlobalTimerNow() + firstRate
 		return true
 	}
 
 	time, ok := keyRepeatMap[key]
 
 	if !ok {
-		keyRepeatMap[key] = GlobalTimerNow()
+		keyRepeatMap[key] = GlobalTimerNow() + firstRate
 		return true
 	} else {
 		now := GlobalTimerNow()

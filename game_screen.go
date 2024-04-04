@@ -250,10 +250,22 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 
-func (gs *GameScreen) Update() error {
-	if !gs.IsSongLoaded{
-		return nil
+// returns true when it wants to quit
+func (gs *GameScreen) Update() bool{
+	// handle quit
+	if rl.IsKeyPressed(rl.KeyEscape) {
+		if gs.IsSongLoaded{
+			gs.PauseAudio()
+		}
+
+		return true
 	}
+
+	// is song is not loaded then don't do anything
+	if !gs.IsSongLoaded{
+		return false
+	}
+
 	// =============================================
 	// handle user input
 	// =============================================
@@ -386,7 +398,7 @@ func (gs *GameScreen) Update() error {
 	)
 	gs.wasKeyPressed = isKeyPressed
 
-	return nil
+	return false
 }
 
 func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Color) {
