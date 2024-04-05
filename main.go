@@ -26,8 +26,8 @@ import (
 var _ = fmt.Print
 
 const (
-	SCREEN_WIDTH  = 1200
-	SCREEN_HEIGHT = 800
+	SCREEN_WIDTH  = 1280
+	SCREEN_HEIGHT = 720
 )
 
 var GlobalDebugFlag bool

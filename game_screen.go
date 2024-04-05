@@ -11,27 +11,45 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-//go:embed arrow_outer.png
-var arrowOuterBytes []byte
+//go:embed assets/arrows_outer.png
+var arrowsOuterBytes []byte
 
-//go:embed arrow_inner.png
-var arrowInnerBytes []byte
+//go:embed assets/arrows_inner.png
+var arrowsInnerBytes []byte
 
-var ArrowOuterTex rl.Texture2D
-var ArrowInnerTex rl.Texture2D
+var ArrowsOuterTex rl.Texture2D
+var ArrowsInnerTex rl.Texture2D
+
+var ArrowsRects [NoteDirSize]rl.Rectangle
 
 func InitArrowTexture() {
-	outerImg := rl.LoadImageFromMemory(".png", arrowOuterBytes, int32(len(arrowOuterBytes)))
-	innerImg := rl.LoadImageFromMemory(".png", arrowInnerBytes, int32(len(arrowInnerBytes)))
+	outerImg := rl.LoadImageFromMemory(".png", arrowsOuterBytes, int32(len(arrowsOuterBytes)))
+	innerImg := rl.LoadImageFromMemory(".png", arrowsInnerBytes, int32(len(arrowsInnerBytes)))
 
 	rl.ImageAlphaPremultiply(outerImg)
 	rl.ImageAlphaPremultiply(innerImg)
 
-	ArrowInnerTex = rl.LoadTextureFromImage(innerImg)
-	ArrowOuterTex = rl.LoadTextureFromImage(outerImg)
+	ArrowsOuterTex = rl.LoadTextureFromImage(outerImg)
+	ArrowsInnerTex = rl.LoadTextureFromImage(innerImg)
 
-	rl.SetTextureFilter(ArrowInnerTex, rl.FilterTrilinear)
-	rl.SetTextureFilter(ArrowOuterTex, rl.FilterTrilinear)
+	rl.SetTextureFilter(ArrowsOuterTex, rl.FilterTrilinear)
+	rl.SetTextureFilter(ArrowsInnerTex, rl.FilterTrilinear)
+
+	if outerImg.Width != innerImg.Width || outerImg.Height != innerImg.Height{
+		ErrorLogger.Fatal("Arrow inner and outer images should have same size")
+	}
+
+	// NOTE : we will assume that we can get arrow rects
+	// by just devding the width by 4
+
+	width := float32(ArrowsOuterTex.Width) / 4.0
+
+	for i:=NoteDir(0); i<NoteDirSize; i++{
+		x := float32(i) * width
+		ArrowsRects[i] = rl.Rectangle{
+			x, 0, width, float32(ArrowsOuterTex.Height),
+		}
+	}
 }
 
 type GameUpdateResult struct{
@@ -85,14 +103,15 @@ func NewGameScreen() *GameScreen {
 	gs := new(GameScreen)
 	gs.Zoom = 1.0
 
-	gs.NotesMarginLeft = 90
-	gs.NotesMarginRight = 90
+	// NOTE : these positions are calculated based on note center!! (I know it's bad...)
+	gs.NotesMarginLeft = 145
+	gs.NotesMarginRight = 145
 
 	gs.NotesMarginBottom = 100
 
-	gs.NotesInterval = 120
+	gs.NotesInterval = 113
 
-	gs.NotesSize = 110
+	gs.NotesSize = 112
 
 	gs.HitWindow = time.Millisecond * 135 * 2
 
@@ -510,44 +529,24 @@ func (gs *GameScreen) Update() UpdateResult{
 	}
 }
 
-func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Color) {
+func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
 	rl.SetBlendMode(int32(rl.BlendAlphaPremultiply))
 
-	noteRotations := [4]float32{
-		math.Pi * -0.5,
-		math.Pi * 0,
-		math.Pi * -1.0,
-		math.Pi * 0.5,
-	}
+	texW := ArrowsRects[0].Width
+	texH := ArrowsRects[0].Height
 
-	outerMat := rl.MatrixTranslate(
-		-float32(ArrowOuterTex.Width)*0.5,
-		-float32(ArrowOuterTex.Height)*0.5,
-		0,
-	)
-
-	innerMat := rl.MatrixTranslate(
-		-float32(ArrowInnerTex.Width)*0.5,
-		-float32(ArrowInnerTex.Height)*0.5,
-		0,
-	)
-
-	scale := arrowSize / float32(max(ArrowOuterTex.Width, ArrowOuterTex.Height))
+	scale := arrowHeight / texH
 	mat := rl.MatrixScale(scale, scale, scale)
 
 	mat = rl.MatrixMultiply(mat,
-		rl.MatrixRotateZ(noteRotations[dir]),
+		rl.MatrixTranslate(
+			x - texW * scale * 0.5,
+			y - texH * scale * 0.5,
+			0),
 	)
 
-	mat = rl.MatrixMultiply(mat,
-		rl.MatrixTranslate(x, y, 0),
-	)
-
-	outerMat = rl.MatrixMultiply(outerMat, mat)
-	innerMat = rl.MatrixMultiply(innerMat, mat)
-
-	DrawTextureTransfromed(ArrowOuterTex, outerMat, stroke)
-	DrawTextureTransfromed(ArrowInnerTex, innerMat, fill)
+	DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill)
+	DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke)
 
 	rl.EndBlendMode()
 }
