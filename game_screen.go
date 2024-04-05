@@ -17,8 +17,8 @@ var arrowOuterBytes []byte
 //go:embed arrow_inner.png
 var arrowInnerBytes []byte
 
-var ArrowOuterImg rl.Texture2D
-var ArrowInnerImg rl.Texture2D
+var ArrowOuterTex rl.Texture2D
+var ArrowInnerTex rl.Texture2D
 
 func InitArrowTexture() {
 	outerImg := rl.LoadImageFromMemory(".png", arrowOuterBytes, int32(len(arrowOuterBytes)))
@@ -27,11 +27,11 @@ func InitArrowTexture() {
 	rl.ImageAlphaPremultiply(outerImg)
 	rl.ImageAlphaPremultiply(innerImg)
 
-	ArrowInnerImg = rl.LoadTextureFromImage(innerImg)
-	ArrowOuterImg = rl.LoadTextureFromImage(outerImg)
+	ArrowInnerTex = rl.LoadTextureFromImage(innerImg)
+	ArrowOuterTex = rl.LoadTextureFromImage(outerImg)
 
-	rl.SetTextureFilter(ArrowInnerImg, rl.FilterTrilinear)
-	rl.SetTextureFilter(ArrowOuterImg, rl.FilterTrilinear)
+	rl.SetTextureFilter(ArrowInnerTex, rl.FilterTrilinear)
+	rl.SetTextureFilter(ArrowOuterTex, rl.FilterTrilinear)
 }
 
 type GameScreen struct {
@@ -507,18 +507,18 @@ func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Co
 	}
 
 	outerMat := rl.MatrixTranslate(
-		-float32(ArrowOuterImg.Width)*0.5,
-		-float32(ArrowOuterImg.Height)*0.5,
+		-float32(ArrowOuterTex.Width)*0.5,
+		-float32(ArrowOuterTex.Height)*0.5,
 		0,
 	)
 
 	innerMat := rl.MatrixTranslate(
-		-float32(ArrowInnerImg.Width)*0.5,
-		-float32(ArrowInnerImg.Height)*0.5,
+		-float32(ArrowInnerTex.Width)*0.5,
+		-float32(ArrowInnerTex.Height)*0.5,
 		0,
 	)
 
-	scale := arrowSize / float32(max(ArrowOuterImg.Width, ArrowOuterImg.Height))
+	scale := arrowSize / float32(max(ArrowOuterTex.Width, ArrowOuterTex.Height))
 	mat := rl.MatrixScale(scale, scale, scale)
 
 	mat = rl.MatrixMultiply(mat,
@@ -532,8 +532,8 @@ func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Co
 	outerMat = rl.MatrixMultiply(outerMat, mat)
 	innerMat = rl.MatrixMultiply(innerMat, mat)
 
-	DrawTextureTransfromed(ArrowOuterImg, outerMat, stroke)
-	DrawTextureTransfromed(ArrowInnerImg, innerMat, fill)
+	DrawTextureTransfromed(ArrowOuterTex, outerMat, stroke)
+	DrawTextureTransfromed(ArrowInnerTex, innerMat, fill)
 
 	rl.EndBlendMode()
 }
