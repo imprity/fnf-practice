@@ -135,21 +135,7 @@ func (gs *GameScreen) LoadSongs(
 
 	gs.Zoom = 1.0
 
-	// clear input state
-	for player := 0; player <= 1; player++ {
-		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			gs.wasKeyPressed[player][dir] = false
-		}
-	}
-
-	gs.Event = GameEvent{}
-
-	gs.noteIndexStart = 0
-	gs.audioPosition = 0
-
-	gs.audioPositionSafetyCounter = 0
-
-	gs.botPlay = false
+	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
 func (gs *GameScreen) IsPlayingAudio() bool {
@@ -167,7 +153,7 @@ func (gs *GameScreen) PlayAudio() {
 	}
 
 	gs.InstPlayer.Play()
-	if gs.Song.NeedsVoices {
+	if gs.VoicePlayer.IsReady && gs.Song.NeedsVoices {
 		gs.VoicePlayer.Play()
 	}
 }
@@ -178,8 +164,10 @@ func (gs *GameScreen) PauseAudio() {
 		return
 	}
 
-	gs.InstPlayer.Pause()
-	if gs.Song.NeedsVoices {
+	if gs.InstPlayer.IsReady{
+		gs.InstPlayer.Pause()
+	}
+	if gs.VoicePlayer.IsReady{
 		gs.VoicePlayer.Pause()
 	}
 }
@@ -200,8 +188,11 @@ func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 	}
 
 	gs.audioPosition = at
-	gs.InstPlayer.SetPosition(at)
-	if gs.Song.NeedsVoices {
+
+	if gs.InstPlayer.IsReady{
+		gs.InstPlayer.SetPosition(at)
+	}
+	if gs.VoicePlayer.IsReady{
 		gs.VoicePlayer.SetPosition(at)
 	}
 }
@@ -221,8 +212,10 @@ func (gs *GameScreen) SetAudioSpeed(speed float64) {
 		return
 	}
 
-	gs.InstPlayer.SetSpeed(speed)
-	if gs.Song.NeedsVoices {
+	if gs.InstPlayer.IsReady{
+		gs.InstPlayer.SetSpeed(speed)
+	}
+	if gs.VoicePlayer.IsReady{
 		gs.VoicePlayer.SetSpeed(speed)
 	}
 }
@@ -235,8 +228,25 @@ func (gs *GameScreen) SetBotPlay(bot bool) {
 	gs.botPlay = bot
 }
 
+func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
+	for player := 0; player <= 1; player++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			gs.wasKeyPressed[player][dir] = false
+		}
+	}
+
+	gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+
+	gs.Event = GameEvent{}
+
+	gs.noteIndexStart = 0
+	gs.audioPosition = 0
+
+	gs.audioPositionSafetyCounter = 0
+}
+
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
-	const pt = 0.5
+	const pt = 0.5 // TODO : this pt should be defined in app
 
 	var pixelsForMillis float32
 	zoomInverse := 1.0 / gs.Zoom
@@ -322,33 +332,9 @@ func (gs *GameScreen) Update() bool {
 		if gs.HasSong[gs.SelectedDifficulty] {
 			gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-			if gs.InstPlayer.IsReady {
-				gs.InstPlayer.Pause()
-			}
+			gs.PauseAudio()
 
-			if gs.VoicePlayer.IsReady {
-				gs.VoicePlayer.Pause()
-			}
-
-			gs.InstPlayer.SetSpeed(1)
-			if gs.Song.NeedsVoices {
-				gs.VoicePlayer.SetSpeed(1)
-			}
-
-			gs.Zoom = 1.0
-
-			// clear input state
-			for player := 0; player <= 1; player++ {
-				for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-					gs.wasKeyPressed[player][dir] = false
-				}
-			}
-
-			gs.Event = GameEvent{}
-
-			gs.noteIndexStart = 0
-
-			gs.audioPositionSafetyCounter = 0
+			gs.ResetStatesThatTracksGamePlayChanges()
 		} else {
 			gs.SelectedDifficulty = prevDifficulty
 		}
@@ -430,6 +416,7 @@ func (gs *GameScreen) Update() bool {
 				}
 			}
 			gs.SetAudioPosition(pos)
+			gs.ResetStatesThatTracksGamePlayChanges()
 		}
 
 		// if we changed position while playing the song we pause the song
@@ -493,7 +480,7 @@ func (gs *GameScreen) Update() bool {
 
 	isKeyPressed := GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, audioPos, gs.botPlay)
 
-	gs.Event = UpdateNotesAndEvents(
+	gs.Event, gs.noteIndexStart = UpdateNotesAndEvents(
 		gs.Song.Notes,
 		gs.Event,
 		gs.wasKeyPressed,
@@ -502,7 +489,6 @@ func (gs *GameScreen) Update() bool {
 		gs.InstPlayer.IsPlaying(),
 		gs.HitWindow,
 		gs.botPlay,
-		changedPosition,
 		gs.noteIndexStart,
 	)
 	gs.wasKeyPressed = isKeyPressed

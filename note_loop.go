@@ -34,53 +34,11 @@ func UpdateNotesAndEvents(
 	isPlayingAudio bool,
 	hitWindow time.Duration,
 	botPlay bool,
-	audioPosChanged bool,
 	noteIndexStart int,
-) GameEvent {
+) (GameEvent, int) {
 	event.AudioPosition = audioPos
 
-	// things to do when position is arbitrarily changed
-	if audioPosChanged {
-		audioPosChanged = false
-
-		newNoteIndexSet := false
-
-		// reset note state
-		for index, note := range notes {
-			notes[index].IsMiss = false
-			notes[index].IsHit = false
-			notes[index].HoldReleaseAt = 0
-			if !newNoteIndexSet &&
-				(note.IsInWindow(audioPos, hitWindow) || note.IsAudioPositionInDuration(audioPos, hitWindow)) {
-				newNoteIndexSet = true
-				noteIndexStart = note.Index
-			}
-		}
-
-		// if position is changed
-		// for bots ignore the old input state set it all to not pressed
-		botStart := 0
-		if !botPlay {
-			botStart = 1
-		}
-
-		for bot := botStart; bot <= 1; bot++ {
-			for dir := range NoteDirSize {
-				wasKeyPressed[bot][dir] = false
-			}
-		}
-
-		// reset event state
-		for player := 0; player <= 1; player++ {
-			for dir := range NoteDirSize {
-				event.IsHoldingNote[player][dir] = false
-				event.IsHoldingKey[player][dir] = false
-				event.IsHoldingBadKey[player][dir] = false
-
-				event.NoteMissAt[player][dir] = 0
-			}
-		}
-	}
+	newNoteIndexStart := noteIndexStart
 
 	if isPlayingAudio {
 
@@ -158,7 +116,6 @@ func UpdateNotesAndEvents(
 			}
 		}
 
-		newNoteIndexStart := noteIndexStart
 		newNoteIndexSet := false
 
 		for ; noteIndexStart < len(notes); noteIndexStart++ {
@@ -202,7 +159,7 @@ func UpdateNotesAndEvents(
 		noteIndexStart = newNoteIndexStart
 	}
 
-	return event
+	return event, newNoteIndexStart
 }
 
 func GetKeyPressState(
