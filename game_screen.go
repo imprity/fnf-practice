@@ -34,6 +34,14 @@ func InitArrowTexture() {
 	rl.SetTextureFilter(ArrowOuterTex, rl.FilterTrilinear)
 }
 
+type GameUpdateResult struct{
+	Quit bool
+}
+
+func (gr GameUpdateResult) DoQuit() bool{
+	return gr.Quit
+}
+
 type GameScreen struct {
 	Songs   [DifficultySize]FnfSong
 	HasSong [DifficultySize]bool
@@ -278,19 +286,23 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 // returns true when it wants to quit
-func (gs *GameScreen) Update() bool {
+func (gs *GameScreen) Update() UpdateResult{
 	// handle quit
 	if rl.IsKeyPressed(rl.KeyEscape) {
 		if gs.IsSongLoaded {
 			gs.PauseAudio()
 		}
 
-		return true
+		return GameUpdateResult{
+			Quit : true,
+		}
 	}
 
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
-		return false
+		return GameUpdateResult{
+			Quit : false,
+		}
 	}
 
 	// =============================================
@@ -493,7 +505,9 @@ func (gs *GameScreen) Update() bool {
 	)
 	gs.wasKeyPressed = isKeyPressed
 
-	return false
+	return GameUpdateResult{
+		Quit : false,
+	}
 }
 
 func DrawNoteArrow(x, y float32, arrowSize float32, dir NoteDir, fill, stroke Color) {

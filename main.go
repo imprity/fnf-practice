@@ -62,14 +62,14 @@ func main() {
 	gs := NewGameScreen()
 	ss := NewSelectScreen()
 
+	var screen Screen = ss
+
 	InitArrowTexture()
 
 	debugPrintAt := func(msg string, x, y int32) {
 		rl.DrawText(msg, x+1, y+1, 17, Col(0.1, 0.1, 0.1, 1).ToRlColor())
 		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
 	}
-
-	drawGameScreen := false
 
 	var instBytes []byte
 	var voiceBytes []byte
@@ -81,31 +81,31 @@ func main() {
 
 		rl.BeginDrawing()
 
-		if drawGameScreen {
-			if gs.Update() {
-				drawGameScreen = false
-			}
-			gs.Draw()
-		} else {
-			group, difficulty, selected := ss.Update()
+		updateResult := screen.Update()
 
-			if selected {
+		if updateResult.DoQuit(){
+			switch updateResult.(type){
+			case GameUpdateResult:
+				screen = ss
+			case SelectUpdateResult:
+				sResult := updateResult.(SelectUpdateResult)
+				group := sResult.PathGroup
+				difficulty := sResult.Difficulty
+
 				// TODO : We probably should use same slice for this
 				// we don't need to create new buffer
+				// TODO : dosomething with this error
 				instBytes, err = LoadAudio(group.InstPath)
 				if group.VoicePath != "" {
 					voiceBytes, err = LoadAudio(group.VoicePath)
 				}
 
-				// TODO : dosomething with this error
-
-				drawGameScreen = true
-
 				gs.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
+				screen = gs
 			}
-
-			ss.Draw()
 		}
+
+		screen.Draw()
 
 		if GlobalDebugFlag {
 			fps := fmt.Sprintf("FPS : %v", rl.GetFPS())

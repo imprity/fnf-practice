@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+type SelectUpdateResult struct{
+	Quit bool
+	PathGroup FnfPathGroup
+	Difficulty FnfDifficulty
+}
+
+func (sr SelectUpdateResult) DoQuit() bool {
+	return sr.Quit
+}
+
 type SelectScreen struct {
 	LoadedGroups  []FnfPathGroup
 	SelectedGroup int
@@ -53,7 +63,7 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen) Update() (FnfPathGroup, FnfDifficulty, bool) {
+func (ss *SelectScreen) Update() UpdateResult{
 	if rl.IsKeyPressed(rl.KeyO) {
 		directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
 		if err != nil {
@@ -88,11 +98,17 @@ func (ss *SelectScreen) Update() (FnfPathGroup, FnfDifficulty, bool) {
 			group := ss.LoadedGroups[ss.SelectedGroup]
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
-			return group, difficulty, true
+			return SelectUpdateResult{
+				Quit : true,
+				PathGroup : group,
+				Difficulty : difficulty,
+			}
 		}
 	}
 
-	return FnfPathGroup{}, 0, false
+	return SelectUpdateResult{
+		Quit : false,
+	}
 }
 
 func (ss *SelectScreen) Draw() {
