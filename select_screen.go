@@ -100,20 +100,20 @@ func (ss *SelectScreen) Draw() {
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
 	if len(ss.LoadedGroups) <= 0 {
-		rl.DrawText("no song is loaded", 5, 50, 20, RlColor{255, 255, 255, 255})
-		rl.DrawText("Press \"O\" to load directory", 5, 70, 20, RlColor{255, 255, 255, 255})
+		rl.DrawText("no song is loaded", 5, 50, 20,rl.Color{255, 255, 255, 255})
+		rl.DrawText("Press \"O\" to load directory", 5, 70, 20,rl.Color{255, 255, 255, 255})
 	} else {
 		group := ss.LoadedGroups[ss.SelectedGroup]
 		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
-		rl.DrawText(DifficultyStrs[difficulty], SCREEN_WIDTH-100, 30, 20, RlColor{255, 255, 255, 255})
+		rl.DrawText(DifficultyStrs[difficulty], SCREEN_WIDTH-100, 30, 20,rl.Color{255, 255, 255, 255})
 		offsetX := int32(0)
 		offsetY := int32(0)
 		for i, group := range ss.LoadedGroups {
 			if i == ss.SelectedGroup {
-				rl.DrawText(group.SongName, offsetX, offsetY, 30, RlColor{255, 0, 0, 255})
+				rl.DrawText(group.SongName, offsetX, offsetY, 30, rl.Color{255, 0, 0, 255})
 			} else {
-				rl.DrawText(group.SongName, offsetX, offsetY, 30, RlColor{255, 255, 255, 255})
+				rl.DrawText(group.SongName, offsetX, offsetY, 30, rl.Color{255, 255, 255, 255})
 			}
 			offsetY += 35
 		}

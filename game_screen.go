@@ -753,5 +753,5 @@ func (gs *GameScreen) Draw() {
 		gs.IsBotPlay(),
 		DifficultyStrs[gs.SelectedDifficulty])
 
-	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, RlColor{255, 255, 255, 255})
+	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{255, 255, 255, 255})
 }

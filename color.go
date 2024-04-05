@@ -3,13 +3,9 @@ package main
 import (
 	"image/color"
 	"math"
-)
 
-// whether raylib's color is alpha premultiplied depends on context
-// but raylib's go binding uses color.RGBA to pass it's color parameter
-// so this type is here to make it clear that it only converted the color's range from
-// 0 - 1 to 0 - 255
-type RlColor = color.RGBA
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 type Color struct {
 	R, G, B, A float64
@@ -59,8 +55,12 @@ func (c Color) ToImageRGBA() color.RGBA {
 	return ToImageRGBA(c)
 }
 
-func ToRlColor(c Color) RlColor {
-	return color.RGBA{
+// whether raylib's color is alpha premultiplied depends on context
+// but raylib's go binding uses color.RGBA to pass it's color parameter
+// so this type is here to make it clear that it only converted the color's range from
+// 0 - 1 to 0 - 255
+func ToRlColor(c Color) rl.Color {
+	return rl.Color{
 		uint8(math.Round(c.R * 0xFF)),
 		uint8(math.Round(c.G * 0xFF)),
 		uint8(math.Round(c.B * 0xFF)),
@@ -68,7 +68,7 @@ func ToRlColor(c Color) RlColor {
 	}
 }
 
-func (c Color) ToRlColor() RlColor {
+func (c Color) ToRlColor() rl.Color {
 	return ToRlColor(c)
 }
 
