@@ -121,11 +121,73 @@ func IsClockWise(v1, v2, v3 rl.Vector2) bool {
 	return (v2.X-v1.X)*(v3.Y-v1.Y)-(v2.Y-v1.Y)*(v3.X-v1.X) < 0
 }
 
+// TODO : support rotation and scaling
+func DrawPatternBackground(
+	texture rl.Texture2D,
+	offsetX, offsetY float32,
+	tint rl.Color,
+){
+	/*
+		0 -- 3
+		|    |
+		|    |
+		1 -- 2
+	*/
+
+	if texture.ID > 0{
+		rl.SetTextureWrap(texture, rl.WrapRepeat)
+
+		uvEndX := float32(SCREEN_WIDTH) / float32(texture.Width)
+		uvEndY := float32(SCREEN_HEIGHT) / float32(texture.Height)
+
+		if uvEndX < 0 {
+			uvEndX = 0
+		}
+
+		if uvEndY < 0 {
+			uvEndY = 0
+		}
+
+		uvs := [4]rl.Vector2{}
+
+		uvs[0] = rl.Vector2{0, 0}
+		uvs[1] = rl.Vector2{0, uvEndY}
+		uvs[2] = rl.Vector2{uvEndX, uvEndY}
+		uvs[3] = rl.Vector2{uvEndX, 0}
+
+		for i := range len(uvs){
+			uvs[i].X += offsetX
+			uvs[i].Y += offsetY
+		}
+
+		rl.SetTexture(texture.ID)
+		rl.Begin(rl.Quads)
+
+		rl.Color4ub(tint.R, tint.G, tint.B, tint.A)
+		rl.Normal3f(0, 0, 1.0)
+
+		rl.TexCoord2f(uvs[0].X, uvs[0].Y)
+		rl.Vertex2f(0, 0)
+
+		rl.TexCoord2f(uvs[1].X, uvs[1].Y)
+		rl.Vertex2f(0, SCREEN_HEIGHT)
+
+		rl.TexCoord2f(uvs[2].X, uvs[2].Y)
+		rl.Vertex2f(SCREEN_WIDTH, SCREEN_HEIGHT)
+
+		rl.TexCoord2f(uvs[3].X, uvs[3].Y)
+		rl.Vertex2f(SCREEN_WIDTH,0)
+
+		rl.End()
+		rl.SetTexture(0)
+	}
+}
+
 func DrawTextureTransfromed(
 	texture rl.Texture2D,
 	srcRect rl.Rectangle,
 	mat rl.Matrix,
-	tint Color,
+	tint rl.Color,
 ) {
 	/*
 		0 -- 3
@@ -155,11 +217,10 @@ func DrawTextureTransfromed(
 		v2 = rl.Vector2Transform(v2, mat)
 		v3 = rl.Vector2Transform(v3, mat)
 
-		c := tint.ToImageRGBA()
 		rl.SetTexture(texture.ID)
 		rl.Begin(rl.Quads)
 
-		rl.Color4ub(c.R, c.G, c.B, c.A)
+		rl.Color4ub(tint.R, tint.G, tint.B, tint.A)
 		rl.Normal3f(0, 0, 1.0)
 
 		if IsClockWise(v0, v1, v2) {

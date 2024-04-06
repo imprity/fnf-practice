@@ -65,6 +65,7 @@ func main() {
 	var screen Screen = ss
 
 	InitArrowTexture()
+	InitPrettyBackground()
 
 	debugPrintAt := func(msg string, x, y int32) {
 		rl.DrawText(msg, x+1, y+1, 17, Col(0.1, 0.1, 0.1, 1).ToRlColor())

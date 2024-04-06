@@ -11,47 +11,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-//go:embed assets/arrows_outer.png
-var arrowsOuterBytes []byte
-
-//go:embed assets/arrows_inner.png
-var arrowsInnerBytes []byte
-
-var ArrowsOuterTex rl.Texture2D
-var ArrowsInnerTex rl.Texture2D
-
-var ArrowsRects [NoteDirSize]rl.Rectangle
-
-func InitArrowTexture() {
-	outerImg := rl.LoadImageFromMemory(".png", arrowsOuterBytes, int32(len(arrowsOuterBytes)))
-	innerImg := rl.LoadImageFromMemory(".png", arrowsInnerBytes, int32(len(arrowsInnerBytes)))
-
-	rl.ImageAlphaPremultiply(outerImg)
-	rl.ImageAlphaPremultiply(innerImg)
-
-	ArrowsOuterTex = rl.LoadTextureFromImage(outerImg)
-	ArrowsInnerTex = rl.LoadTextureFromImage(innerImg)
-
-	rl.SetTextureFilter(ArrowsOuterTex, rl.FilterTrilinear)
-	rl.SetTextureFilter(ArrowsInnerTex, rl.FilterTrilinear)
-
-	if outerImg.Width != innerImg.Width || outerImg.Height != innerImg.Height{
-		ErrorLogger.Fatal("Arrow inner and outer images should have same size")
-	}
-
-	// NOTE : we will assume that we can get arrow rects
-	// by just devding the width by 4
-
-	width := float32(ArrowsOuterTex.Width) / 4.0
-
-	for i:=NoteDir(0); i<NoteDirSize; i++{
-		x := float32(i) * width
-		ArrowsRects[i] = rl.Rectangle{
-			x, 0, width, float32(ArrowsOuterTex.Height),
-		}
-	}
-}
-
 type GameUpdateResult struct{
 	Quit bool
 }
@@ -545,15 +504,14 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0),
 	)
 
-	DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill)
-	DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke)
+	DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill.ToImageRGBA())
+	DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke.ToImageRGBA())
 
 	rl.EndBlendMode()
 }
 
 func (gs *GameScreen) Draw() {
-	bgColor := Col(0.2, 0.2, 0.2, 1.0)
-	rl.ClearBackground(bgColor.ToImageRGBA())
+	DrawPatternBackground(PrettyBackground, 0, 0, rl.Color{255,255,255,255})
 
 	if !gs.IsSongLoaded {
 		return
@@ -580,11 +538,80 @@ func (gs *GameScreen) Draw() {
 		return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
 	}
 
-	noteColors := [4]Color{
-		Color255(0xC2, 0x4B, 0x99, 0xFF),
-		Color255(0x00, 0xFF, 0xFF, 0xFF),
-		Color255(0x12, 0xFA, 0x05, 0xFF),
-		Color255(0xF9, 0x39, 0x3F, 0xFF),
+	// ============================
+	// calculate note colors
+	// ============================
+
+	// NOTE : I guess I could precalculate these and have this as members
+	// But I have a strong feeling that we will need to dynamically change these at runtime in future
+	noteFill := [4]Color{
+		Color255(0xBA, 0x6E, 0xCE, 0xFF),
+		Color255(0x53, 0xBE, 0xFF, 0xFF),
+		Color255(0x63, 0xD1, 0x92, 0xFF),
+		Color255(0xFA, 0x4F, 0x55, 0xFF),
+	}
+
+	noteStroke := [4]Color{}
+
+	for i, c := range noteFill{
+		hsv := ToHSV(c)
+		hsv[2] *= 0.1
+		hsv[1] *= 0.3
+
+		noteStroke[i] = FromHSV(hsv)
+	}
+
+	noteFillLight := [4]Color{}
+
+	for i, c := range noteFill{
+		hsv := ToHSV(c)
+		hsv[1] *= 0.8
+		hsv[2] *= 1.5
+
+		if hsv[2] > 100{ hsv[2] = 100 }
+
+		noteFillLight[i] = FromHSV(hsv)
+	}
+
+	noteStrokeLight := [4]Color{}
+
+	for i, c := range noteFill{
+		hsv := ToHSV(c)
+		hsv[2] *= 0.5
+
+		noteStrokeLight[i] = FromHSV(hsv)
+	}
+
+	noteGlow := [4]Color{}
+
+	for i, c := range noteFill{
+		hsv := ToHSV(c)
+		hsv[1] *= 0.3
+		hsv[2] *= 1.9
+
+		if hsv[2] > 100 { hsv[2] = 100 }
+
+		noteGlow[i] = FromHSV(hsv)
+	}
+
+	noteFillGrey := [4]Color{}
+
+	for i, c := range noteFill{
+		hsv := ToHSV(c)
+		hsv[1] *= 0.3
+		hsv[2] *= 0.7
+
+		noteFillGrey[i] = FromHSV(hsv)
+	}
+
+	noteStrokeGrey := [4]Color{}
+
+	for i, c := range noteFill{
+		hsv := ToHSV(c)
+		hsv[1] *= 0.2
+		hsv[2] *= 0.3
+
+		noteStrokeGrey[i] = FromHSV(hsv)
 	}
 
 	// ============================================
@@ -631,18 +658,11 @@ func (gs *GameScreen) Draw() {
 			x := noteX(note.Player, note.Direction)
 			y := timeToY(note.StartsAt)
 
-			goodC := noteColors[note.Direction]
-			var badC Color
+			normalFill := noteFill[note.Direction]
+			normalStroke := noteStroke[note.Direction]
 
-			{
-				hsv := ToHSV(goodC)
-				hsv[1] *= 0.5
-				hsv[2] *= 0.5
-
-				badC = FromHSV(hsv)
-			}
-
-			white := Col(1, 1, 1, 1)
+			badFill := noteFillGrey[note.Direction]
+			badStroke := noteStrokeGrey[note.Direction]
 
 			if note.Duration > 0 { // draw hold note
 				if note.HoldReleaseAt < note.Duration+note.StartsAt {
@@ -656,29 +676,31 @@ func (gs *GameScreen) Draw() {
 						noteY = SCREEN_HEIGHT - gs.NotesMarginBottom
 					}
 
-					holdRectW := gs.NotesSize * 0.3
+					holdRectW := gs.NotesSize * 0.2
 
 					holdRect := rl.Rectangle{
 						x - holdRectW*0.5, endY,
 						holdRectW, noteY - endY}
 
-					fill := goodC
+					fill := normalFill
+					stroke := normalStroke
 
 					if !holdingNote && note.StartsAt < gs.AudioPosition()-gs.HitWindow/2 {
-						fill = badC
+						fill = badFill
+						stroke = badStroke
 					}
 
 					if holdRect.Height > 0 {
-						rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, white.ToImageRGBA())
-						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, fill.ToImageRGBA())
+						//rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, black.ToImageRGBA())
+						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, normalFill.ToImageRGBA())
 					}
-					DrawNoteArrow(x, noteY, gs.NotesSize, note.Direction, fill, white)
+					DrawNoteArrow(x, noteY, gs.NotesSize, note.Direction, fill, stroke)
 				}
 			} else if !note.IsHit { // draw regular note
 				if note.IsMiss {
-					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, badC, white)
+					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, badFill, badStroke)
 				} else {
-					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, goodC, white)
+					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, normalFill, normalStroke)
 				}
 			}
 
@@ -700,17 +722,7 @@ func (gs *GameScreen) Draw() {
 			y := SCREEN_HEIGHT - gs.NotesMarginBottom
 
 			if gs.Event.IsHoldingKey[player][dir] && !gs.Event.IsHoldingBadKey[player][dir] {
-				noteC := noteColors[dir]
-
-				hsv := ToHSV(noteC)
-
-				hsv[2] *= 1.5
-				hsv[2] = Clamp(hsv[2], 0, 100)
-				hsv[1] *= 0.7
-
-				noteC = FromHSV(hsv)
-
-				DrawNoteArrow(x, y, gs.NotesSize*1.25, dir, noteC, Col(1, 1, 1, 1))
+				DrawNoteArrow(x, y, gs.NotesSize, dir, noteFillLight[dir], noteStrokeLight[dir])
 			}
 
 			// draw glow
@@ -725,7 +737,7 @@ func (gs *GameScreen) Draw() {
 					glow := float64(t) / float64(duration)
 					glow = 1.0 - glow
 
-					color = Col(1.0, 1.0, 1.0, glow)
+					color = Col(noteGlow[dir].R, noteGlow[dir].G, noteGlow[dir].B, glow)
 
 					DrawNoteArrow(x, y, gs.NotesSize*1.1, dir, color, color)
 				}
@@ -752,5 +764,5 @@ func (gs *GameScreen) Draw() {
 		gs.IsBotPlay(),
 		DifficultyStrs[gs.SelectedDifficulty])
 
-	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{255, 255, 255, 255})
+	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{0, 0, 0, 255})
 }
