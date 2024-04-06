@@ -565,8 +565,8 @@ func (gs *GameScreen) Draw() {
 
 	for i, c := range noteFill{
 		hsv := ToHSV(c)
-		hsv[1] *= 0.8
-		hsv[2] *= 1.5
+		hsv[1] *= 0.3
+		hsv[2] *= 1.9
 
 		if hsv[2] > 100{ hsv[2] = 100 }
 
@@ -586,7 +586,7 @@ func (gs *GameScreen) Draw() {
 
 	for i, c := range noteFill{
 		hsv := ToHSV(c)
-		hsv[1] *= 0.3
+		hsv[1] *= 0.2
 		hsv[2] *= 1.9
 
 		if hsv[2] > 100 { hsv[2] = 100 }
@@ -614,6 +614,37 @@ func (gs *GameScreen) Draw() {
 		noteStrokeGrey[i] = FromHSV(hsv)
 	}
 
+	// fucntion that hits note overlay
+	// NOTE : we have to define it as a function because
+	// we want to draw it below note if it's just a regular note
+	// but we want to draw on top of holding note
+	drawHitOverlay := func(player int, dir NoteDir){
+		x := noteX(player, dir)
+		y := SCREEN_HEIGHT - gs.NotesMarginBottom
+
+		if gs.Event.IsHoldingKey[player][dir] && !gs.Event.IsHoldingBadKey[player][dir] {
+			DrawNoteArrow(x, y, gs.NotesSize, dir, noteFillLight[dir], noteStrokeLight[dir])
+		}
+
+		// draw glow
+		const duration = time.Millisecond * 90
+		recenltyPressed := gs.Event.IsHoldingKey[player][dir] || GlobalTimerNow()-gs.Event.KeyReleasedAt[player][dir] < duration
+		if recenltyPressed && !gs.Event.IsHoldingBadKey[player][dir] {
+			t := GlobalTimerNow() - gs.Event.KeyPressedAt[player][dir]
+
+			if t < duration {
+				color := Color{}
+
+				glow := float64(t) / float64(duration)
+				glow = 1.0 - glow
+
+				color = Col(noteGlow[dir].R, noteGlow[dir].G, noteGlow[dir].B, glow)
+
+				DrawNoteArrow(x, y, gs.NotesSize*1.1, dir, color, color)
+			}
+		}
+	}
+
 	// ============================================
 	// draw input status
 	// ============================================
@@ -631,6 +662,19 @@ func (gs *GameScreen) Draw() {
 			DrawNoteArrow(x, y, gs.NotesSize, dir, color, color)
 		}
 	}
+
+	// ============================================
+	// draw regular note hit
+	// ============================================
+
+	for player := 0; player <= 1; player++{
+		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
+			if gs.Event.IsHoldingKey[player][dir] && !gs.Event.IsHoldingNote[player][dir]{
+				drawHitOverlay(player, dir)
+			}
+		}
+	}
+
 
 	// ============================================
 	// draw notes
@@ -712,37 +756,14 @@ func (gs *GameScreen) Draw() {
 	}
 
 	// ============================================
-	// draw overlay
+	// draw sustain note hit
 	// ============================================
 
-	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-		for player := 0; player <= 1; player++ {
-
-			x := noteX(player, dir)
-			y := SCREEN_HEIGHT - gs.NotesMarginBottom
-
-			if gs.Event.IsHoldingKey[player][dir] && !gs.Event.IsHoldingBadKey[player][dir] {
-				DrawNoteArrow(x, y, gs.NotesSize, dir, noteFillLight[dir], noteStrokeLight[dir])
+	for player := 0; player <= 1; player++{
+		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
+			if gs.Event.IsHoldingNote[player][dir] && gs.Event.HoldingNote[player][dir].Duration > 0{
+				drawHitOverlay(player, dir)
 			}
-
-			// draw glow
-			duration := time.Millisecond * 90
-			recenltyPressed := gs.Event.IsHoldingKey[player][dir] || GlobalTimerNow()-gs.Event.KeyReleasedAt[player][dir] < duration
-			if recenltyPressed && !gs.Event.IsHoldingBadKey[player][dir] {
-				t := GlobalTimerNow() - gs.Event.KeyPressedAt[player][dir]
-
-				if t < duration {
-					color := Color{}
-
-					glow := float64(t) / float64(duration)
-					glow = 1.0 - glow
-
-					color = Col(noteGlow[dir].R, noteGlow[dir].G, noteGlow[dir].B, glow)
-
-					DrawNoteArrow(x, y, gs.NotesSize*1.1, dir, color, color)
-				}
-			}
-
 		}
 	}
 
