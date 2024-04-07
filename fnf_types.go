@@ -67,6 +67,13 @@ func (n FnfNote) IsOverlapped(otherN FnfNote) bool {
 	return AbsI(n.StartsAt-otherN.StartsAt) < time.Millisecond*2
 }
 
+func (n FnfNote) IsSustain() bool{
+	// NOTE : I'm check if it's bigger than 1 millisecond rather than 0
+	// because original fnf stores time in flating point number
+	// and I'm scared of them
+	return n.Duration >= time.Microsecond * 500
+}
+
 func (n FnfNote) IsInWindow(audioPos, windowSize time.Duration) bool {
 	start := audioPos - windowSize/2
 	end := audioPos + windowSize/2

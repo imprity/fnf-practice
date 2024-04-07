@@ -776,7 +776,7 @@ func (gs *GameScreen) Draw() {
 			badFill := noteFillGrey[note.Direction]
 			badStroke := noteStrokeGrey[note.Direction]
 
-			if note.Duration > 0 { // draw hold note
+			if note.IsSustain() { // draw hold note
 				if note.HoldReleaseAt < note.Duration+note.StartsAt {
 					isHoldingNote := gs.Event.IsHoldingNote[note.Player][note.Direction]
 					isHoldingNote = isHoldingNote && gs.Event.HoldingNote[note.Player][note.Direction].Equals(note)

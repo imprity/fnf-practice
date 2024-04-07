@@ -5,8 +5,6 @@ import (
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	//"github.com/ebitengine/oto/v3"
-	//"sync"
 )
 
 type GameEvent struct {
@@ -28,9 +26,9 @@ type GameEvent struct {
 
 func NoteStartTunneled(
 	note FnfNote,
-	hitWindow time.Duration,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
+	hitWindow time.Duration,
 )bool{
 	tunneled := note.StartPassedHitWindow(audioPos, hitWindow)
 	tunneled = tunneled && note.NotReachedHitWindow(prevAudioPos, hitWindow)
@@ -39,9 +37,9 @@ func NoteStartTunneled(
 
 func SustainNoteTunneled(
 	note FnfNote,
-	hitWindow time.Duration,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
+	hitWindow time.Duration,
 )bool{
 	tunneled := note.StartsAt + note.Duration < prevAudioPos - hitWindow / 2
 	tunneled = tunneled && note.NotReachedHitWindow(audioPos, hitWindow)
@@ -156,20 +154,20 @@ func UpdateNotesAndEvents(
 			if isKeyJustPressed[note.Player][note.Direction]{
 				var hittable bool
 
-				if note.Duration > 0{
+				if note.IsSustain(){
 					hittable = note.IsAudioPositionInDuration(audioPos, hitWindow)
-					hittable = hittable || SustainNoteTunneled(note, hitWindow, prevAudioPos, audioPos)
+					hittable = hittable || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
 				}else{
 					hittable = !note.IsHit
 					hittable = hittable && note.IsInWindow(audioPos, hitWindow)
-					hittable = hittable || NoteStartTunneled(note, hitWindow, prevAudioPos, audioPos)
+					hittable = hittable || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 				}
 
-				hitElse := (didHitNote[note.Player][note.Direction] && hitNote[note.Player][note.Direction].Duration <= 0)
+				hitElse := (didHitNote[note.Player][note.Direction] && !hitNote[note.Player][note.Direction].IsSustain())
 				hittable = hittable && (!hitElse || (hitElse && hitNote[note.Player][note.Direction].IsOverlapped(note)))
 
 				if hittable{
-					if note.Duration > 0 {
+					if note.IsSustain() {
 						onNoteHold(note)
 					}else{
 						onNoteHit(note)
@@ -178,7 +176,7 @@ func UpdateNotesAndEvents(
 			}
 
 			//check if user missed note
-			if note.Duration > 0{
+			if note.IsSustain(){
 				missed := !event.IsHoldingNote[note.Player][note.Direction]
 				missed = missed || (event.IsHoldingNote[note.Player][note.Direction] && !event.HoldingNote[note.Player][note.Direction].Equals(note))
 				missed = missed && note.StartPassedHitWindow(audioPos, hitWindow)
@@ -268,11 +266,11 @@ func GetBotKeyPresseState(
 		if isNoteForBot(note, isBotPlay) {
 			if !note.IsHit {
 				shouldHit := note.StartsAt <= audioPos && note.StartsAt >= prevAudioPos
-				shouldHit = shouldHit || NoteStartTunneled(note, hitWindow, prevAudioPos, audioPos)
+				shouldHit = shouldHit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 				if shouldHit{
 					keyPressed[note.Player][note.Direction] = true
 				}
-			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, hitWindow, prevAudioPos, audioPos) {
+			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow) {
 				keyPressed[note.Player][note.Direction] = true
 			}
 		}
