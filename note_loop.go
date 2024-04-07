@@ -148,7 +148,7 @@ func UpdateNotesAndEvents(
 			//check if user missed note
 			if note.Duration > 0{
 				missed := !event.IsHoldingNote[note.Player][note.Direction]
-				missed = missed || (event.IsHoldingNote[note.Player][note.Direction] && !event.HoldingNote[note.Player][note.Direction].Equal(note))
+				missed = missed || (event.IsHoldingNote[note.Player][note.Direction] && !event.HoldingNote[note.Player][note.Direction].Equals(note))
 				missed = missed && note.StartPassedHitWindow(audioPos, hitWindow)
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
 				missed = missed && note.HoldReleaseAt < note.StartsAt + note.Duration

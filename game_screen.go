@@ -655,7 +655,7 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// calculate input status transform
 	// ============================================
-	
+
 	statusScaleOffset := [2][NoteDirSize]float32{}
 	statusOffsetX     := [2][NoteDirSize]float32{}
 	statusOffsetY     := [2][NoteDirSize]float32{}
@@ -676,10 +676,10 @@ func (gs *GameScreen) Draw() {
 		scale := gs.NotesSize * statusScaleOffset[player][dir]
 
 		sincePressed := GlobalTimerNow() - gs.Event.KeyPressedAt[player][dir]
-		glowT := float64(sincePressed) / float64(time.Millisecond * 50) 
+		glowT := float64(sincePressed) / float64(time.Millisecond * 50)
 		glowT = Clamp(glowT, 0.1, 1.0)
 
-		flashT := float64(sincePressed) / float64(time.Millisecond * 20) 
+		flashT := float64(sincePressed) / float64(time.Millisecond * 20)
 		if flashT > 1{
 			flashT = 1
 		}
@@ -779,7 +779,7 @@ func (gs *GameScreen) Draw() {
 			if note.Duration > 0 { // draw hold note
 				if note.HoldReleaseAt < note.Duration+note.StartsAt {
 					isHoldingNote := gs.Event.IsHoldingNote[note.Player][note.Direction]
-					isHoldingNote = isHoldingNote && gs.Event.HoldingNote[note.Player][note.Direction].Equal(note)
+					isHoldingNote = isHoldingNote && gs.Event.HoldingNote[note.Player][note.Direction].Equals(note)
 
 					sustaniEndY := timeToY(note.StartsAt + note.Duration)
 					sustainBeginY := timeToY(max(note.StartsAt, note.HoldReleaseAt))

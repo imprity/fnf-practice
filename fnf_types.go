@@ -52,7 +52,7 @@ type FnfNote struct {
 	HoldReleaseAt time.Duration
 }
 
-func (n FnfNote) Equal(otherN FnfNote) bool {
+func (n FnfNote) Equals(otherN FnfNote) bool {
 	return n.Index == otherN.Index
 }
 
