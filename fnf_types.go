@@ -32,6 +32,13 @@ var NoteKeys = [NoteDirSize]int32{
 	NotekeyRight,
 }
 
+var NoteDirStrs = [NoteDirSize]string{
+	"left",
+	"down",
+	"up",
+	"right",
+}
+
 type FnfNote struct {
 	Player    int
 	StartsAt  time.Duration
@@ -41,7 +48,6 @@ type FnfNote struct {
 
 	// variables that change during gameplay
 	IsHit  bool
-	IsMiss bool
 
 	HoldReleaseAt time.Duration
 }
@@ -72,6 +78,10 @@ func (n FnfNote) IsAudioPositionInDuration(audioPos, windowSize time.Duration) b
 	end := n.StartsAt + n.Duration + windowSize/2
 
 	return start <= audioPos && audioPos <= end
+}
+
+func (n FnfNote) StartPassedHitWindow(audioPos, windowSize time.Duration) bool{
+	return n.StartsAt < audioPos - windowSize/2
 }
 
 const PlayerAny = -1

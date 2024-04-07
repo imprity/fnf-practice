@@ -23,6 +23,7 @@ type GameEvent struct {
 	KeyReleasedAt [2][NoteDirSize]time.Duration
 
 	NoteMissAt [2][NoteDirSize]time.Duration
+	DidMissNote [2][NoteDirSize]bool
 }
 
 func UpdateNotesAndEvents(
@@ -30,7 +31,8 @@ func UpdateNotesAndEvents(
 	event GameEvent,
 	wasKeyPressed [2][NoteDirSize]bool,
 	isKeyPressed [2][NoteDirSize]bool,
-	audioPos time.Duration,
+	prevAudioPos time.Duration,
+	audioPos     time.Duration,
 	isPlayingAudio bool,
 	hitWindow time.Duration,
 	botPlay bool,
@@ -55,6 +57,13 @@ func UpdateNotesAndEvents(
 					isKeyJustReleased[player][dir] = true
 				}
 
+			}
+		}
+
+		//clear note miss event
+		for player := 0; player <= 1; player++ {
+			for dir := range NoteDirSize {
+				event.DidMissNote[player][dir] = false
 			}
 		}
 
@@ -120,14 +129,6 @@ func UpdateNotesAndEvents(
 
 		for ; noteIndexStart < len(notes); noteIndexStart++ {
 			note := notes[noteIndexStart]
-			//check if user missed note
-			if !isKeyPressed[note.Player][note.Direction] &&
-				!note.IsMiss && !note.IsHit &&
-				note.StartsAt < audioPos-hitWindow/2 {
-
-				notes[note.Index].IsMiss = true
-				event.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
-			}
 
 			if note.Duration > 0 && note.IsAudioPositionInDuration(audioPos, hitWindow) {
 				if isKeyJustPressed[note.Player][note.Direction] {
@@ -141,6 +142,30 @@ func UpdateNotesAndEvents(
 					onNoteHit(note)
 				} else if note.IsOverlapped(hitNote[note.Player][note.Direction]) {
 					onNoteHit(note)
+				}
+			}
+
+			//check if user missed note
+			if note.Duration > 0{
+				missed := !event.IsHoldingNote[note.Player][note.Direction]
+				missed = missed || (event.IsHoldingNote[note.Player][note.Direction] && !event.HoldingNote[note.Player][note.Direction].Equal(note))
+				missed = missed && note.StartPassedHitWindow(audioPos, hitWindow)
+				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
+				missed = missed && note.HoldReleaseAt < note.StartsAt + note.Duration
+				if missed {
+					event.DidMissNote[note.Player][note.Direction] = true
+					event.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
+				}
+			}else if !note.IsHit{
+				wasInHitWindow := false
+				isInHitWindow := false
+
+				wasInHitWindow = note.IsInWindow(prevAudioPos, hitWindow)
+				isInHitWindow = note.IsInWindow(audioPos, hitWindow)
+
+				if wasInHitWindow && !isInHitWindow{
+					event.DidMissNote[note.Player][note.Direction] = true
+					event.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
 				}
 			}
 

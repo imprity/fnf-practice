@@ -434,9 +434,11 @@ func (gs *GameScreen) Update() UpdateResult{
 	// try to calculate audio position
 	// =============================================
 
+	prevAudioPos := gs.audioPosition
+
 	// currently audio player position's delta is 0 or 10ms
 	// so we are trying to calculate better audio position
-	{
+	if !changedPosition{
 		if !gs.IsPlayingAudio() {
 			gs.audioPosition = gs.InstPlayer.Position()
 		} else if gs.audioPositionSafetyCounter > 5 {
@@ -477,6 +479,7 @@ func (gs *GameScreen) Update() UpdateResult{
 		gs.Event,
 		gs.wasKeyPressed,
 		isKeyPressed,
+		prevAudioPos,
 		audioPos,
 		gs.InstPlayer.IsPlaying(),
 		gs.HitWindow,
@@ -484,6 +487,14 @@ func (gs *GameScreen) Update() UpdateResult{
 		gs.noteIndexStart,
 	)
 	gs.wasKeyPressed = isKeyPressed
+
+	for player := 0; player<=1; player++{
+		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
+			if gs.Event.DidMissNote[player][dir]{
+				fmt.Printf("player %v missed %v note\n", player, NoteDirStrs[dir])
+			}
+		}
+	}
 
 	return GameUpdateResult{
 		Quit : false,
@@ -801,7 +812,7 @@ func (gs *GameScreen) Draw() {
 					}
 				}
 			} else if !note.IsHit { // draw regular note
-				if note.IsMiss {
+				if note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow){
 					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, badFill, badStroke)
 				} else {
 					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, normalFill, normalStroke)
