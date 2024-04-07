@@ -27,25 +27,25 @@ type GameEvent struct {
 }
 
 func NoteStartTunneled(
-	note FnfNote, 
+	note FnfNote,
 	hitWindow time.Duration,
-	prevAudioPos time.Duration, 
+	prevAudioPos time.Duration,
 	audioPos time.Duration,
 )bool{
-	tunneled := note.StartPassedHitWindow(audioPos, hitWindow) 
-	tunneled = tunneled && note.NotReachedHitWindow(prevAudioPos, hitWindow) 
+	tunneled := note.StartPassedHitWindow(audioPos, hitWindow)
+	tunneled = tunneled && note.NotReachedHitWindow(prevAudioPos, hitWindow)
 	return tunneled
 }
 
 func SustainNoteTunneled(
-	note FnfNote, 
+	note FnfNote,
 	hitWindow time.Duration,
-	prevAudioPos time.Duration, 
+	prevAudioPos time.Duration,
 	audioPos time.Duration,
 )bool{
-	tunneld := note.StartsAt + note.Duration < prevAudioPos - hitWindow / 2
-	tunneld = tunneld && note.NotReachedHitWindow(audioPos, hitWindow)
-	return tunneld
+	tunneled := note.StartsAt + note.Duration < prevAudioPos - hitWindow / 2
+	tunneled = tunneled && note.NotReachedHitWindow(audioPos, hitWindow)
+	return tunneled
 }
 
 func UpdateNotesAndEvents(
@@ -157,16 +157,16 @@ func UpdateNotesAndEvents(
 				var hittable bool
 
 				if note.Duration > 0{
-					hittable = note.IsAudioPositionInDuration(audioPos, hitWindow) 
-					hittable = hittable || SustainNoteTunneled(note, hitWindow, prevAudioPos, audioPos) 
+					hittable = note.IsAudioPositionInDuration(audioPos, hitWindow)
+					hittable = hittable || SustainNoteTunneled(note, hitWindow, prevAudioPos, audioPos)
 				}else{
 					hittable = !note.IsHit
-					hittable = hittable && note.IsInWindow(audioPos, hitWindow) 
-					hittable = hittable || NoteStartTunneled(note, hitWindow, prevAudioPos, audioPos) 
+					hittable = hittable && note.IsInWindow(audioPos, hitWindow)
+					hittable = hittable || NoteStartTunneled(note, hitWindow, prevAudioPos, audioPos)
 				}
 
 				hitElse := (didHitNote[note.Player][note.Direction] && hitNote[note.Player][note.Direction].Duration <= 0)
-				hittable = hittable && (!hitElse || (hitElse && hitNote[note.Player][note.Direction].IsOverlapped(note))) 
+				hittable = hittable && (!hitElse || (hitElse && hitNote[note.Player][note.Direction].IsOverlapped(note)))
 
 				if hittable{
 					if note.Duration > 0 {
@@ -262,14 +262,17 @@ func GetBotKeyPresseState(
 	var keyPressed [2][NoteDirSize]bool
 
 	const tinyWindow = time.Millisecond * 10
-	//var tinyWindow = hitWindow
 
 	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
 		if isNoteForBot(note, isBotPlay) {
-			if !note.IsHit && (note.IsInWindow(audioPos, tinyWindow) || NoteStartTunneled(note, prevAudioPos, audioPos, tinyWindow)){
-				keyPressed[note.Player][note.Direction] = true
-			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, prevAudioPos, audioPos, tinyWindow) {
+			if !note.IsHit {
+				shouldHit := note.StartsAt <= audioPos && note.StartsAt >= prevAudioPos
+				shouldHit = shouldHit || NoteStartTunneled(note, hitWindow, prevAudioPos, audioPos)
+				if shouldHit{
+					keyPressed[note.Player][note.Direction] = true
+				}
+			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, hitWindow, prevAudioPos, audioPos) {
 				keyPressed[note.Player][note.Direction] = true
 			}
 		}
