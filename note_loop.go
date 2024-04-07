@@ -19,6 +19,7 @@ type GameEvent struct {
 
 	KeyPressedAt  [2][NoteDirSize]time.Duration
 	KeyReleasedAt [2][NoteDirSize]time.Duration
+	DidReleaseBadKey [2][NoteDirSize]bool
 
 	NoteMissAt [2][NoteDirSize]time.Duration
 	DidMissNote [2][NoteDirSize]bool
@@ -125,6 +126,12 @@ func UpdateNotesAndEvents(
 				} else if !isKeyPressed[player][dir] {
 					if event.IsHoldingKey[player][dir] {
 						event.KeyReleasedAt[player][dir] = GlobalTimerNow()
+
+						if event.IsHoldingBadKey[player][dir]{
+							event.DidReleaseBadKey[player][dir] = true	
+						}else{
+							event.DidReleaseBadKey[player][dir] = false
+						}
 					}
 
 					event.IsHoldingKey[player][dir] = false
@@ -152,26 +159,37 @@ func UpdateNotesAndEvents(
 
 			//check if user hit note
 			if isKeyJustPressed[note.Player][note.Direction]{
-				var hittable bool
+				var hit bool
 
 				if note.IsSustain(){
-					hittable = note.IsAudioPositionInDuration(audioPos, hitWindow)
-					hittable = hittable || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
+					hit = note.IsAudioPositionInDuration(audioPos, hitWindow)
+					hit = hit || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
 				}else{
-					hittable = !note.IsHit
-					hittable = hittable && note.IsInWindow(audioPos, hitWindow)
-					hittable = hittable || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
+					hit = !note.IsHit
+					hit = hit && note.IsInWindow(audioPos, hitWindow)
+					hit = hit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 				}
 
 				hitElse := (didHitNote[note.Player][note.Direction] && !hitNote[note.Player][note.Direction].IsSustain())
-				hittable = hittable && (!hitElse || (hitElse && hitNote[note.Player][note.Direction].IsOverlapped(note)))
+				hit = hit && (!hitElse || (hitElse && hitNote[note.Player][note.Direction].IsOverlapped(note)))
 
-				if hittable{
+				if hit{
 					if note.IsSustain() {
 						onNoteHold(note)
 					}else{
 						onNoteHit(note)
 					}
+				}
+			}
+
+			// if sustain note passed hit window and key is pressed
+			// just treat it as good enough
+			if (note.IsSustain() && 
+				!note.IsHit && 
+				note.StartPassedHitWindow(audioPos, hitWindow) && 
+				note.IsAudioPositionInDuration(audioPos, hitWindow)){
+				if isKeyPressed[note.Player][note.Direction]{
+					onNoteHold(note)
 				}
 			}
 
@@ -264,7 +282,7 @@ func GetBotKeyPresseState(
 	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
 		if isNoteForBot(note, isBotPlay) {
-			if !note.IsHit {
+			if !note.IsHit && !note.IsSustain(){
 				shouldHit := note.StartsAt <= audioPos && note.StartsAt >= prevAudioPos
 				shouldHit = shouldHit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 				if shouldHit{

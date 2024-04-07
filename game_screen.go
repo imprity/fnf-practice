@@ -6,6 +6,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
+	"math/rand/v2"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -663,6 +664,36 @@ func (gs *GameScreen) Draw() {
 	for player :=0; player<=1; player++{
 		for dir := NoteDir(0); dir<NoteDirSize; dir++{
 			statusScaleOffset[player][dir] = 1
+		}
+	}
+
+	// it we hit note, raise note up
+	for p :=0; p<=1; p++{
+		for dir := NoteDir(0); dir<NoteDirSize; dir++{
+			if gs.Event.IsHoldingBadKey[p][dir]{
+				statusScaleOffset[p][dir] += 0.1
+			}else if gs.Event.DidReleaseBadKey[p][dir]{
+				t := float32((GlobalTimerNow() - gs.Event.KeyReleasedAt[p][dir]))  / float32(time.Millisecond * 40)
+				if t > 1 { t = 1 }
+				t = 1 - t
+
+				statusScaleOffset[p][dir] += 0.1 * t
+			}
+			if gs.Event.IsHoldingKey[p][dir] && !gs.Event.IsHoldingBadKey[p][dir]{
+				statusOffsetY[p][dir] = - 5
+				statusScaleOffset[p][dir] += 0.1
+				if gs.Event.IsHoldingNote[p][dir]{
+					statusOffsetX[p][dir] += (rand.Float32() * 2 - 1) * 3
+					statusOffsetY[p][dir] += (rand.Float32() * 2 - 1) * 3
+				}
+			}else if !gs.Event.DidReleaseBadKey[p][dir]{
+				t := float32((GlobalTimerNow() - gs.Event.KeyReleasedAt[p][dir]))  / float32(time.Millisecond * 40)
+				if t > 1 { t = 1 }
+				t = 1 - t
+
+				statusOffsetY[p][dir] = - 5 * t
+				statusScaleOffset[p][dir] += 0.1 * t
+			}
 		}
 	}
 
