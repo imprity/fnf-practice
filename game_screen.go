@@ -407,8 +407,8 @@ func (gs *GameScreen) Update() UpdateResult{
 					gs.PausedBecausePositionChangeKey = true
 				}
 			}
-			gs.SetAudioPosition(pos)
 			gs.ResetStatesThatTracksGamePlayChanges()
+			gs.SetAudioPosition(pos)
 		}
 
 		// if we changed position while playing the song we pause the song
@@ -472,7 +472,7 @@ func (gs *GameScreen) Update() UpdateResult{
 
 	audioPos := gs.AudioPosition()
 
-	isKeyPressed := GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, audioPos, gs.botPlay)
+	isKeyPressed := GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
 
 	gs.Event, gs.noteIndexStart = UpdateNotesAndEvents(
 		gs.Song.Notes,

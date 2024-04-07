@@ -80,6 +80,10 @@ func (n FnfNote) IsAudioPositionInDuration(audioPos, windowSize time.Duration) b
 	return start <= audioPos && audioPos <= end
 }
 
+func (n FnfNote) NotReachedHitWindow(audioPos, windowSize time.Duration) bool{
+	return n.StartsAt > audioPos + windowSize/2
+}
+
 func (n FnfNote) StartPassedHitWindow(audioPos, windowSize time.Duration) bool{
 	return n.StartsAt < audioPos - windowSize/2
 }
