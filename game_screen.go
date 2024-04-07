@@ -425,6 +425,12 @@ func (gs *GameScreen) Update() UpdateResult{
 			gs.PlayAudio()
 			gs.PausedBecausePositionChangeKey = false
 		}
+
+		if rl.IsKeyPressed(rl.KeyR){
+			changedPosition = true
+			gs.ResetStatesThatTracksGamePlayChanges()
+			gs.SetAudioPosition(0)
+		}
 	}
 
 	// =============================================
