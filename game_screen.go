@@ -641,13 +641,28 @@ func (gs *GameScreen) Draw() {
 		noteStrokeGrey[i] = FromHSV(hsv)
 	}
 
+	// ============================================
+	// calculate input status transform
+	// ============================================
+	
+	statusScaleOffset := [2][NoteDirSize]float32{}
+	statusOffsetX     := [2][NoteDirSize]float32{}
+	statusOffsetY     := [2][NoteDirSize]float32{}
+
+	for player :=0; player<=1; player++{
+		for dir := NoteDir(0); dir<NoteDirSize; dir++{
+			statusScaleOffset[player][dir] = 1
+		}
+	}
+
 	// fucntion that hits note overlay
 	// NOTE : we have to define it as a function because
 	// we want to draw it below note if it's just a regular note
 	// but we want to draw on top of holding note
 	drawHitOverlay := func(player int, dir NoteDir){
-		x := noteX(player, dir)
-		y := SCREEN_HEIGHT - gs.NotesMarginBottom
+		x := noteX(player, dir) + statusOffsetX[player][dir]
+		y := SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
+		scale := gs.NotesSize * statusScaleOffset[player][dir]
 
 		sincePressed := GlobalTimerNow() - gs.Event.KeyPressedAt[player][dir]
 		glowT := float64(sincePressed) / float64(time.Millisecond * 50) 
@@ -667,11 +682,11 @@ func (gs *GameScreen) Draw() {
 			fill := LerpRGBA(noteFill[dir], noteFillLight[dir], glowT)
 			stroke := LerpRGBA(noteStroke[dir], noteStrokeLight[dir], glowT)
 
-			DrawNoteArrow(x, y, gs.NotesSize, dir, fill, stroke)
+			DrawNoteArrow(x, y, scale, dir, fill, stroke)
 
 			glow := noteFill[dir]
 			glow.A = glowT * 0.5
-			DrawNoteGlow(x, y, gs.NotesSize, dir, glow)
+			DrawNoteGlow(x, y, scale, dir, glow)
 		}
 
 		// draw flash
@@ -680,9 +695,10 @@ func (gs *GameScreen) Draw() {
 
 			color = Col(noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, flashT)
 
-			DrawNoteArrow(x, y, gs.NotesSize*1.1, dir, color, color)
+			DrawNoteArrow(x, y, scale*1.1, dir, color, color)
 		}
 	}
+
 
 	// ============================================
 	// draw input status
@@ -696,9 +712,11 @@ func (gs *GameScreen) Draw() {
 				color = Col(1, 0, 0, 1)
 			}
 
-			x := noteX(player, dir)
-			y := SCREEN_HEIGHT - gs.NotesMarginBottom
-			DrawNoteArrow(x, y, gs.NotesSize, dir, color, color)
+			x := noteX(player, dir) + statusOffsetX[player][dir]
+			y := SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
+			scale := gs.NotesSize * statusScaleOffset[player][dir]
+
+			DrawNoteArrow(x, y, scale, dir, color, color)
 		}
 	}
 
@@ -749,35 +767,38 @@ func (gs *GameScreen) Draw() {
 
 			if note.Duration > 0 { // draw hold note
 				if note.HoldReleaseAt < note.Duration+note.StartsAt {
-					holdingNote := (gs.Event.HoldingNote[note.Player][note.Direction].Equal(note) &&
-						gs.Event.IsHoldingNote[note.Player][note.Direction])
+					isHoldingNote := gs.Event.IsHoldingNote[note.Player][note.Direction]
+					isHoldingNote = isHoldingNote && gs.Event.HoldingNote[note.Player][note.Direction].Equal(note)
 
-					endY := timeToY(note.StartsAt + note.Duration)
-					noteY := timeToY(max(note.StartsAt, note.HoldReleaseAt))
+					sustaniEndY := timeToY(note.StartsAt + note.Duration)
+					sustainBeginY := timeToY(max(note.StartsAt, note.HoldReleaseAt))
 
-					if holdingNote {
-						noteY = SCREEN_HEIGHT - gs.NotesMarginBottom
+					if isHoldingNote {
+						sustainBeginY = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[note.Player][note.Direction]
 					}
 
 					holdRectW := gs.NotesSize * 0.2
 
 					holdRect := rl.Rectangle{
-						x - holdRectW*0.5, endY,
-						holdRectW, noteY - endY}
+						x - holdRectW*0.5, sustaniEndY,
+						holdRectW, sustainBeginY - sustaniEndY}
+
+					if holdRect.Height > 0 { // draw sustain line
+						//rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, black.ToImageRGBA())
+						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, normalFill.ToImageRGBA())
+					}
 
 					fill := normalFill
 					stroke := normalStroke
 
-					if !holdingNote && note.StartsAt < gs.AudioPosition()-gs.HitWindow/2 {
+					if !isHoldingNote && note.StartsAt < gs.AudioPosition()-gs.HitWindow/2 {
 						fill = badFill
 						stroke = badStroke
 					}
 
-					if holdRect.Height > 0 {
-						//rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, black.ToImageRGBA())
-						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, normalFill.ToImageRGBA())
+					if !isHoldingNote{ // draw note if we are not holding it
+						DrawNoteArrow(x, sustainBeginY, gs.NotesSize, note.Direction, fill, stroke)
 					}
-					DrawNoteArrow(x, noteY, gs.NotesSize, note.Direction, fill, stroke)
 				}
 			} else if !note.IsHit { // draw regular note
 				if note.IsMiss {
