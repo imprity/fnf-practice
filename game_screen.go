@@ -48,6 +48,8 @@ type GameScreen struct {
 
 	NotesSize float32
 
+	PixelsPerMillis float32
+
 	// private members
 	wasKeyPressed  [2][NoteDirSize]bool
 	noteIndexStart int
@@ -76,6 +78,8 @@ func NewGameScreen() *GameScreen {
 
 	gs.InstPlayer = NewVaryingSpeedPlayer()
 	gs.VoicePlayer = NewVaryingSpeedPlayer()
+
+	gs.PixelsPerMillis = 0.5
 
 	return gs
 }
@@ -232,33 +236,31 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
 }
 
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
-	const pt = 0.5 // TODO : this pt should be defined in app
+	var pm float32
 
-	var pixelsForMillis float32
 	zoomInverse := 1.0 / gs.Zoom
 
 	if gs.Song.Speed == 0 {
-		pixelsForMillis = pt
+		pm = gs.PixelsPerMillis
 	} else {
-		pixelsForMillis = pt / zoomInverse * float32(gs.Song.Speed)
+		pm = gs.PixelsPerMillis / zoomInverse * float32(gs.Song.Speed)
 	}
 
-	return pixelsForMillis * float32(t.Milliseconds())
+	return pm * float32(t.Milliseconds())
 }
 
 func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
-	const pt = 0.5
+	var pm float32
 
-	var pixelsForMillis float32
 	zoomInverse := 1.0 / gs.Zoom
 
 	if gs.Song.Speed == 0 {
-		pixelsForMillis = pt
+		pm = gs.PixelsPerMillis
 	} else {
-		pixelsForMillis = pt / zoomInverse * float32(gs.Song.Speed)
+		pm = gs.PixelsPerMillis / zoomInverse * float32(gs.Song.Speed)
 	}
 
-	millisForPixels := 1.0 / pixelsForMillis
+	millisForPixels := 1.0 / pm
 
 	return time.Duration(p * millisForPixels * float32(time.Millisecond))
 }
