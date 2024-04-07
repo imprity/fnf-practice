@@ -47,10 +47,18 @@ func main() {
 
 	var err error
 
+    rl.SetConfigFlags(rl.FlagWindowResizable);
+
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
 
 	rl.SetExitKey(rl.KeyNull)
+
+	// TODO : now that we are rendering to a texture
+	// mouse coordinates will be wrong, make a function
+	// that gets actual mouse position
+	renderTarget := rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
+	rl.SetTextureFilter(renderTarget.Texture, rl.FilterBilinear)
 
 	err = InitAudio()
 	if err != nil {
@@ -80,8 +88,6 @@ func main() {
 			GlobalDebugFlag = !GlobalDebugFlag
 		}
 
-		rl.BeginDrawing()
-
 		updateResult := screen.Update()
 
 		if updateResult.DoQuit(){
@@ -106,7 +112,29 @@ func main() {
 			}
 		}
 
+		rl.BeginTextureMode(renderTarget)
 		screen.Draw()
+		rl.EndTextureMode()
+
+		screenW := float32(rl.GetScreenWidth())
+		screenH := float32(rl.GetScreenHeight())
+
+		scale := min(screenW / SCREEN_WIDTH, screenH / SCREEN_HEIGHT)
+
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.Color{0, 0, 0, 255})
+		rl.DrawTexturePro(
+			renderTarget.Texture,
+			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+			rl.Rectangle{
+				(screenW - (SCREEN_WIDTH * scale)) * 0.5,
+				(screenH - (SCREEN_HEIGHT * scale)) * 0.5,
+				SCREEN_WIDTH * scale,
+				SCREEN_HEIGHT * scale},
+			rl.Vector2{},
+			0,
+			rl.Color{255, 255, 255, 255},
+		)
 
 		if GlobalDebugFlag {
 			fps := fmt.Sprintf("FPS : %v", rl.GetFPS())
