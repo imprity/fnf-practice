@@ -16,6 +16,12 @@ var ArrowsInnerTex rl.Texture2D
 
 var ArrowsRects [NoteDirSize]rl.Rectangle
 
+//go:embed assets/arrows_glow.png
+var arrowsGlowBytes []byte
+
+var ArrowsGlowTex rl.Texture2D
+var ArrowsGlowRects [NoteDirSize]rl.Rectangle
+
 func InitArrowTexture() {
 	outerImg := rl.LoadImageFromMemory(".png", arrowsOuterBytes, int32(len(arrowsOuterBytes)))
 	innerImg := rl.LoadImageFromMemory(".png", arrowsInnerBytes, int32(len(arrowsInnerBytes)))
@@ -39,6 +45,21 @@ func InitArrowTexture() {
 		x := float32(i) * width
 		ArrowsRects[i] = rl.Rectangle{
 			x, 0, width, float32(ArrowsOuterTex.Height),
+		}
+	}
+
+	glowImg := rl.LoadImageFromMemory(".png", arrowsGlowBytes, int32(len(arrowsGlowBytes)))
+	rl.ImageAlphaPremultiply(glowImg)
+	ArrowsGlowTex = rl.LoadTextureFromImage(glowImg)
+
+	// NOTE : same goes for glow arrows
+
+	width = float32(ArrowsGlowTex.Width) / 4.0
+
+	for i:=NoteDir(0); i<NoteDirSize; i++{
+		x := float32(i) * width
+		ArrowsGlowRects[i] = rl.Rectangle{
+			x, 0, width, float32(ArrowsGlowTex.Height),
 		}
 	}
 }

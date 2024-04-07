@@ -488,8 +488,33 @@ func (gs *GameScreen) Update() UpdateResult{
 	}
 }
 
+func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
+	rl.BeginBlendMode(rl.BlendAddColors)
+
+	arrowH := ArrowsRects[0].Height
+
+	glowW := ArrowsGlowRects[0].Width
+	glowH := ArrowsGlowRects[0].Height
+
+	// we calculate scale using arrow texture since arrowHeight means height of the arrow texture
+	scale := arrowHeight / arrowH
+
+	mat := rl.MatrixScale(scale, scale, scale)
+
+	mat = rl.MatrixMultiply(mat,
+		rl.MatrixTranslate(
+			x - glowW * scale * 0.5,
+			y - glowH * scale * 0.5,
+			0),
+	)
+
+	DrawTextureTransfromed(ArrowsGlowTex, ArrowsGlowRects[dir], mat, c.ToImageRGBA())
+
+	rl.EndBlendMode()
+}
+
 func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
-	rl.SetBlendMode(int32(rl.BlendAlphaPremultiply))
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 	texW := ArrowsRects[0].Width
 	texH := ArrowsRects[0].Height
@@ -582,16 +607,16 @@ func (gs *GameScreen) Draw() {
 		noteStrokeLight[i] = FromHSV(hsv)
 	}
 
-	noteGlow := [4]Color{}
+	noteFlash := [4]Color{}
 
 	for i, c := range noteFill{
 		hsv := ToHSV(c)
-		hsv[1] *= 0.2
-		hsv[2] *= 1.9
+		hsv[1] *= 0.1
+		hsv[2] *= 3
 
 		if hsv[2] > 100 { hsv[2] = 100 }
 
-		noteGlow[i] = FromHSV(hsv)
+		noteFlash[i] = FromHSV(hsv)
 	}
 
 	noteFillGrey := [4]Color{}
@@ -622,26 +647,38 @@ func (gs *GameScreen) Draw() {
 		x := noteX(player, dir)
 		y := SCREEN_HEIGHT - gs.NotesMarginBottom
 
+		sincePressed := GlobalTimerNow() - gs.Event.KeyPressedAt[player][dir]
+		glowT := float64(sincePressed) / float64(time.Millisecond * 50) 
+		glowT = Clamp(glowT, 0.1, 1.0)
+
+		flashT := float64(sincePressed) / float64(time.Millisecond * 20) 
+		if flashT > 1{
+			flashT = 1
+		}
+		flashT = 1 - flashT
+
 		if gs.Event.IsHoldingKey[player][dir] && !gs.Event.IsHoldingBadKey[player][dir] {
-			DrawNoteArrow(x, y, gs.NotesSize, dir, noteFillLight[dir], noteStrokeLight[dir])
+			if glowT > 1 {
+				glowT = 1
+			}
+
+			fill := LerpRGBA(noteFill[dir], noteFillLight[dir], glowT)
+			stroke := LerpRGBA(noteStroke[dir], noteStrokeLight[dir], glowT)
+
+			DrawNoteArrow(x, y, gs.NotesSize, dir, fill, stroke)
+
+			glow := noteFill[dir]
+			glow.A = glowT * 0.5
+			DrawNoteGlow(x, y, gs.NotesSize, dir, glow)
 		}
 
-		// draw glow
-		const duration = time.Millisecond * 90
-		recenltyPressed := gs.Event.IsHoldingKey[player][dir] || GlobalTimerNow()-gs.Event.KeyReleasedAt[player][dir] < duration
-		if recenltyPressed && !gs.Event.IsHoldingBadKey[player][dir] {
-			t := GlobalTimerNow() - gs.Event.KeyPressedAt[player][dir]
+		// draw flash
+		if !gs.Event.IsHoldingBadKey[player][dir] && flashT >= 0{
+			color := Color{}
 
-			if t < duration {
-				color := Color{}
+			color = Col(noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, flashT)
 
-				glow := float64(t) / float64(duration)
-				glow = 1.0 - glow
-
-				color = Col(noteGlow[dir].R, noteGlow[dir].G, noteGlow[dir].B, glow)
-
-				DrawNoteArrow(x, y, gs.NotesSize*1.1, dir, color, color)
-			}
+			DrawNoteArrow(x, y, gs.NotesSize*1.1, dir, color, color)
 		}
 	}
 
@@ -761,7 +798,7 @@ func (gs *GameScreen) Draw() {
 
 	for player := 0; player <= 1; player++{
 		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Event.IsHoldingNote[player][dir] && gs.Event.HoldingNote[player][dir].Duration > 0{
+			if gs.Event.IsHoldingKey[player][dir] && gs.Event.IsHoldingNote[player][dir]{
 				drawHitOverlay(player, dir)
 			}
 		}
