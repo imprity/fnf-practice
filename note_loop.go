@@ -8,19 +8,19 @@ import (
 )
 
 type PlayerState struct {
-	HoldingNote   [2][NoteDirSize]FnfNote
-	IsHoldingNote [2][NoteDirSize]bool
+	HoldingNote   [NoteDirSize]FnfNote
+	IsHoldingNote [NoteDirSize]bool
 
 	// animation infos
-	IsHoldingKey    [2][NoteDirSize]bool
-	IsHoldingBadKey [2][NoteDirSize]bool
+	IsHoldingKey    [NoteDirSize]bool
+	IsHoldingBadKey [NoteDirSize]bool
 
-	KeyPressedAt  [2][NoteDirSize]time.Duration
-	KeyReleasedAt [2][NoteDirSize]time.Duration
-	DidReleaseBadKey [2][NoteDirSize]bool
+	KeyPressedAt  [NoteDirSize]time.Duration
+	KeyReleasedAt [NoteDirSize]time.Duration
+	DidReleaseBadKey [NoteDirSize]bool
 
-	NoteMissAt [2][NoteDirSize]time.Duration
-	DidMissNote [2][NoteDirSize]bool
+	NoteMissAt [NoteDirSize]time.Duration
+	DidMissNote [NoteDirSize]bool
 }
 
 func NoteStartTunneled(
@@ -47,7 +47,7 @@ func SustainNoteTunneled(
 
 func UpdateNotesAndStates(
 	notes []FnfNote,
-	pState PlayerState,
+	pState [2]PlayerState,
 	wasKeyPressed [2][NoteDirSize]bool,
 	isKeyPressed [2][NoteDirSize]bool,
 	prevAudioPos time.Duration,
@@ -56,7 +56,7 @@ func UpdateNotesAndStates(
 	hitWindow time.Duration,
 	botPlay bool,
 	noteIndexStart int,
-) (PlayerState, int) {
+) ([2]PlayerState, int) {
 	newNoteIndexStart := noteIndexStart
 
 	if isPlayingAudio {
@@ -80,7 +80,7 @@ func UpdateNotesAndStates(
 		//clear note miss state
 		for player := 0; player <= 1; player++ {
 			for dir := range NoteDirSize {
-				pState.DidMissNote[player][dir] = false
+				pState[player].DidMissNote[dir] = false
 			}
 		}
 
@@ -98,7 +98,7 @@ func UpdateNotesAndStates(
 			// DEBUG!!!!!!!!!!!!!!!!!!!!!
 
 			notes[note.Index].IsHit = true
-			pState.IsHoldingBadKey[note.Player][note.Direction] = false
+			pState[note.Player].IsHoldingBadKey[note.Direction] = false
 			didHitNote[note.Player][note.Direction] = true
 			hitNote[note.Player][note.Direction] = note
 		}
@@ -106,32 +106,32 @@ func UpdateNotesAndStates(
 		onNoteHold := func(note FnfNote) {
 			onNoteHit(note)
 
-			pState.HoldingNote[note.Player][note.Direction] = note
-			pState.IsHoldingNote[note.Player][note.Direction] = true
+			pState[note.Player].HoldingNote[note.Direction] = note
+			pState[note.Player].IsHoldingNote[note.Direction] = true
 		}
 
 		// we check if user pressed any key
 		// and if so mark all as bad hit (it will be overidden as not bad later)
 		for player := 0; player <= 1; player++ {
 			for dir := range NoteDirSize {
-				if isKeyPressed[player][dir] && !pState.IsHoldingKey[player][dir] {
-					pState.IsHoldingKey[player][dir] = true
-					pState.KeyPressedAt[player][dir] = GlobalTimerNow()
+				if isKeyPressed[player][dir] && !pState[player].IsHoldingKey[dir] {
+					pState[player].IsHoldingKey[dir] = true
+					pState[player].KeyPressedAt[dir] = GlobalTimerNow()
 
-					pState.IsHoldingBadKey[player][dir] = true
+					pState[player].IsHoldingBadKey[dir] = true
 				} else if !isKeyPressed[player][dir] {
-					if pState.IsHoldingKey[player][dir] {
-						pState.KeyReleasedAt[player][dir] = GlobalTimerNow()
+					if pState[player].IsHoldingKey[dir] {
+						pState[player].KeyReleasedAt[dir] = GlobalTimerNow()
 
-						if pState.IsHoldingBadKey[player][dir]{
-							pState.DidReleaseBadKey[player][dir] = true
+						if pState[player].IsHoldingBadKey[dir]{
+							pState[player].DidReleaseBadKey[dir] = true
 						}else{
-							pState.DidReleaseBadKey[player][dir] = false
+							pState[player].DidReleaseBadKey[dir] = false
 						}
 					}
 
-					pState.IsHoldingKey[player][dir] = false
-					pState.IsHoldingBadKey[player][dir] = false
+					pState[player].IsHoldingKey[dir] = false
+					pState[player].IsHoldingBadKey[dir] = false
 				}
 			}
 		}
@@ -139,11 +139,11 @@ func UpdateNotesAndStates(
 		// update any notes that were held but now no longer being held
 		for player := 0; player <= 1; player++ {
 			for dir := range NoteDirSize {
-				if !isKeyPressed[player][dir] && pState.IsHoldingNote[player][dir] {
-					note := pState.HoldingNote[player][dir]
+				if !isKeyPressed[player][dir] && pState[player].IsHoldingNote[dir] {
+					note := pState[player].HoldingNote[dir]
 					notes[note.Index].HoldReleaseAt = audioPos
 
-					pState.IsHoldingNote[player][dir] = false
+					pState[player].IsHoldingNote[dir] = false
 				}
 			}
 		}
@@ -191,14 +191,14 @@ func UpdateNotesAndStates(
 
 			//check if user missed note
 			if note.IsSustain(){
-				missed := !pState.IsHoldingNote[note.Player][note.Direction]
-				missed = missed || (pState.IsHoldingNote[note.Player][note.Direction] && !pState.HoldingNote[note.Player][note.Direction].Equals(note))
+				missed := !pState[note.Player].IsHoldingNote[note.Direction]
+				missed = missed || (pState[note.Player].IsHoldingNote[note.Direction] && !pState[note.Player].HoldingNote[note.Direction].Equals(note))
 				missed = missed && note.StartPassedHitWindow(audioPos, hitWindow)
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
 				missed = missed && note.HoldReleaseAt < note.StartsAt + note.Duration
 				if missed {
-					pState.DidMissNote[note.Player][note.Direction] = true
-					pState.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
+					pState[note.Player].DidMissNote[note.Direction] = true
+					pState[note.Player].NoteMissAt[note.Direction] = GlobalTimerNow()
 				}
 			}else if !note.IsHit{
 				wasInHitWindow := false
@@ -208,8 +208,8 @@ func UpdateNotesAndStates(
 				isInHitWindow = note.IsInWindow(audioPos, hitWindow)
 
 				if wasInHitWindow && !isInHitWindow{
-					pState.DidMissNote[note.Player][note.Direction] = true
-					pState.NoteMissAt[note.Player][note.Direction] = GlobalTimerNow()
+					pState[note.Player].DidMissNote[note.Direction] = true
+					pState[note.Player].NoteMissAt[note.Direction] = GlobalTimerNow()
 				}
 			}
 
