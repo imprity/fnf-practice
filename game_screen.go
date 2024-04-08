@@ -36,7 +36,7 @@ type GameScreen struct {
 
 	HitWindow time.Duration
 
-	Pstate [2]PlayerState
+	Pstates [2]PlayerState
 
 	PausedBecausePositionChangeKey bool
 
@@ -228,7 +228,7 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
 
 	gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-	gs.Pstate = [2]PlayerState{}
+	gs.Pstates = [2]PlayerState{}
 
 	gs.noteIndexStart = 0
 	gs.audioPosition = 0
@@ -481,9 +481,9 @@ func (gs *GameScreen) Update() UpdateResult{
 
 	isKeyPressed := GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
 
-	gs.Pstate, gs.noteIndexStart = UpdateNotesAndStates(
+	gs.Pstates, gs.noteIndexStart = UpdateNotesAndStates(
 		gs.Song.Notes,
-		gs.Pstate,
+		gs.Pstates,
 		gs.wasKeyPressed,
 		isKeyPressed,
 		prevAudioPos,
@@ -497,7 +497,7 @@ func (gs *GameScreen) Update() UpdateResult{
 
 	for player := 0; player<=1; player++{
 		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Pstate[player].DidMissNote[dir]{
+			if gs.Pstates[player].DidMissNote[dir]{
 				fmt.Printf("player %v missed %v note\n", player, NoteDirStrs[dir])
 			}
 		}
@@ -676,24 +676,24 @@ func (gs *GameScreen) Draw() {
 	// it we hit note, raise note up
 	for p :=0; p<=1; p++{
 		for dir := NoteDir(0); dir<NoteDirSize; dir++{
-			if gs.Pstate[p].IsHoldingBadKey[dir]{
+			if gs.Pstates[p].IsHoldingBadKey[dir]{
 				statusScaleOffset[p][dir] += 0.1
-			}else if gs.Pstate[p].DidReleaseBadKey[dir]{
-				t := float32((GlobalTimerNow() - gs.Pstate[p].KeyReleasedAt[dir]))  / float32(time.Millisecond * 40)
+			}else if gs.Pstates[p].DidReleaseBadKey[dir]{
+				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir]))  / float32(time.Millisecond * 40)
 				if t > 1 { t = 1 }
 				t = 1 - t
 
 				statusScaleOffset[p][dir] += 0.1 * t
 			}
-			if gs.Pstate[p].IsHoldingKey[dir] && !gs.Pstate[p].IsHoldingBadKey[dir]{
+			if gs.Pstates[p].IsHoldingKey[dir] && !gs.Pstates[p].IsHoldingBadKey[dir]{
 				statusOffsetY[p][dir] = - 5
 				statusScaleOffset[p][dir] += 0.1
-				if gs.Pstate[p].IsHoldingNote[dir]{
+				if gs.Pstates[p].IsHoldingNote[dir]{
 					statusOffsetX[p][dir] += (rand.Float32() * 2 - 1) * 3
 					statusOffsetY[p][dir] += (rand.Float32() * 2 - 1) * 3
 				}
-			}else if !gs.Pstate[p].DidReleaseBadKey[dir]{
-				t := float32((GlobalTimerNow() - gs.Pstate[p].KeyReleasedAt[dir]))  / float32(time.Millisecond * 40)
+			}else if !gs.Pstates[p].DidReleaseBadKey[dir]{
+				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir]))  / float32(time.Millisecond * 40)
 				if t > 1 { t = 1 }
 				t = 1 - t
 
@@ -712,7 +712,7 @@ func (gs *GameScreen) Draw() {
 		y := SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
 		scale := gs.NotesSize * statusScaleOffset[player][dir]
 
-		sincePressed := GlobalTimerNow() - gs.Pstate[player].KeyPressedAt[dir]
+		sincePressed := GlobalTimerNow() - gs.Pstates[player].KeyPressedAt[dir]
 		glowT := float64(sincePressed) / float64(time.Millisecond * 50)
 		glowT = Clamp(glowT, 0.1, 1.0)
 
@@ -722,7 +722,7 @@ func (gs *GameScreen) Draw() {
 		}
 		flashT = 1 - flashT
 
-		if gs.Pstate[player].IsHoldingKey[dir] && !gs.Pstate[player].IsHoldingBadKey[dir] {
+		if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingBadKey[dir] {
 			if glowT > 1 {
 				glowT = 1
 			}
@@ -738,7 +738,7 @@ func (gs *GameScreen) Draw() {
 		}
 
 		// draw flash
-		if !gs.Pstate[player].IsHoldingBadKey[dir] && flashT >= 0{
+		if !gs.Pstates[player].IsHoldingBadKey[dir] && flashT >= 0{
 			color := Color{}
 
 			color = Col(noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, flashT)
@@ -756,7 +756,7 @@ func (gs *GameScreen) Draw() {
 		for player := 0; player <= 1; player++ {
 			color := Col(0.5, 0.5, 0.5, 1.0)
 
-			if gs.Pstate[player].IsHoldingKey[dir] && gs.Pstate[player].IsHoldingBadKey[dir] {
+			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] {
 				color = Col(1, 0, 0, 1)
 			}
 
@@ -774,7 +774,7 @@ func (gs *GameScreen) Draw() {
 
 	for player := 0; player <= 1; player++{
 		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Pstate[player].IsHoldingKey[dir] && !gs.Pstate[player].IsHoldingNote[dir]{
+			if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir]{
 				drawHitOverlay(player, dir)
 			}
 		}
@@ -815,8 +815,8 @@ func (gs *GameScreen) Draw() {
 
 			if note.IsSustain() { // draw hold note
 				if note.HoldReleaseAt < note.Duration+note.StartsAt {
-					isHoldingNote := gs.Pstate[note.Player].IsHoldingNote[note.Direction]
-					isHoldingNote = isHoldingNote && gs.Pstate[note.Player].HoldingNote[note.Direction].Equals(note)
+					isHoldingNote := gs.Pstates[note.Player].IsHoldingNote[note.Direction]
+					isHoldingNote = isHoldingNote && gs.Pstates[note.Player].HoldingNote[note.Direction].Equals(note)
 
 					sustaniEndY := timeToY(note.StartsAt + note.Duration)
 					sustainBeginY := timeToY(max(note.StartsAt, note.HoldReleaseAt))
@@ -869,7 +869,7 @@ func (gs *GameScreen) Draw() {
 
 	for player := 0; player <= 1; player++{
 		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Pstate[player].IsHoldingKey[dir] && gs.Pstate[player].IsHoldingNote[dir]{
+			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir]{
 				drawHitOverlay(player, dir)
 			}
 		}

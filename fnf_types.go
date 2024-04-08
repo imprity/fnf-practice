@@ -41,9 +41,10 @@ var NoteDirStrs = [NoteDirSize]string{
 
 type FnfNote struct {
 	Player    int
+	Direction NoteDir
+
 	StartsAt  time.Duration
 	Duration  time.Duration
-	Direction NoteDir
 	Index     int
 
 	// variables that change during gameplay
