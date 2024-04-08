@@ -40,6 +40,8 @@ type GameScreen struct {
 
 	PausedBecausePositionChangeKey bool
 
+	NoteEvents [][]NoteEvent
+
 	// variables about note rendering
 	NotesMarginLeft   float32
 	NotesMarginRight  float32
@@ -52,7 +54,7 @@ type GameScreen struct {
 	PixelsPerMillis float32
 
 	// private members
-	wasKeyPressed  [2][NoteDirSize]bool
+	isKeyPressed  [2][NoteDirSize]bool
 	noteIndexStart int
 
 	audioPosition              time.Duration
@@ -222,7 +224,7 @@ func (gs *GameScreen) SetBotPlay(bot bool) {
 func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
 	for player := 0; player <= 1; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			gs.wasKeyPressed[player][dir] = false
+			gs.isKeyPressed[player][dir] = false
 		}
 	}
 
@@ -234,6 +236,12 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
 	gs.audioPosition = 0
 
 	gs.audioPositionSafetyCounter = 0
+
+	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
+
+	for i := range len(gs.NoteEvents){
+		gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
+	}
 }
 
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
@@ -479,13 +487,16 @@ func (gs *GameScreen) Update() UpdateResult{
 
 	audioPos := gs.AudioPosition()
 
-	isKeyPressed := GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
+	wasKeyPressed := gs.isKeyPressed
+	gs.isKeyPressed = GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
 
-	gs.Pstates, gs.noteIndexStart = UpdateNotesAndStates(
+	var eventMap map[int]NoteEvent
+
+	gs.Pstates, eventMap, gs.noteIndexStart = UpdateNotesAndStates(
 		gs.Song.Notes,
 		gs.Pstates,
-		gs.wasKeyPressed,
-		isKeyPressed,
+		wasKeyPressed,
+		gs.isKeyPressed,
 		prevAudioPos,
 		audioPos,
 		gs.InstPlayer.IsPlaying(),
@@ -493,12 +504,45 @@ func (gs *GameScreen) Update() UpdateResult{
 		gs.botPlay,
 		gs.noteIndexStart,
 	)
-	gs.wasKeyPressed = isKeyPressed
 
-	for player := 0; player<=1; player++{
-		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Pstates[player].DidMissNote[dir]{
-				fmt.Printf("player %v missed %v note\n", player, NoteDirStrs[dir])
+	reportEvent := func (e NoteEvent){
+		i := e.Index
+		note := gs.Song.Notes[i]
+		p := note.Player
+		dir := note.Direction
+
+		switch e.Type{
+		case NoteEventHit:
+			fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt - e.Time))
+		case NoteEventRelease:
+			fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
+		case NoteEventMiss:
+			fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
+		}
+	}
+
+	for i, e := range eventMap{
+		events := gs.NoteEvents[i]
+		if len(events) <= 0{
+			reportEvent(e)
+			gs.NoteEvents[i] = append(events, e)
+		}else{
+			last := events[len(events) - 1]
+
+			switch last.Type{
+			case NoteEventMiss:
+				t := e.Time - last.Time
+				if t > time.Millisecond * 1000{
+					reportEvent(e)
+
+					gs.NoteEvents[i] = append(events, e)
+				}
+			case NoteEventRelease: fallthrough
+			case NoteEventHit:
+				if last.Type != e.Type{
+					reportEvent(e)
+					gs.NoteEvents[i] = append(events, e)
+				}
 			}
 		}
 	}

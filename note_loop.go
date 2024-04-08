@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -21,6 +20,20 @@ type PlayerState struct {
 
 	NoteMissAt [NoteDirSize]time.Duration
 	DidMissNote [NoteDirSize]bool
+}
+
+type NoteEventType int
+
+const (
+	NoteEventHit NoteEventType = iota
+	NoteEventRelease
+	NoteEventMiss
+)
+
+type NoteEvent struct{
+	Type NoteEventType
+	Time time.Duration
+	Index int
 }
 
 func NoteStartTunneled(
@@ -56,10 +69,13 @@ func UpdateNotesAndStates(
 	hitWindow time.Duration,
 	botPlay bool,
 	noteIndexStart int,
-) ([2]PlayerState, int) {
+) ([2]PlayerState, map[int]NoteEvent, int) {
 	newNoteIndexStart := noteIndexStart
 
+	eventMap := make(map[int]NoteEvent)
+
 	if isPlayingAudio {
+		avgPos := (audioPos + prevAudioPos)/2
 
 		var isKeyJustPressed [2][NoteDirSize]bool
 		var isKeyJustReleased [2][NoteDirSize]bool
@@ -90,17 +106,16 @@ func UpdateNotesAndStates(
 		hitNote := [2][NoteDirSize]FnfNote{}
 
 		onNoteHit := func(note FnfNote) {
-			// DEBUG!!!!!!!!!!!!!!!!!!!!!
-			if !notes[note.Index].IsHit && note.Player == 0 {
-				diff := AbsI(note.StartsAt - audioPos)
-				fmt.Printf("hit note, %v\n", diff)
-			}
-			// DEBUG!!!!!!!!!!!!!!!!!!!!!
-
 			notes[note.Index].IsHit = true
 			pStates[note.Player].IsHoldingBadKey[note.Direction] = false
 			didHitNote[note.Player][note.Direction] = true
 			hitNote[note.Player][note.Direction] = note
+
+			eventMap[note.Index] = NoteEvent{
+				Type : NoteEventHit,
+				Time : avgPos,
+				Index : note.Index,
+			}
 		}
 
 		onNoteHold := func(note FnfNote) {
@@ -108,6 +123,17 @@ func UpdateNotesAndStates(
 
 			pStates[note.Player].HoldingNote[note.Direction] = note
 			pStates[note.Player].IsHoldingNote[note.Direction] = true
+		}
+
+		onNoteMiss := func(note FnfNote) {
+			pStates[note.Player].DidMissNote[note.Direction] = true
+			pStates[note.Player].NoteMissAt[note.Direction] = GlobalTimerNow()
+
+			eventMap[note.Index] = NoteEvent{
+				Type : NoteEventMiss,
+				Time : avgPos,
+				Index : note.Index,
+			}
 		}
 
 		// we check if user pressed any key
@@ -144,6 +170,12 @@ func UpdateNotesAndStates(
 					notes[note.Index].HoldReleaseAt = audioPos
 
 					pStates[player].IsHoldingNote[dir] = false
+
+					eventMap[note.Index] = NoteEvent{
+						Type : NoteEventRelease,
+						Time : avgPos,
+						Index : note.Index,
+					}
 				}
 			}
 		}
@@ -200,8 +232,7 @@ func UpdateNotesAndStates(
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
 				missed = missed && note.HoldReleaseAt < note.StartsAt + note.Duration
 				if missed {
-					pStates[np].DidMissNote[nd] = true
-					pStates[np].NoteMissAt[nd] = GlobalTimerNow()
+					onNoteMiss(note)
 				}
 			}else if !note.IsHit{
 				wasInHitWindow := false
@@ -211,8 +242,7 @@ func UpdateNotesAndStates(
 				isInHitWindow = note.IsInWindow(audioPos, hitWindow)
 
 				if wasInHitWindow && !isInHitWindow{
-					pStates[np].DidMissNote[nd] = true
-					pStates[np].NoteMissAt[nd] = GlobalTimerNow()
+					onNoteMiss(note)
 				}
 			}
 
@@ -231,7 +261,7 @@ func UpdateNotesAndStates(
 		noteIndexStart = newNoteIndexStart
 	}
 
-	return pStates, newNoteIndexStart
+	return pStates, eventMap, newNoteIndexStart
 }
 
 func GetKeyPressState(
