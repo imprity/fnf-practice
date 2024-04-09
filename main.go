@@ -1,11 +1,9 @@
 package main
 
 import (
-	//"bytes"
 	_ "embed"
 	"flag"
 	"fmt"
-	//"image"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -14,8 +12,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strings"
-	//"bufio"
-	//"sync"
 
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"

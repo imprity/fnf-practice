@@ -501,11 +501,12 @@ func (gs *GameScreen) Update() UpdateResult{
 	audioPos := gs.AudioPosition()
 
 	wasKeyPressed := gs.isKeyPressed
+
 	gs.isKeyPressed = GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
 
-	var eventMap map[int]NoteEvent
+	var noteEvents []NoteEvent
 
-	gs.Pstates, eventMap, gs.noteIndexStart = UpdateNotesAndStates(
+	gs.Pstates, noteEvents, gs.noteIndexStart = UpdateNotesAndStates(
 		gs.Song.Notes,
 		gs.Pstates,
 		wasKeyPressed,
@@ -524,19 +525,21 @@ func (gs *GameScreen) Update() UpdateResult{
 		p := note.Player
 		dir := note.Direction
 
-		switch e.Type{
-		case NoteEventHit:
+		if e.IsFirstHit(){
 			fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt - e.Time))
-		case NoteEventRelease:
-			fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
-		case NoteEventMiss:
-			fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
+		}else{
+			if e.IsRelease(){
+				fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
+			}
+			if e.IsMiss(){
+				fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
+			}
 		}
 	}
 
 	pushPopupIfPlayer0Hit := func (e NoteEvent){
 		note := gs.Song.Notes[e.Index]
-		if e.Type == NoteEventHit && note.Player == 0{
+		if e.IsFirstHit() && note.Player == 0{
 			var rating FnfHitRating
 
 			t := AbsI(note.StartsAt - e.Time)
@@ -550,7 +553,7 @@ func (gs *GameScreen) Update() UpdateResult{
 			}else {
 				rating = HitRatingBad
 			}
-			
+
 			popup := NotePopup{
 				Start : GlobalTimerNow(),
 				Rating : rating,
@@ -559,29 +562,28 @@ func (gs *GameScreen) Update() UpdateResult{
 		}
 	}
 
-	for i, e := range eventMap{
-		events := gs.NoteEvents[i]
+	for _, e := range noteEvents{
+		events := gs.NoteEvents[e.Index]
+
 		if len(events) <= 0{
 			reportEvent(e)
 			pushPopupIfPlayer0Hit(e)
-			gs.NoteEvents[i] = append(events, e)
+			gs.NoteEvents[e.Index] = append(events, e)
 		}else{
 			last := events[len(events) - 1]
 
-			switch last.Type{
-			case NoteEventMiss:
-				t := e.Time - last.Time
-				if t > time.Millisecond * 1000{
-					reportEvent(e)
-					gs.NoteEvents[i] = append(events, e)
+			if last.SameKind(e){
+				if last.IsMiss(){
+					t := e.Time - last.Time
+					if t > time.Millisecond * 1000{
+						reportEvent(e)
+						gs.NoteEvents[e.Index] = append(events, e)
+					}
 				}
-			case NoteEventRelease: fallthrough
-			case NoteEventHit:
-				if last.Type != e.Type{
-					reportEvent(e)
-					pushPopupIfPlayer0Hit(e)
-					gs.NoteEvents[i] = append(events, e)
-				}
+			}else{
+				reportEvent(e)
+				pushPopupIfPlayer0Hit(e)
+				gs.NoteEvents[e.Index] = append(events, e)
 			}
 		}
 	}
@@ -966,7 +968,7 @@ func (gs *GameScreen) Draw() {
 		const duration = time.Millisecond * 700
 		dequeue := 0
 		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-		
+
 		for i := range gs.PopupQueue.Length{
 			popup := gs.PopupQueue.At(i)
 
@@ -1015,7 +1017,7 @@ func (gs *GameScreen) Draw() {
 
 			{
 				const colorFadeAt = float32(duration) * 0.9
-				
+
 				t := float32(delta) / colorFadeAt
 				t = Clamp(t, 0, 1)
 
@@ -1025,7 +1027,7 @@ func (gs *GameScreen) Draw() {
 				alpha = t
 			}
 
-			DrawTextureTransfromed(tex, texRect, mat, 
+			DrawTextureTransfromed(tex, texRect, mat,
 				rl.Color{
 					uint8(255 * alpha),
 					uint8(255 * alpha),
