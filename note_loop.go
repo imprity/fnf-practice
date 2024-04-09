@@ -28,6 +28,7 @@ const (
 	NoteEventHit NoteEventType = iota
 	NoteEventRelease
 	NoteEventMiss
+	NoteEventSize
 )
 
 type NoteEvent struct{

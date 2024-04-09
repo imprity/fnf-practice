@@ -22,7 +22,20 @@ var arrowsGlowBytes []byte
 var ArrowsGlowTex rl.Texture2D
 var ArrowsGlowRects [NoteDirSize]rl.Rectangle
 
-func InitArrowTexture() {
+//go:embed "assets/background 1.png"
+var backgroundBytes []byte
+var PrettyBackground rl.Texture2D
+
+//go:embed "assets/bad.png"
+var hitRatingBadBytes []byte
+//go:embed "assets/good.png"
+var hitRatingGoodBytes []byte
+//go:embed "assets/sick.png"
+var hitRatingSickBytes []byte
+
+var HitRatingTexs [HitRatingSize]rl.Texture2D
+
+func InitAssets() {
 	outerImg := rl.LoadImageFromMemory(".png", arrowsOuterBytes, int32(len(arrowsOuterBytes)))
 	innerImg := rl.LoadImageFromMemory(".png", arrowsInnerBytes, int32(len(arrowsInnerBytes)))
 
@@ -62,13 +75,22 @@ func InitArrowTexture() {
 			x, 0, width, float32(ArrowsGlowTex.Height),
 		}
 	}
-}
 
-//go:embed "assets/background 1.png"
-var backgroundBytes []byte
-var PrettyBackground rl.Texture2D
-
-func InitPrettyBackground() {
 	backgroundImg := rl.LoadImageFromMemory(".png", backgroundBytes, int32(len(backgroundBytes)))
 	PrettyBackground = rl.LoadTextureFromImage(backgroundImg)
+
+	var ratingImgs [HitRatingSize]*rl.Image
+
+	ratingImgs[HitRatingBad]  = rl.LoadImageFromMemory(".png", hitRatingBadBytes, int32(len(hitRatingBadBytes)))
+	ratingImgs[HitRatingGood] = rl.LoadImageFromMemory(".png", hitRatingGoodBytes, int32(len(hitRatingGoodBytes)))
+	ratingImgs[HitRatingSick] = rl.LoadImageFromMemory(".png", hitRatingSickBytes, int32(len(hitRatingSickBytes)))
+
+	for _, img := range ratingImgs{
+		rl.ImageAlphaPremultiply(img)
+	}
+
+	HitRatingTexs[HitRatingBad] = rl.LoadTextureFromImage(ratingImgs[HitRatingBad])
+	HitRatingTexs[HitRatingGood] = rl.LoadTextureFromImage(ratingImgs[HitRatingGood])
+	HitRatingTexs[HitRatingSick] = rl.LoadTextureFromImage(ratingImgs[HitRatingSick])
 }
+

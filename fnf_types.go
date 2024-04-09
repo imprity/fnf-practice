@@ -209,3 +209,12 @@ type FnfPathGroup struct {
 	InstPath  string
 	VoicePath string
 }
+
+type FnfHitRating int
+
+const (
+	HitRatingBad FnfHitRating = iota
+	HitRatingGood
+	HitRatingSick
+	HitRatingSize
+)

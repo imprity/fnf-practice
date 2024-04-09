@@ -44,8 +44,9 @@ func Lerp[F constraints.Float](a, b, t F) F {
 }
 
 type CircularQueue[T any] struct {
-	Length int
+	End int
 	Start  int
+	Length int
 	Data   []T
 }
 
@@ -58,15 +59,21 @@ func (q *CircularQueue[T]) IsEmpty() bool {
 }
 
 func (q *CircularQueue[T]) Enqueue(item T) {
+	index := q.End
+
 	isFull := q.IsFull()
+
 	if isFull {
 		q.Start += 1
-		q.Start = q.Start % q.Length
+		q.Start = q.Start % len(q.Data)
+		q.End += 1
+		q.End = q.End % len(q.Data)
 	} else {
+		q.End += 1
+		q.End = q.End % len(q.Data)
 		q.Length += 1
 	}
 
-	index := (q.Start + q.Length - 1) % len(q.Data)
 	q.Data[index] = item
 }
 
@@ -74,6 +81,8 @@ func (q *CircularQueue[T]) Dequeue() T {
 	if q.Length <= 0 {
 		panic("CircularQueue:Dequeue: Dequeue on empty queue")
 	}
+
+	q.Length -= 1
 
 	q.Start %= len(q.Data)
 	returnIndex := q.Start
@@ -83,7 +92,13 @@ func (q *CircularQueue[T]) Dequeue() T {
 }
 
 func (q *CircularQueue[T]) At(index int) T {
-	return q.Data[(q.Start+index)%q.Length]
+	return q.Data[(q.Start + index)%len(q.Data)]
+}
+
+func (q *CircularQueue[T]) Clear()  {
+	q.Length = 0
+	q.Start = 0
+	q.End = 0
 }
 
 type ReadChannel[T any] struct {

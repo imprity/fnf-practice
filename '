@@ -47,7 +47,7 @@ type GameScreen struct {
 
 	NoteEvents [][]NoteEvent
 
-	PopupQueue CircularQueue[NotePopup]
+	PopupStack []NotePopup
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -90,10 +90,6 @@ func NewGameScreen() *GameScreen {
 	gs.VoicePlayer = NewVaryingSpeedPlayer()
 
 	gs.PixelsPerMillis = 0.5
-
-	gs.PopupQueue = CircularQueue[NotePopup]{
-		Data : make([]NotePopup, 128), // 128 popups should be enough for everyone right?
-	}
 
 	return gs
 }
@@ -238,8 +234,6 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
 			gs.isKeyPressed[player][dir] = false
 		}
 	}
-
-	gs.PopupQueue.Clear()
 
 	gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
@@ -534,9 +528,8 @@ func (gs *GameScreen) Update() UpdateResult{
 		}
 	}
 
-	pushPopupIfPlayer0Hit := func (e NoteEvent){
-		note := gs.Song.Notes[e.Index]
-		if e.Type == NoteEventHit && note.Player == 0{
+	pushPopupIfHit := func (e NoteEvent){
+		if e.Type == NoteEventHit{
 			var rating FnfHitRating
 
 			t := AbsI(note.StartsAt - e.Time)
@@ -546,16 +539,16 @@ func (gs *GameScreen) Update() UpdateResult{
 			if t < time.Millisecond * 45{
 				rating = HitRatingSick
 			}else if t < time.Millisecond * 90{
-				rating = HitRatingGood
+				rating = HitRatingGoood
 			}else {
 				rating = HitRatingBad
 			}
 			
 			popup := NotePopup{
-				Start : GlobalTimerNow(),
-				Rating : rating,
+				Start : GlobalTimerNow()
+				Rating : rating
 			}
-			gs.PopupQueue.Enqueue(popup)
+			gs.PopupStack = append(gs.PopupStack, popup)
 		}
 	}
 
@@ -563,7 +556,7 @@ func (gs *GameScreen) Update() UpdateResult{
 		events := gs.NoteEvents[i]
 		if len(events) <= 0{
 			reportEvent(e)
-			pushPopupIfPlayer0Hit(e)
+			pushPopupIfHit(e)
 			gs.NoteEvents[i] = append(events, e)
 		}else{
 			last := events[len(events) - 1]
@@ -579,7 +572,7 @@ func (gs *GameScreen) Update() UpdateResult{
 			case NoteEventHit:
 				if last.Type != e.Type{
 					reportEvent(e)
-					pushPopupIfPlayer0Hit(e)
+					pushPopupIfHit(e)
 					gs.NoteEvents[i] = append(events, e)
 				}
 			}
@@ -963,86 +956,35 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 
 	{
-		const duration = time.Millisecond * 700
-		dequeue := 0
-		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+		const duration := time.Millisecond * 100
 		
-		for i := range gs.PopupQueue.Length{
-			popup := gs.PopupQueue.At(i)
-
-			delta := GlobalTimerNow() - popup.Start
-
-			if delta > duration{
-				dequeue = i+1
+		for _, popup := range gs.PopupStack{
+			t := float32(popup.Start - GlobalTimerNow()) / duration
+			if t > 1{
+				t = 1
 			}
+			y := gs.NotesMarginBottom - t * 100
+			x := float32(SCREEN_WIDTH / 2)
 
-			projectileX := float32(0)
-			projectileY := float32(0)
-			{
-				const height = -30
-				const heightReachAt = float32(duration) * 0.4
 
-				const a = float32(height) / -(heightReachAt * heightReachAt)
-				const b = -2.0* a * heightReachAt
-				yt := float32(delta)
+			rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-				projectileY = a * yt * yt + b * yt
+			texW := HitRatingTexs[popup.Rating].Width
+			texH := HitRatingTexs[popup.Rating].Height
 
-				xt := float32(delta) / (float32(duration) * 0.7)
-				xt = float32(math.Pow(float64(xt), 1.3))
+			mat := rl.MatrixIdentity()
 
-				projectileX = -xt * 15
-			}
-
-			y := SCREEN_HEIGHT - gs.NotesMarginBottom - 200 + projectileY
-			x := float32(SCREEN_WIDTH / 2) + projectileX - 200
-
-			tex := HitRatingTexs[popup.Rating]
-
-			texW := float32(tex.Width)
-			texH := float32(tex.Height)
-
-			texRect := rl.Rectangle{
-				0,0, texW, texH,
-			}
-
-			mat := rl.MatrixTranslate(
-				x,
+			mat = rl.MatrixMultiply(mat,
+			rl.MatrixTranslate(
+				x - texW * 0.5,
 				y - texH * 0.5,
-				0)
-
-			alpha := float32(0)
-
-			{
-				const colorFadeAt = float32(duration) * 0.9
-				
-				t := float32(delta) / colorFadeAt
-				t = Clamp(t, 0, 1)
-
-				t = float32(math.Pow(float64(t), 10))
-				t = 1 - t
-
-				alpha = t
-			}
-
-			DrawTextureTransfromed(tex, texRect, mat, 
-				rl.Color{
-					uint8(255 * alpha),
-					uint8(255 * alpha),
-					uint8(255 * alpha),
-					uint8(255 * alpha),
-				},
+				0),
 			)
 
-		}
-		rl.EndBlendMode()
+			DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill.ToImageRGBA())
+			DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke.ToImageRGBA())
 
-		if rl.IsKeyPressed(rl.KeyF){
-			println("debug")
-		}
-
-		for _ = range dequeue{
-			gs.PopupQueue.Dequeue()
+			rl.EndBlendMode()
 		}
 	}
 
