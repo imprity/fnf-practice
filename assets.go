@@ -1,51 +1,96 @@
 package main
 
 import (
-	_ "embed"
+	"embed"
+	"os"
+	"io/fs"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-//go:embed assets/arrows_outer.png
-var arrowsOuterBytes []byte
-
-//go:embed assets/arrows_inner.png
-var arrowsInnerBytes []byte
+//go:embed assets
+var EmebededAssets embed.FS
 
 var ArrowsOuterTex rl.Texture2D
 var ArrowsInnerTex rl.Texture2D
 
 var ArrowsRects [NoteDirSize]rl.Rectangle
 
-//go:embed assets/arrows_glow.png
-var arrowsGlowBytes []byte
-
 var ArrowsGlowTex rl.Texture2D
 var ArrowsGlowRects [NoteDirSize]rl.Rectangle
 
-//go:embed "assets/background 1.png"
-var backgroundBytes []byte
 var PrettyBackground rl.Texture2D
-
-//go:embed "assets/bad.png"
-var hitRatingBadBytes []byte
-//go:embed "assets/good.png"
-var hitRatingGoodBytes []byte
-//go:embed "assets/sick.png"
-var hitRatingSickBytes []byte
 
 var HitRatingTexs [HitRatingSize]rl.Texture2D
 
-func InitAssets() {
-	outerImg := rl.LoadImageFromMemory(".png", arrowsOuterBytes, int32(len(arrowsOuterBytes)))
-	innerImg := rl.LoadImageFromMemory(".png", arrowsInnerBytes, int32(len(arrowsInnerBytes)))
+var imgsToUnload []*rl.Image
+var texsToUnload []rl.Texture2D
 
-	rl.ImageAlphaPremultiply(outerImg)
-	rl.ImageAlphaPremultiply(innerImg)
+var isAssetLoaded bool
 
-	ArrowsOuterTex = rl.LoadTextureFromImage(outerImg)
-	ArrowsInnerTex = rl.LoadTextureFromImage(innerImg)
+func LoadAssets() {
+	if isAssetLoaded{
+		for _, img := range imgsToUnload{
+			if rl.IsImageReady(img){
+				rl.UnloadImage(img)
+			}
+		}
 
-	if outerImg.Width != innerImg.Width || outerImg.Height != innerImg.Height{
+		imgsToUnload = imgsToUnload[:0]
+
+		for _, tex := range texsToUnload{
+			if tex.ID > 0 {
+				rl.UnloadTexture(tex)
+			}
+		}
+
+		texsToUnload = texsToUnload[:0]
+		isAssetLoaded = false
+	}
+
+	defer func(){
+		isAssetLoaded = true
+	}()
+
+	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D{
+		var byteArray []byte
+		var err error
+
+		if *FlagHotReloading{
+			byteArray, err = os.ReadFile(path)
+		}else{
+			byteArray, err = fs.ReadFile(EmebededAssets, path)
+		}
+
+		if err != nil {ErrorLogger.Fatal(err)}
+
+		img := rl.LoadImageFromMemory(fileType, byteArray, int32(len(byteArray)))
+
+		if !rl.IsImageReady(img){
+			ErrorLogger.Fatalf("failed to load img : %v", path)
+		}
+
+		if premultiply{
+			rl.ImageAlphaPremultiply(img)
+		}
+
+		imgsToUnload = append(imgsToUnload, img)
+
+		tex := rl.LoadTextureFromImage(img)
+
+		if tex.ID == 0{
+			ErrorLogger.Fatalf("failed to load texture from img : %v", path)
+		}
+
+		texsToUnload = append(texsToUnload, tex)
+
+		return tex
+	}
+
+	ArrowsOuterTex = loadTexture("assets/arrows_outer.png", true, ".png")
+	ArrowsInnerTex = loadTexture("assets/arrows_inner.png", true, ".png") 
+
+	if ArrowsOuterTex.Width != ArrowsInnerTex.Width || ArrowsOuterTex.Height != ArrowsInnerTex.Height{
 		ErrorLogger.Fatal("Arrow inner and outer images should have same size")
 	}
 
@@ -61,9 +106,7 @@ func InitAssets() {
 		}
 	}
 
-	glowImg := rl.LoadImageFromMemory(".png", arrowsGlowBytes, int32(len(arrowsGlowBytes)))
-	rl.ImageAlphaPremultiply(glowImg)
-	ArrowsGlowTex = rl.LoadTextureFromImage(glowImg)
+	ArrowsGlowTex = loadTexture("assets/arrows_glow.png", true, ".png")
 
 	// NOTE : same goes for glow arrows
 
@@ -76,21 +119,16 @@ func InitAssets() {
 		}
 	}
 
-	backgroundImg := rl.LoadImageFromMemory(".png", backgroundBytes, int32(len(backgroundBytes)))
-	PrettyBackground = rl.LoadTextureFromImage(backgroundImg)
+	PrettyBackground = loadTexture("assets/background 1.png", true, ".png") 
 
-	var ratingImgs [HitRatingSize]*rl.Image
-
-	ratingImgs[HitRatingBad]  = rl.LoadImageFromMemory(".png", hitRatingBadBytes, int32(len(hitRatingBadBytes)))
-	ratingImgs[HitRatingGood] = rl.LoadImageFromMemory(".png", hitRatingGoodBytes, int32(len(hitRatingGoodBytes)))
-	ratingImgs[HitRatingSick] = rl.LoadImageFromMemory(".png", hitRatingSickBytes, int32(len(hitRatingSickBytes)))
-
-	for _, img := range ratingImgs{
-		rl.ImageAlphaPremultiply(img)
+	ratingImgPaths := [HitRatingSize]string{
+		"assets/bad.png",
+		"assets/good.png",
+		"assets/sick.png",
 	}
 
-	HitRatingTexs[HitRatingBad] = rl.LoadTextureFromImage(ratingImgs[HitRatingBad])
-	HitRatingTexs[HitRatingGood] = rl.LoadTextureFromImage(ratingImgs[HitRatingGood])
-	HitRatingTexs[HitRatingSick] = rl.LoadTextureFromImage(ratingImgs[HitRatingSick])
+	for r:= FnfHitRating(0); r<HitRatingSize; r++{
+		HitRatingTexs[r]  = loadTexture(ratingImgPaths[r], true, ".png")
+	}
 }
 

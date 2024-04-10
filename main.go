@@ -31,6 +31,7 @@ var GlobalDebugFlag bool
 var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile)
 
 var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
+var FlagHotReloading = flag.Bool("hot", false, "enable hot reloading")
 
 func main() {
 	flag.Parse()
@@ -68,7 +69,7 @@ func main() {
 
 	var screen Screen = ss
 
-	InitAssets()
+	LoadAssets()
 
 	debugPrintAt := func(msg string, x, y int32) {
 		rl.DrawText(msg, x+1, y+1, 17, Col(0.1, 0.1, 0.1, 1).ToRlColor())
@@ -81,6 +82,10 @@ func main() {
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(rl.KeyF1) {
 			GlobalDebugFlag = !GlobalDebugFlag
+		}
+
+		if rl.IsKeyPressed(rl.KeyF5) {
+			LoadAssets()
 		}
 
 		updateResult := screen.Update()
