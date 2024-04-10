@@ -66,6 +66,9 @@ type GameScreen struct {
 
 	audioPosition              time.Duration
 	audioPositionSafetyCounter int
+
+	// TODO : Does it really have to be a private member?
+	// Make this a public member later if you think it's more convinient
 	botPlay                    bool
 }
 
@@ -138,6 +141,8 @@ func (gs *GameScreen) LoadSongs(
 	}
 
 	gs.Zoom = 1.0
+
+	gs.botPlay = false
 
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
@@ -537,7 +542,11 @@ func (gs *GameScreen) Update() UpdateResult{
 		}
 	}
 
-	pushPopupIfPlayer0Hit := func (e NoteEvent){
+	pushPopupIfHumanPlayerHit := func (e NoteEvent){
+		if gs.IsBotPlay(){
+			return
+		}
+
 		note := gs.Song.Notes[e.Index]
 		if e.IsFirstHit() && note.Player == 0{
 			var rating FnfHitRating
@@ -567,7 +576,7 @@ func (gs *GameScreen) Update() UpdateResult{
 
 		if len(events) <= 0{
 			reportEvent(e)
-			pushPopupIfPlayer0Hit(e)
+			pushPopupIfHumanPlayerHit(e)
 			gs.NoteEvents[e.Index] = append(events, e)
 		}else{
 			last := events[len(events) - 1]
@@ -575,14 +584,14 @@ func (gs *GameScreen) Update() UpdateResult{
 			if last.SameKind(e){
 				if last.IsMiss(){
 					t := e.Time - last.Time
-					if t > time.Millisecond * 1000{
+					if t > time.Millisecond * 500{ // only report miss every 500 ms
 						reportEvent(e)
 						gs.NoteEvents[e.Index] = append(events, e)
 					}
 				}
 			}else{
 				reportEvent(e)
-				pushPopupIfPlayer0Hit(e)
+				pushPopupIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
 			}
 		}
