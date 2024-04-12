@@ -5,7 +5,7 @@ import (
 	"github.com/sqweek/dialog"
 	"log"
 	"os"
-	"time"
+	//"time"
 )
 
 type SelectUpdateResult struct{
@@ -19,11 +19,12 @@ func (sr SelectUpdateResult) DoQuit() bool {
 }
 
 type SelectScreen struct {
-	LoadedGroups  []FnfPathGroup
-	SelectedGroup int
+	MenuDrawer *MenuDrawer
 
 	PreferredDifficulty FnfDifficulty
 	SelectedDifficulty  FnfDifficulty
+
+	MenuToGroup map[int64] FnfPathGroup
 }
 
 func NewSelectScreen() *SelectScreen {
@@ -31,6 +32,10 @@ func NewSelectScreen() *SelectScreen {
 
 	ss.PreferredDifficulty = DifficultyNormal
 	ss.SelectedDifficulty = DifficultyNormal
+
+	ss.MenuToGroup = make(map[int64] FnfPathGroup)
+
+	ss.MenuDrawer = NewMenuDrawer()
 
 	return ss
 }
@@ -64,44 +69,51 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 }
 
 func (ss *SelectScreen) Update() UpdateResult{
+
+	// =============================
+	// load group
+	// =============================
 	if rl.IsKeyPressed(rl.KeyO) {
 		directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
 		if err != nil {
 			ErrorLogger.Fatal(err)
 		}
 
-		ss.LoadedGroups = TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
+		groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
+
+		for _, group := range groups{
+			menuItem := MakeMenuItem()
+
+			menuItem.Type = MenuItemTrigger
+			menuItem.Name = group.SongName
+
+			ss.MenuToGroup[menuItem.Id] = group
+
+			ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuItem)
+		}
 	}
 
-	if len(ss.LoadedGroups) > 0 {
-		if HandleKeyRepeat(rl.KeyUp, time.Millisecond*500, time.Millisecond*60) {
-			ss.SelectedGroup -= 1
-		}
+	if rl.IsKeyPressed(rl.KeyLeft) {
+		ss.PreferredDifficulty -= 1
+	}
 
-		if HandleKeyRepeat(rl.KeyDown, time.Millisecond*500, time.Millisecond*60) {
-			ss.SelectedGroup += 1
-		}
+	if rl.IsKeyPressed(rl.KeyRight) {
+		ss.PreferredDifficulty += 1
+	}
 
-		ss.SelectedGroup = Clamp(ss.SelectedGroup, 0, len(ss.LoadedGroups)-1)
+	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
 
-		if rl.IsKeyPressed(rl.KeyLeft) {
-			ss.PreferredDifficulty -= 1
-		}
+	ss.MenuDrawer.Update()
 
-		if rl.IsKeyPressed(rl.KeyRight) {
-			ss.PreferredDifficulty += 1
-		}
-
-		ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
-
-		if rl.IsKeyPressed(rl.KeyEnter) {
-			group := ss.LoadedGroups[ss.SelectedGroup]
-			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
-
-			return SelectUpdateResult{
-				Quit : true,
-				PathGroup : group,
-				Difficulty : difficulty,
+	for _, item := range ss.MenuDrawer.Items{
+		if item.Type == MenuItemTrigger && item.IsTriggered{
+			if group, ok := ss.MenuToGroup[item.Id]; ok{
+				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+				return SelectUpdateResult{
+					Quit : true,
+					PathGroup : group,
+					Difficulty : difficulty,
+				}
 			}
 		}
 	}
@@ -115,23 +127,32 @@ func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
-	if len(ss.LoadedGroups) <= 0 {
+	if len(ss.MenuDrawer.Items) <= 0{
 		rl.DrawText("no song is loaded", 5, 50, 20,rl.Color{255, 255, 255, 255})
-		rl.DrawText("Press \"O\" to load directory", 5, 70, 20,rl.Color{255, 255, 255, 255})
-	} else {
-		group := ss.LoadedGroups[ss.SelectedGroup]
-		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+		rl.DrawText("press \"o\" to load directory", 5, 70, 20,rl.Color{255, 255, 255, 255})
+	}else{
+		ss.MenuDrawer.Draw()
 
-		rl.DrawText(DifficultyStrs[difficulty], SCREEN_WIDTH-100, 30, 20,rl.Color{255, 255, 255, 255})
-		offsetX := int32(0)
-		offsetY := int32(0)
-		for i, group := range ss.LoadedGroups {
-			if i == ss.SelectedGroup {
-				rl.DrawText(group.SongName, offsetX, offsetY, 30, rl.Color{255, 0, 0, 255})
-			} else {
-				rl.DrawText(group.SongName, offsetX, offsetY, 30, rl.Color{255, 255, 255, 255})
-			}
-			offsetY += 35
+		group, ok := ss.MenuToGroup[ss.MenuDrawer.GetSeletedId()]
+
+		if ok{
+			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+
+			str := DifficultyStrs[difficulty]
+			size := float32(60)
+
+			textSize := rl.MeasureTextEx(FontBold, DifficultyStrs[difficulty], size, 0)
+
+			x := SCREEN_WIDTH - (100 + textSize.X)
+			y := float32(20)
+
+			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
+				size, 0, rl.Color{255, 255, 255, 255})
 		}
+
 	}
+}
+
+func (ss *SelectScreen) BeforeScreenTransition(){
+	ss.MenuDrawer.Reset()
 }

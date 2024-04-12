@@ -1077,3 +1077,6 @@ func (gs *GameScreen) Draw() {
 
 	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{0, 0, 0, 255})
 }
+
+func (gs *GameScreen) BeforeScreenTransition(){
+}

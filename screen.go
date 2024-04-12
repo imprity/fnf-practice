@@ -7,4 +7,5 @@ type UpdateResult interface{
 type Screen interface{
 	Update() UpdateResult
 	Draw()
+	BeforeScreenTransition()
 }

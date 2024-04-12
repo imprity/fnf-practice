@@ -79,6 +79,8 @@ func main() {
 	var instBytes []byte
 	var voiceBytes []byte
 
+	transitioned := true
+
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(rl.KeyF1) {
 			GlobalDebugFlag = !GlobalDebugFlag
@@ -88,9 +90,16 @@ func main() {
 			LoadAssets()
 		}
 
+		if transitioned{
+			ss.BeforeScreenTransition()
+			transitioned = false
+		}
+
 		updateResult := screen.Update()
 
 		if updateResult.DoQuit(){
+			transitioned = true
+
 			switch updateResult.(type){
 			case GameUpdateResult:
 				screen = ss

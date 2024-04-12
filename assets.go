@@ -23,8 +23,12 @@ var PrettyBackground rl.Texture2D
 
 var HitRatingTexs [HitRatingSize]rl.Texture2D
 
+var FontRegular rl.Font
+var FontBold rl.Font
+
 var imgsToUnload []*rl.Image
 var texsToUnload []rl.Texture2D
+var fontsToUnload []rl.Font
 
 var isAssetLoaded bool
 
@@ -45,6 +49,15 @@ func LoadAssets() {
 		}
 
 		texsToUnload = texsToUnload[:0]
+
+		for _, font := range fontsToUnload{
+			if rl.IsFontReady(font){
+				rl.UnloadFont(font)
+			}
+		}
+
+		fontsToUnload = fontsToUnload[:0]
+
 		isAssetLoaded = false
 	}
 
@@ -87,8 +100,37 @@ func LoadAssets() {
 		return tex
 	}
 
+	loadFont := func(path string, fontSize int32, fileType string) rl.Font{
+		var byteArray []byte
+		var err error
+
+		if *FlagHotReloading{
+			byteArray, err = os.ReadFile(path)
+		}else{
+			byteArray, err = fs.ReadFile(EmebededAssets, path)
+		}
+
+		if err != nil {ErrorLogger.Fatal(err)}
+
+		// NOTE : for code points we are supplying empty code points
+		// this will default to loading only ascii characters
+		// I thougt about adding all the corean code points but I think that would be too expensive
+
+		// TODO : SUPPORT UNICODE (somehow)
+		var emptyCodePoints []rune
+		font := rl.LoadFontFromMemory(fileType, byteArray, fontSize, emptyCodePoints)
+
+		if !rl.IsFontReady(font){
+			ErrorLogger.Fatalf("failed to load font : %v", path)
+		}
+
+		fontsToUnload = append(fontsToUnload, font)
+
+		return font
+	}
+
 	ArrowsOuterTex = loadTexture("assets/arrows_outer.png", true, ".png")
-	ArrowsInnerTex = loadTexture("assets/arrows_inner.png", true, ".png") 
+	ArrowsInnerTex = loadTexture("assets/arrows_inner.png", true, ".png")
 
 	if ArrowsOuterTex.Width != ArrowsInnerTex.Width || ArrowsOuterTex.Height != ArrowsInnerTex.Height{
 		ErrorLogger.Fatal("Arrow inner and outer images should have same size")
@@ -119,7 +161,7 @@ func LoadAssets() {
 		}
 	}
 
-	PrettyBackground = loadTexture("assets/background 1.png", true, ".png") 
+	PrettyBackground = loadTexture("assets/background 1.png", true, ".png")
 
 	ratingImgPaths := [HitRatingSize]string{
 		"assets/bad.png",
@@ -130,5 +172,11 @@ func LoadAssets() {
 	for r:= FnfHitRating(0); r<HitRatingSize; r++{
 		HitRatingTexs[r]  = loadTexture(ratingImgPaths[r], true, ".png")
 	}
+
+	regularPath := "assets/UhBeeSe_hyun/UhBee Se_hyun.ttf"
+	boldPath := "assets/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
+
+	FontRegular = loadFont(regularPath, 128, ".ttf")
+	FontBold = loadFont(boldPath, 128, ".ttf")
 }
 

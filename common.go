@@ -1,8 +1,9 @@
 package main
 
 import (
-	rl "github.com/gen2brain/raylib-go/raylib"
 	"golang.org/x/exp/constraints"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 func BoolToInt(b bool) int {
@@ -37,6 +38,20 @@ func Clamp[N constraints.Integer | constraints.Float](n, minN, maxN N) N {
 	n = max(n, minN)
 
 	return n
+}
+
+// copied from https://www.febucci.com/2018/08/easing-functions/
+
+func EaseIn[F constraints.Float](t F) F {
+	return t * t
+}
+
+func EaseOut[F constraints.Float](t F) F {
+	return 1.0 - (t - 1.0) * (t - 1.0)
+}
+
+func EaseInAndOut[F constraints.Float](t F) F{
+	return Lerp(EaseIn(t), EaseOut(t), t)
 }
 
 func Lerp[F constraints.Float](a, b, t F) F {
