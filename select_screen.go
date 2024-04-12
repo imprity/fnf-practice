@@ -176,5 +176,4 @@ func (ss *SelectScreen) Draw() {
 func (ss *SelectScreen) BeforeScreenTransition(){
 	ss.MenuDrawer.ResetAnimation()
 	ss.MenuDrawer.IsInputDiabled = false
-	ss.MenuDrawer.ResetTriggers()
 }

@@ -94,6 +94,12 @@ func (md *MenuDrawer) Update(){
 		return
 	}
 
+	for index, item := range md.Items{
+		if item.Type == MenuItemTrigger{
+			md.Items[index].Bvalue = false
+		}
+	}
+
 	prevSelected := md.SelectedIndex
 
 	allDeco := true
@@ -247,13 +253,5 @@ func (md *MenuDrawer) GetSeletedId() int64{
 
 func (md *MenuDrawer) ResetAnimation(){
 	md.ScrollAnimT = 1
-}
-
-func (md *MenuDrawer) ResetTriggers(){
-	for index, item := range md.Items{
-		if item.Type == MenuItemTrigger{
-			md.Items[index].Bvalue = false
-		}
-	}
 }
 
