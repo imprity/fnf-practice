@@ -9,6 +9,7 @@ var keyRepeatMap = make(map[int32]time.Duration)
 
 func HandleKeyRepeat(key int32, firstRate, repeatRate time.Duration) bool {
 	if !rl.IsKeyDown(key) {
+		keyRepeatMap[key] = 0
 		return false
 	}
 

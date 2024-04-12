@@ -24,6 +24,9 @@ type SelectScreen struct {
 	PreferredDifficulty FnfDifficulty
 	SelectedDifficulty  FnfDifficulty
 
+	DirectoryOpenItemId int64
+	SongDecoItemId int64
+
 	MenuToGroup map[int64] FnfPathGroup
 }
 
@@ -36,6 +39,26 @@ func NewSelectScreen() *SelectScreen {
 	ss.MenuToGroup = make(map[int64] FnfPathGroup)
 
 	ss.MenuDrawer = NewMenuDrawer()
+
+	menuDeco := MakeMenuItem()
+	menuDeco.Name = "Menu"
+	menuDeco.Type = MenuItemDeco
+
+	menuDeco.ColRegular = Color255(0x4A, 0x7F, 0xD7, 0xFF)
+	menuDeco.ColSelected = Color255(0x4A, 0x7F, 0xD7, 0xFF)
+
+	menuDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
+	menuDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.7
+
+	ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuDeco)
+
+	directoryOpen := MakeMenuItem()
+	directoryOpen.Name = "Search Directory"
+	directoryOpen.Type = MenuItemTrigger
+
+	ss.DirectoryOpenItemId = directoryOpen.Id
+
+	ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, directoryOpen)
 
 	return ss
 }
@@ -69,59 +92,6 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 }
 
 func (ss *SelectScreen) Update() UpdateResult{
-
-	// =============================
-	// load group
-	// =============================
-	if rl.IsKeyPressed(rl.KeyO) {
-		directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-
-		// =====================
-		// add song deco
-		// =====================
-
-		songDeco := MakeMenuItem()
-
-		songDeco.Type = MenuItemDeco
-
-		songDeco.Name = "Songs"
-
-		songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-		songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-
-		songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.3
-		songDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.3
-
-		ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, songDeco)
-		// =====================
-
-		groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
-
-		for _, group := range groups{
-			menuItem := MakeMenuItem()
-
-			menuItem.Type = MenuItemTrigger
-			menuItem.Name = group.SongName
-
-			ss.MenuToGroup[menuItem.Id] = group
-
-			ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuItem)
-		}
-	}
-
-	if rl.IsKeyPressed(rl.KeyLeft) {
-		ss.PreferredDifficulty -= 1
-	}
-
-	if rl.IsKeyPressed(rl.KeyRight) {
-		ss.PreferredDifficulty += 1
-	}
-
-	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
-
 	ss.MenuDrawer.Update()
 
 	for _, item := range ss.MenuDrawer.Items{
@@ -138,6 +108,72 @@ func (ss *SelectScreen) Update() UpdateResult{
 		}
 	}
 
+	// =============================
+	// load group
+	// =============================
+
+	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok{
+		if directoryItem.Bvalue{
+			directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
+			if err != nil && err != dialog.ErrCancelled{
+				ErrorLogger.Fatal(err)
+			}
+
+			if err != dialog.ErrCancelled{
+				groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
+
+				if len(groups) > 0 {
+					for _, group := range groups{
+						menuItem := MakeMenuItem()
+
+						menuItem.Type = MenuItemTrigger
+						menuItem.Name = group.SongName
+
+						ss.MenuToGroup[menuItem.Id] = group
+
+						ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuItem)
+					}
+
+					// =====================
+					// add song deco
+					// =====================
+					if _, hasSongDeco := ss.MenuDrawer.GetItemById(ss.SongDecoItemId); !hasSongDeco{
+						songDeco := MakeMenuItem()
+
+						songDeco.Type = MenuItemDeco
+
+						songDeco.Name = "Songs"
+
+						songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+						songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+
+						songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
+						songDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.7
+
+						ss.MenuDrawer.InsertAt(2, songDeco)
+
+						ss.SongDecoItemId = songDeco.Id
+					}
+					// =====================
+				}
+			}
+		}
+	}
+
+	// =============================
+	// end of loading group
+	// =============================
+
+	if rl.IsKeyPressed(rl.KeyLeft) {
+		ss.PreferredDifficulty -= 1
+	}
+
+	if rl.IsKeyPressed(rl.KeyRight) {
+		ss.PreferredDifficulty += 1
+	}
+
+	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
+
 	return SelectUpdateResult{
 		Quit : false,
 	}
@@ -147,29 +183,23 @@ func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
-	if len(ss.MenuDrawer.Items) <= 0{
-		rl.DrawText("no song is loaded", 5, 50, 20,rl.Color{255, 255, 255, 255})
-		rl.DrawText("press \"o\" to load directory", 5, 70, 20,rl.Color{255, 255, 255, 255})
-	}else{
-		ss.MenuDrawer.Draw()
+	ss.MenuDrawer.Draw()
 
-		group, ok := ss.MenuToGroup[ss.MenuDrawer.GetSeletedId()]
+	group, ok := ss.MenuToGroup[ss.MenuDrawer.GetSeletedId()]
 
-		if ok{
-			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+	if ok{
+		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
-			str := DifficultyStrs[difficulty]
-			size := float32(60)
+		str := DifficultyStrs[difficulty]
+		size := float32(60)
 
-			textSize := rl.MeasureTextEx(FontBold, DifficultyStrs[difficulty], size, 0)
+		textSize := rl.MeasureTextEx(FontBold, DifficultyStrs[difficulty], size, 0)
 
-			x := SCREEN_WIDTH - (100 + textSize.X)
-			y := float32(20)
+		x := SCREEN_WIDTH - (100 + textSize.X)
+		y := float32(20)
 
-			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
-				size, 0, rl.Color{255, 255, 255, 255})
-		}
-
+		rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
+			size, 0, rl.Color{255, 255, 255, 255})
 	}
 }
 

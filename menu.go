@@ -103,11 +103,12 @@ func (md *MenuDrawer) Update(){
 	prevSelected := md.SelectedIndex
 
 	allDeco := true
+	nonDecoCount := 0
 
 	for _, item :=range md.Items{
 		if item.Type != MenuItemDeco{
+			nonDecoCount += 1
 			allDeco = false
-			break
 		}
 	}
 
@@ -137,18 +138,39 @@ func (md *MenuDrawer) Update(){
 		}
 	}
 
+	tryingToMove := false
+	tryingToMoveUp := false
+	canNotMove := false
+
+	if nonDecoCount <= 1{
+		canNotMove = true
+	}
+
 
 	if !md.IsInputDiabled{
-		// check if menu items are all deco
-		if !allDeco{
-			firstRate := time.Millisecond * 200
-			repeateRate := time.Millisecond * 110
+		if rl.IsKeyDown(rl.KeyUp){
+			tryingToMove = true
+			tryingToMoveUp = true
+		}
 
-			if HandleKeyRepeat(rl.KeyUp, firstRate, repeateRate){
+		if rl.IsKeyDown(rl.KeyDown){
+			tryingToMove = true
+			tryingToMoveUp = false
+		}
+
+		// check if menu items are all deco
+		firstRate := time.Millisecond * 200
+		repeateRate := time.Millisecond * 110
+
+		if HandleKeyRepeat(rl.KeyUp, firstRate, repeateRate){
+			if !allDeco{
 				scrollUntilNonDeco(false)
 			}
 
-			if HandleKeyRepeat(rl.KeyDown, firstRate, repeateRate){
+		}
+
+		if HandleKeyRepeat(rl.KeyDown, firstRate, repeateRate){
+			if !allDeco{
 				scrollUntilNonDeco(true)
 			}
 		}
@@ -164,7 +186,7 @@ func (md *MenuDrawer) Update(){
 		}
 	}
 
-	if prevSelected != md.SelectedIndex{
+	if md.SelectedIndex != prevSelected{
 		md.ScrollAnimT = 0
 	}
 
@@ -180,6 +202,15 @@ func (md *MenuDrawer) Update(){
 			break
 		}
 		seletionY -= item.SizeRegular + md.ListInterval
+	}
+
+	if tryingToMove && canNotMove{
+		push := (md.GetSelectedItem().SizeRegular * 0.5 + md.ListInterval) * 0.8
+		if tryingToMoveUp {
+			seletionY += push
+		}else{
+			seletionY -= push
+		}
 	}
 
 	md.Yoffset = Lerp(md.Yoffset, seletionY, blend)
@@ -249,6 +280,28 @@ func (md *MenuDrawer) GetSeletedId() int64{
 		return 0
 	}
 	return md.Items[md.SelectedIndex].Id
+}
+
+func (md *MenuDrawer) GetItemById(id int64) (MenuItem, bool) {
+	for _, item := range md.Items{
+		if item.Id == id{
+			return item, true
+		}
+	}
+
+	return MenuItem{}, false
+}
+
+func (md *MenuDrawer) InsertAt(at int, items ...MenuItem){
+	at = Clamp(at, 0, len(md.Items))
+
+	var newItems []MenuItem
+
+	newItems = append(newItems, md.Items[0:at]...)
+	newItems = append(newItems, items...)
+	newItems = append(newItems, md.Items[at:]...)
+
+	md.Items = newItems
 }
 
 func (md *MenuDrawer) ResetAnimation(){
