@@ -11,20 +11,34 @@ type MenuItemType int
 
 const (
 	MenuItemTrigger MenuItemType = iota
+	MenuItemDeco
 )
 
 type MenuItem struct{
 	Type MenuItemType
 
+	SizeRegular float32
+	SizeSelected float32
+
+	ColSelected Color
+	ColRegular Color
+
 	Id int64
 
 	Name string
 
-	IsTriggered bool
+	Bvalue bool
+
+	ValueChangedAt time.Duration
 }
 
 var MenuItemMaxId int64
 var MenuItemIdMutex sync.Mutex
+
+const (
+	MenuItemSizeRegularDefault = 70
+	MenuItemSizeSelectedDefault = 90
+)
 
 func MakeMenuItem() MenuItem{
 	MenuItemIdMutex.Lock()
@@ -36,6 +50,14 @@ func MakeMenuItem() MenuItem{
 
 	item.Id = MenuItemMaxId
 
+	item.SizeRegular = MenuItemSizeRegularDefault
+	item.SizeSelected = MenuItemSizeSelectedDefault
+
+	item.ColSelected = Col(1,1,1,1)
+	item.ColRegular = Col(1,1,1,0.5)
+
+	item.ValueChangedAt = time.Duration(math.MaxInt64)
+
 	return item
 }
 
@@ -44,11 +66,12 @@ type MenuDrawer struct{
 
 	SelectedIndex int
 
-	FloatIndex float32
+	ListInterval float32
+
+	Yoffset float32
 
 	ScrollAnimT float32
 
-	TriggeredAt time.Duration
 	TriggerAnimDuraiton time.Duration
 
 	IsInputDiabled bool
@@ -59,8 +82,9 @@ func NewMenuDrawer() *MenuDrawer{
 
 	md.ScrollAnimT = 1
 
-	md.TriggeredAt = time.Duration(math.MaxInt64)
 	md.TriggerAnimDuraiton = time.Millisecond * 150
+
+	md.ListInterval = 30
 
 	return md
 }
@@ -72,42 +96,88 @@ func (md *MenuDrawer) Update(){
 
 	prevSelected := md.SelectedIndex
 
+	allDeco := true
+
+	for _, item :=range md.Items{
+		if item.Type != MenuItemDeco{
+			allDeco = false
+			break
+		}
+	}
+
+	scrollUntilNonDeco := func(forward bool){
+		for {
+			if forward{
+				md.SelectedIndex += 1
+			}else{
+				md.SelectedIndex -= 1
+			}
+
+			if md.SelectedIndex >= len(md.Items){
+				md.SelectedIndex =  0
+			}else if md.SelectedIndex < 0{
+				md.SelectedIndex = len(md.Items) - 1
+			}
+
+			if md.Items[md.SelectedIndex].Type != MenuItemDeco{
+				break
+			}
+		}
+	}
+
+	if !allDeco{
+		if md.Items[md.SelectedIndex].Type == MenuItemDeco{
+			scrollUntilNonDeco(true)
+		}
+	}
+
+
 	if !md.IsInputDiabled{
-		if HandleKeyRepeat(rl.KeyUp, time.Millisecond * 200, time.Millisecond * 110){
-			md.SelectedIndex -= 1
+		// check if menu items are all deco
+		if !allDeco{
+			firstRate := time.Millisecond * 200
+			repeateRate := time.Millisecond * 110
+
+			if HandleKeyRepeat(rl.KeyUp, firstRate, repeateRate){
+				scrollUntilNonDeco(false)
+			}
+
+			if HandleKeyRepeat(rl.KeyDown, firstRate, repeateRate){
+				scrollUntilNonDeco(true)
+			}
 		}
 
-		if HandleKeyRepeat(rl.KeyDown, time.Millisecond * 200, time.Millisecond * 110){
-			md.SelectedIndex += 1
-		}
-
-		if md.SelectedIndex < 0{
-			md.SelectedIndex = len(md.Items) -1
-		}else if md.SelectedIndex >= len(md.Items){
-			md.SelectedIndex = 0
-		}
-		if prevSelected != md.SelectedIndex{
-			md.ScrollAnimT = 0
-		}
 
 		if rl.IsKeyPressed(rl.KeyEnter){
 			item := md.Items[md.SelectedIndex]
 
 			if item.Type == MenuItemTrigger{
-				md.Items[md.SelectedIndex].IsTriggered = true
-				md.TriggeredAt = GlobalTimerNow()
-				md.IsInputDiabled = true
+				md.Items[md.SelectedIndex].Bvalue = true
+				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
 			}
 		}
 	}
 
-	// NOTE : I tried to make it frame indipendent from watching this youtube video
-	// https://youtu.be/yGhfUcPjXuE?t=1175
+	if prevSelected != md.SelectedIndex{
+		md.ScrollAnimT = 0
+	}
+
 	// but I have a strong feeling that this is not frame indipendent
 	// but it's just for menu so I don't think it matters too much...
-	blend := float32(math.Pow(0.5, float64(rl.GetFrameTime()) * 2000))
+	blend := Clamp(float32(rl.GetFrameTime() * 20), 0.01, 1.0)
 
-	md.FloatIndex = Lerp(md.FloatIndex, float32(md.SelectedIndex), blend)
+	seletionY := float32(SCREEN_HEIGHT * 0.5)
+	seletionY -= md.GetSelectedItem().SizeRegular * 0.5
+
+	for index, item := range md.Items{
+		if index >= md.SelectedIndex{
+			break
+		}
+		seletionY -= item.SizeRegular + md.ListInterval
+	}
+
+	md.Yoffset = Lerp(md.Yoffset, seletionY, blend)
+
 	md.ScrollAnimT = Lerp(md.ScrollAnimT, 1.0, blend)
 }
 
@@ -116,40 +186,56 @@ func (md *MenuDrawer) Draw(){
 		return
 	}
 
-	const listInterval = 70
-	const fontSize = float32(60)
+	yOffset := md.Yoffset
+	xOffset := float32(100)
 
 	for index, item := range md.Items{
-		x := float32(100)
-		yHalf := float32(SCREEN_HEIGHT * 0.5)
+		y := yOffset
+		x := xOffset
 
-		y := yHalf + (float32(index) - md.FloatIndex) * listInterval
+		scale := float32(1.0)
 
-		col := Col(0.5, 0.5, 0.5, 1.0)
-		size := fontSize
+		col := item.ColRegular
+		size := item.SizeRegular
 
 		if index == md.SelectedIndex{
-			col = LerpRGB(col, Col(1, 1, 1, 1), float64(md.ScrollAnimT))
-			size = Lerp(fontSize, fontSize * 1.05, md.ScrollAnimT)
+			col = LerpRGBA(item.ColRegular, item.ColSelected, float64(md.ScrollAnimT))
+			size = Lerp(item.SizeRegular, item.SizeSelected, md.ScrollAnimT)
+			x += Lerp(0, 30, md.ScrollAnimT)
+		}
 
-			triggerT := float32(GlobalTimerNow() - md.TriggeredAt) / float32(md.TriggerAnimDuraiton)
+		if item.Type == MenuItemTrigger{
+			triggerT := float32(GlobalTimerNow() - item.ValueChangedAt) / float32(md.TriggerAnimDuraiton)
 
 			if triggerT > 0{
-				if triggerT > 1{
-					triggerT = 1
-				}
-
+				if triggerT > 1{ triggerT = 1 }
 				tt := -triggerT * (triggerT - 1)
 
-				size *= (1-tt * 0.4)
+				scale *= (1-tt * 0.4)
 			}
 		}
 
-		y -= size * 0.5
+		y += item.SizeRegular * 0.5 - size * 0.5 * scale
 
 		rl.DrawTextEx(FontBold, item.Name, rl.Vector2{x, y},
-			size, 0, col.ToRlColor())
+			size * scale, 0, col.ToRlColor())
+
+		yOffset += item.SizeRegular + md.ListInterval
 	}
+
+	// DEBUG =======================================
+	rl.DrawLine(
+		0, SCREEN_HEIGHT * 0.5,
+		SCREEN_WIDTH, SCREEN_HEIGHT * 0.5,
+		rl.Color{255, 0, 0, 255})
+	// DEBUG =======================================
+}
+
+func (md *MenuDrawer) GetSelectedItem() MenuItem{
+	if len(md.Items) <= 0{
+		return MenuItem{}
+	}
+	return md.Items[md.SelectedIndex]
 }
 
 func (md *MenuDrawer) GetSeletedId() int64{
@@ -159,18 +245,15 @@ func (md *MenuDrawer) GetSeletedId() int64{
 	return md.Items[md.SelectedIndex].Id
 }
 
-func (md *MenuDrawer) Reset(){
-	md.IsInputDiabled = false
-
+func (md *MenuDrawer) ResetAnimation(){
 	md.ScrollAnimT = 1
+}
 
-	md.TriggeredAt = time.Duration(math.MaxInt64)
-
-	for i, item := range md.Items{
+func (md *MenuDrawer) ResetTriggers(){
+	for index, item := range md.Items{
 		if item.Type == MenuItemTrigger{
-			item.IsTriggered = false
+			md.Items[index].Bvalue = false
 		}
-
-		md.Items[i] = item
 	}
 }
+

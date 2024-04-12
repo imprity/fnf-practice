@@ -79,6 +79,25 @@ func (ss *SelectScreen) Update() UpdateResult{
 			ErrorLogger.Fatal(err)
 		}
 
+		// =====================
+		// add song deco
+		// =====================
+
+		songDeco := MakeMenuItem()
+
+		songDeco.Type = MenuItemDeco
+
+		songDeco.Name = "Songs"
+
+		songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+		songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+
+		songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.3
+		songDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.3
+
+		ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, songDeco)
+		// =====================
+
 		groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
 
 		for _, group := range groups{
@@ -106,9 +125,10 @@ func (ss *SelectScreen) Update() UpdateResult{
 	ss.MenuDrawer.Update()
 
 	for _, item := range ss.MenuDrawer.Items{
-		if item.Type == MenuItemTrigger && item.IsTriggered{
+		if item.Type == MenuItemTrigger && item.Bvalue{
 			if group, ok := ss.MenuToGroup[item.Id]; ok{
 				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+				ss.MenuDrawer.IsInputDiabled = true
 				return SelectUpdateResult{
 					Quit : true,
 					PathGroup : group,
@@ -154,5 +174,7 @@ func (ss *SelectScreen) Draw() {
 }
 
 func (ss *SelectScreen) BeforeScreenTransition(){
-	ss.MenuDrawer.Reset()
+	ss.MenuDrawer.ResetAnimation()
+	ss.MenuDrawer.IsInputDiabled = false
+	ss.MenuDrawer.ResetTriggers()
 }

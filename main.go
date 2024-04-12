@@ -49,6 +49,8 @@ func main() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
 
+	//rl.SetTargetFPS(60)
+
 	rl.SetExitKey(rl.KeyNull)
 
 	// TODO : now that we are rendering to a texture
