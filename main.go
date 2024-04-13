@@ -93,7 +93,7 @@ func main() {
 		}
 
 		if transitioned{
-			ss.BeforeScreenTransition()
+			screen.BeforeScreenTransition()
 			transitioned = false
 		}
 
@@ -125,6 +125,7 @@ func main() {
 
 		rl.BeginTextureMode(renderTarget)
 		screen.Draw()
+		DrawTransition()
 		rl.EndTextureMode()
 
 		screenW := float32(rl.GetScreenWidth())

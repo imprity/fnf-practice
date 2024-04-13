@@ -22,19 +22,21 @@ type SelectScreen struct {
 	MenuDrawer *MenuDrawer
 
 	PreferredDifficulty FnfDifficulty
-	SelectedDifficulty  FnfDifficulty
 
 	DirectoryOpenItemId int64
 	SongDecoItemId int64
 
 	MenuToGroup map[int64] FnfPathGroup
+
+	IsGroupSelected bool
+	SelectedGroup FnfPathGroup
+	SelectedDifficulty FnfDifficulty
 }
 
 func NewSelectScreen() *SelectScreen {
 	ss := new(SelectScreen)
 
 	ss.PreferredDifficulty = DifficultyNormal
-	ss.SelectedDifficulty = DifficultyNormal
 
 	ss.MenuToGroup = make(map[int64] FnfPathGroup)
 
@@ -94,16 +96,27 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 func (ss *SelectScreen) Update() UpdateResult{
 	ss.MenuDrawer.Update()
 
+	if ss.IsGroupSelected && IsShowTransitionDone(){
+		ss.IsGroupSelected = false
+		return SelectUpdateResult{
+			Quit : true,
+			PathGroup : ss.SelectedGroup,
+			Difficulty : ss.SelectedDifficulty,
+		}
+	}
+
 	for _, item := range ss.MenuDrawer.Items{
 		if item.Type == MenuItemTrigger && item.Bvalue{
 			if group, ok := ss.MenuToGroup[item.Id]; ok{
 				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+
+				ShowTransition()
+
+				ss.IsGroupSelected = true
+				ss.SelectedGroup = group
+				ss.SelectedDifficulty = difficulty
+
 				ss.MenuDrawer.IsInputDiabled = true
-				return SelectUpdateResult{
-					Quit : true,
-					PathGroup : group,
-					Difficulty : difficulty,
-				}
 			}
 		}
 	}
@@ -114,49 +127,57 @@ func (ss *SelectScreen) Update() UpdateResult{
 
 	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok{
 		if directoryItem.Bvalue{
-			directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
-			if err != nil && err != dialog.ErrCancelled{
-				ErrorLogger.Fatal(err)
-			}
+			ShowTransition()
+			ss.MenuDrawer.IsInputDiabled = true
 
-			if err != dialog.ErrCancelled{
-				groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
-
-				if len(groups) > 0 {
-					for _, group := range groups{
-						menuItem := MakeMenuItem()
-
-						menuItem.Type = MenuItemTrigger
-						menuItem.Name = group.SongName
-
-						ss.MenuToGroup[menuItem.Id] = group
-
-						ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuItem)
-					}
-
-					// =====================
-					// add song deco
-					// =====================
-					if _, hasSongDeco := ss.MenuDrawer.GetItemById(ss.SongDecoItemId); !hasSongDeco{
-						songDeco := MakeMenuItem()
-
-						songDeco.Type = MenuItemDeco
-
-						songDeco.Name = "Songs"
-
-						songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-						songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-
-						songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-						songDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.7
-
-						ss.MenuDrawer.InsertAt(2, songDeco)
-
-						ss.SongDecoItemId = songDeco.Id
-					}
-					// =====================
+			go func(){
+				directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
+				if err != nil && err != dialog.ErrCancelled{
+					ErrorLogger.Fatal(err)
 				}
-			}
+
+				if err != dialog.ErrCancelled{
+					groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
+
+					if len(groups) > 0 {
+						for _, group := range groups{
+							menuItem := MakeMenuItem()
+
+							menuItem.Type = MenuItemTrigger
+							menuItem.Name = group.SongName
+
+							ss.MenuToGroup[menuItem.Id] = group
+
+							ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuItem)
+						}
+
+						// =====================
+						// add song deco
+						// =====================
+						if _, hasSongDeco := ss.MenuDrawer.GetItemById(ss.SongDecoItemId); !hasSongDeco{
+							songDeco := MakeMenuItem()
+
+							songDeco.Type = MenuItemDeco
+
+							songDeco.Name = "Songs"
+
+							songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+							songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+
+							songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
+							songDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.7
+
+							ss.MenuDrawer.InsertAt(2, songDeco)
+
+							ss.SongDecoItemId = songDeco.Id
+						}
+						// =====================
+					}
+				}
+
+				HideTransition()
+				ss.MenuDrawer.IsInputDiabled = false
+			}()
 		}
 	}
 
@@ -204,6 +225,10 @@ func (ss *SelectScreen) Draw() {
 }
 
 func (ss *SelectScreen) BeforeScreenTransition(){
+	if IsTransitionOn(){
+		HideTransition()
+	}
+	ss.IsGroupSelected = false
 	ss.MenuDrawer.ResetAnimation()
 	ss.MenuDrawer.IsInputDiabled = false
 }

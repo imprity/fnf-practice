@@ -1079,4 +1079,7 @@ func (gs *GameScreen) Draw() {
 }
 
 func (gs *GameScreen) BeforeScreenTransition(){
+	if IsTransitionOn(){
+		HideTransition()
+	}
 }
