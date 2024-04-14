@@ -110,7 +110,8 @@ func (ss *SelectScreen) Update() UpdateResult{
 			if group, ok := ss.MenuToGroup[item.Id]; ok{
 				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
-				ShowTransition()
+				// TODO : make custom background for transitioning to game screen
+				ShowTransition(PrettyBackground)
 
 				ss.IsGroupSelected = true
 				ss.SelectedGroup = group
@@ -127,7 +128,8 @@ func (ss *SelectScreen) Update() UpdateResult{
 
 	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok{
 		if directoryItem.Bvalue{
-			ShowTransition()
+			// TODO : make custom background for opening directory
+			ShowTransition(PrettyBackground)
 			ss.MenuDrawer.IsInputDiabled = true
 
 			go func(){

@@ -30,6 +30,18 @@ var GlobalDebugFlag bool
 
 var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile)
 
+var TheRenderTexture rl.RenderTexture2D
+
+func FnfBeginTextureMode(renderTexture rl.RenderTexture2D){
+	rl.EndTextureMode()
+	rl.BeginTextureMode(renderTexture)
+}
+
+func FnfEndTextureMode(){
+	rl.EndTextureMode()
+	rl.BeginTextureMode(TheRenderTexture)
+}
+
 var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
 var FlagHotReloading = flag.Bool("hot", false, "enable hot reloading")
 
@@ -56,15 +68,21 @@ func main() {
 	// TODO : now that we are rendering to a texture
 	// mouse coordinates will be wrong, make a function
 	// that gets actual mouse position
-	renderTarget := rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
-	rl.SetTextureFilter(renderTarget.Texture, rl.FilterBilinear)
+	TheRenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
+	defer rl.UnloadRenderTexture(TheRenderTexture)
+
+	if !rl.IsRenderTextureReady(TheRenderTexture){
+		ErrorLogger.Fatal("failed to load the render texture")
+	}
+
+	rl.SetTextureFilter(TheRenderTexture.Texture, rl.FilterBilinear)
 
 	err = InitAudio()
 	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
 
-	GlobalTimerStart()
+	InitTransition()
 
 	gs := NewGameScreen()
 	ss := NewSelectScreen()
@@ -72,6 +90,8 @@ func main() {
 	var screen Screen = ss
 
 	LoadAssets()
+
+	GlobalTimerStart()
 
 	debugPrintAt := func(msg string, x, y int32) {
 		rl.DrawText(msg, x+1, y+1, 17, Col(0.1, 0.1, 0.1, 1).ToRlColor())
@@ -123,7 +143,7 @@ func main() {
 			}
 		}
 
-		rl.BeginTextureMode(renderTarget)
+		rl.BeginTextureMode(TheRenderTexture)
 		screen.Draw()
 		DrawTransition()
 		rl.EndTextureMode()
@@ -136,7 +156,7 @@ func main() {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{0, 0, 0, 255})
 		rl.DrawTexturePro(
-			renderTarget.Texture,
+			TheRenderTexture.Texture,
 			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
 			rl.Rectangle{
 				(screenW - (SCREEN_WIDTH * scale)) * 0.5,
