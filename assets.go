@@ -19,7 +19,11 @@ var ArrowsRects [NoteDirSize]rl.Rectangle
 var ArrowsGlowTex rl.Texture2D
 var ArrowsGlowRects [NoteDirSize]rl.Rectangle
 
-var PrettyBackground rl.Texture2D
+var GameScreenBg rl.Texture2D
+
+var SongLoadingScreen rl.Texture2D
+
+var DirSelectScreen rl.Texture2D
 
 var HitRatingTexs [HitRatingSize]rl.Texture2D
 
@@ -161,7 +165,9 @@ func LoadAssets() {
 		}
 	}
 
-	PrettyBackground = loadTexture("assets/background 1.png", true, ".png")
+	GameScreenBg = loadTexture("assets/background 1.png", true, ".png")
+	SongLoadingScreen = loadTexture("assets/song loading screen.png", true, ".png")
+	DirSelectScreen = loadTexture("assets/directory select screen.png", true, ".png")
 
 	ratingImgPaths := [HitRatingSize]string{
 		"assets/bad.png",

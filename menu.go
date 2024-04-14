@@ -223,6 +223,13 @@ func (md *MenuDrawer) Draw(){
 		return
 	}
 
+	// DEBUG =======================================
+	rl.DrawLine(
+		0, SCREEN_HEIGHT * 0.5,
+		SCREEN_WIDTH, SCREEN_HEIGHT * 0.5,
+		rl.Color{255, 0, 0, 255})
+	// DEBUG =======================================
+
 	yOffset := md.Yoffset
 	xOffset := float32(100)
 
@@ -259,13 +266,6 @@ func (md *MenuDrawer) Draw(){
 
 		yOffset += item.SizeRegular + md.ListInterval
 	}
-
-	// DEBUG =======================================
-	rl.DrawLine(
-		0, SCREEN_HEIGHT * 0.5,
-		SCREEN_WIDTH, SCREEN_HEIGHT * 0.5,
-		rl.Color{255, 0, 0, 255})
-	// DEBUG =======================================
 }
 
 func (md *MenuDrawer) GetSelectedItem() MenuItem{

@@ -650,7 +650,7 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 }
 
 func (gs *GameScreen) Draw() {
-	DrawPatternBackground(PrettyBackground, 0, 0, rl.Color{255,255,255,255})
+	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{255,255,255,255})
 
 	if !gs.IsSongLoaded {
 		return
