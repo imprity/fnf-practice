@@ -27,20 +27,33 @@ var SelectKey int32 = rl.KeyEnter
 var PauseKey int32 = rl.KeySpace
 var EscapeKey int32 = rl.KeyEscape
 
-var AudioSpeedUpKey int32 = rl.KeyEqual
-var AudioSpeedDownKey int32 = rl.KeyMinus
+var (
+	NoteScrollUpKey   int32 = rl.KeyPageUp
+	NoteScrollDownKey int32 = rl.KeyPageDown
+)
+
+var (
+	AudioSpeedUpKey int32 = rl.KeyEqual
+	AudioSpeedDownKey int32 = rl.KeyMinus
+)
 
 var SongResetKey int32 = rl.KeyR
 
-var ToggleDebugKey int32 = rl.KeyF1
-var ReloadAssetsKey int32 = rl.KeyF5
+var (
+	ToggleDebugKey int32 = rl.KeyF1
+	ReloadAssetsKey int32 = rl.KeyF5
+)
 
 // TODO : remove these keys
-var ZoomOutKey int32 = rl.KeyLeftBracket
-var ZoomInKey int32 = rl.KeyRightBracket
+var (
+	ZoomOutKey int32 = rl.KeyLeftBracket
+	ZoomInKey int32 = rl.KeyRightBracket
+)
 
-var DifficultyUpKey int32 = rl.KeyW
-var DifficultyDownKey int32 = rl.KeyQ
+var (
+	DifficultyUpKey int32 = rl.KeyW
+	DifficultyDownKey int32 = rl.KeyQ
+)
 
 var ToggleBotPlayKey int32 = rl.KeyB
 // ========================================

@@ -407,13 +407,15 @@ func (gs *GameScreen) Update() UpdateResult{
 		keyT := gs.PixelsToTime(50)
 		changedUsingKey := false
 
-		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteKeysLeft...) {
+		// NOTE : If we ever implement note up scroll
+		// this keybindings have to reversed
+		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
 			changedPosition = true
 			changedUsingKey = true
 			pos -= keyT
 		}
 
-		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NotekeysRight...) {
+		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
 			changedPosition = true
 			changedUsingKey = true
 			pos += keyT
@@ -445,8 +447,8 @@ func (gs *GameScreen) Update() UpdateResult{
 		// TODO : Maybe we can do this by a timer
 		if (
 			gs.PausedBecausePositionChangeKey &&
-			AreKeysUp(NoteKeysLeft...) &&
-			AreKeysUp(NotekeysRight...)){
+			AreKeysUp(NoteScrollUpKey) &&
+			AreKeysUp(NoteScrollDownKey)){
 
 			gs.PlayAudio()
 			gs.PausedBecausePositionChangeKey = false
