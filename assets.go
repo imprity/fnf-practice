@@ -2,8 +2,8 @@ package main
 
 import (
 	"embed"
-	"os"
 	"io/fs"
+	"os"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -37,16 +37,16 @@ var fontsToUnload []rl.Font
 var isAssetLoaded bool
 
 func LoadAssets() {
-	if isAssetLoaded{
-		for _, img := range imgsToUnload{
-			if rl.IsImageReady(img){
+	if isAssetLoaded {
+		for _, img := range imgsToUnload {
+			if rl.IsImageReady(img) {
 				rl.UnloadImage(img)
 			}
 		}
 
 		imgsToUnload = imgsToUnload[:0]
 
-		for _, tex := range texsToUnload{
+		for _, tex := range texsToUnload {
 			if tex.ID > 0 {
 				rl.UnloadTexture(tex)
 			}
@@ -54,8 +54,8 @@ func LoadAssets() {
 
 		texsToUnload = texsToUnload[:0]
 
-		for _, font := range fontsToUnload{
-			if rl.IsFontReady(font){
+		for _, font := range fontsToUnload {
+			if rl.IsFontReady(font) {
 				rl.UnloadFont(font)
 			}
 		}
@@ -65,29 +65,31 @@ func LoadAssets() {
 		isAssetLoaded = false
 	}
 
-	defer func(){
+	defer func() {
 		isAssetLoaded = true
 	}()
 
-	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D{
+	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D {
 		var byteArray []byte
 		var err error
 
-		if *FlagHotReloading{
+		if *FlagHotReloading {
 			byteArray, err = os.ReadFile(path)
-		}else{
+		} else {
 			byteArray, err = fs.ReadFile(EmebededAssets, path)
 		}
 
-		if err != nil {ErrorLogger.Fatal(err)}
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
 
 		img := rl.LoadImageFromMemory(fileType, byteArray, int32(len(byteArray)))
 
-		if !rl.IsImageReady(img){
+		if !rl.IsImageReady(img) {
 			ErrorLogger.Fatalf("failed to load img : %v", path)
 		}
 
-		if premultiply{
+		if premultiply {
 			rl.ImageAlphaPremultiply(img)
 		}
 
@@ -95,7 +97,7 @@ func LoadAssets() {
 
 		tex := rl.LoadTextureFromImage(img)
 
-		if tex.ID == 0{
+		if tex.ID == 0 {
 			ErrorLogger.Fatalf("failed to load texture from img : %v", path)
 		}
 
@@ -104,17 +106,19 @@ func LoadAssets() {
 		return tex
 	}
 
-	loadFont := func(path string, fontSize int32, fileType string) rl.Font{
+	loadFont := func(path string, fontSize int32, fileType string) rl.Font {
 		var byteArray []byte
 		var err error
 
-		if *FlagHotReloading{
+		if *FlagHotReloading {
 			byteArray, err = os.ReadFile(path)
-		}else{
+		} else {
 			byteArray, err = fs.ReadFile(EmebededAssets, path)
 		}
 
-		if err != nil {ErrorLogger.Fatal(err)}
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
 
 		// NOTE : for code points we are supplying empty code points
 		// this will default to loading only ascii characters
@@ -124,7 +128,7 @@ func LoadAssets() {
 		var emptyCodePoints []rune
 		font := rl.LoadFontFromMemory(fileType, byteArray, fontSize, emptyCodePoints)
 
-		if !rl.IsFontReady(font){
+		if !rl.IsFontReady(font) {
 			ErrorLogger.Fatalf("failed to load font : %v", path)
 		}
 
@@ -136,7 +140,7 @@ func LoadAssets() {
 	ArrowsOuterTex = loadTexture("assets/arrows_outer.png", true, ".png")
 	ArrowsInnerTex = loadTexture("assets/arrows_inner.png", true, ".png")
 
-	if ArrowsOuterTex.Width != ArrowsInnerTex.Width || ArrowsOuterTex.Height != ArrowsInnerTex.Height{
+	if ArrowsOuterTex.Width != ArrowsInnerTex.Width || ArrowsOuterTex.Height != ArrowsInnerTex.Height {
 		ErrorLogger.Fatal("Arrow inner and outer images should have same size")
 	}
 
@@ -145,7 +149,7 @@ func LoadAssets() {
 
 	width := float32(ArrowsOuterTex.Width) / 4.0
 
-	for i:=NoteDir(0); i<NoteDirSize; i++{
+	for i := NoteDir(0); i < NoteDirSize; i++ {
 		x := float32(i) * width
 		ArrowsRects[i] = rl.Rectangle{
 			x, 0, width, float32(ArrowsOuterTex.Height),
@@ -158,7 +162,7 @@ func LoadAssets() {
 
 	width = float32(ArrowsGlowTex.Width) / 4.0
 
-	for i:=NoteDir(0); i<NoteDirSize; i++{
+	for i := NoteDir(0); i < NoteDirSize; i++ {
 		x := float32(i) * width
 		ArrowsGlowRects[i] = rl.Rectangle{
 			x, 0, width, float32(ArrowsGlowTex.Height),
@@ -175,8 +179,8 @@ func LoadAssets() {
 		"assets/sick.png",
 	}
 
-	for r:= FnfHitRating(0); r<HitRatingSize; r++{
-		HitRatingTexs[r]  = loadTexture(ratingImgPaths[r], true, ".png")
+	for r := FnfHitRating(0); r < HitRatingSize; r++ {
+		HitRatingTexs[r] = loadTexture(ratingImgPaths[r], true, ".png")
 	}
 
 	regularPath := "assets/UhBeeSe_hyun/UhBee Se_hyun.ttf"
@@ -185,4 +189,3 @@ func LoadAssets() {
 	FontRegular = loadFont(regularPath, 128, ".ttf")
 	FontBold = loadFont(boldPath, 128, ".ttf")
 }
-

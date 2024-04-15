@@ -47,10 +47,10 @@ func EaseIn[F constraints.Float](t F) F {
 }
 
 func EaseOut[F constraints.Float](t F) F {
-	return 1.0 - (t - 1.0) * (t - 1.0)
+	return 1.0 - (t-1.0)*(t-1.0)
 }
 
-func EaseInAndOut[F constraints.Float](t F) F{
+func EaseInAndOut[F constraints.Float](t F) F {
 	return Lerp(EaseIn(t), EaseOut(t), t)
 }
 
@@ -59,7 +59,7 @@ func Lerp[F constraints.Float](a, b, t F) F {
 }
 
 type CircularQueue[T any] struct {
-	End int
+	End    int
 	Start  int
 	Length int
 	Data   []T
@@ -107,10 +107,10 @@ func (q *CircularQueue[T]) Dequeue() T {
 }
 
 func (q *CircularQueue[T]) At(index int) T {
-	return q.Data[(q.Start + index)%len(q.Data)]
+	return q.Data[(q.Start+index)%len(q.Data)]
 }
 
-func (q *CircularQueue[T]) Clear()  {
+func (q *CircularQueue[T]) Clear() {
 	q.Length = 0
 	q.Start = 0
 	q.End = 0
@@ -156,7 +156,7 @@ func DrawPatternBackground(
 	texture rl.Texture2D,
 	offsetX, offsetY float32,
 	tint rl.Color,
-){
+) {
 	/*
 		0 -- 3
 		|    |
@@ -164,7 +164,7 @@ func DrawPatternBackground(
 		1 -- 2
 	*/
 
-	if texture.ID > 0{
+	if texture.ID > 0 {
 		rl.SetTextureWrap(texture, rl.WrapRepeat)
 
 		uvEndX := float32(SCREEN_WIDTH) / float32(texture.Width)
@@ -185,7 +185,7 @@ func DrawPatternBackground(
 		uvs[2] = rl.Vector2{uvEndX, uvEndY}
 		uvs[3] = rl.Vector2{uvEndX, 0}
 
-		for i := range len(uvs){
+		for i := range len(uvs) {
 			uvs[i].X += offsetX
 			uvs[i].Y += offsetY
 		}
@@ -206,7 +206,7 @@ func DrawPatternBackground(
 		rl.Vertex2f(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 		rl.TexCoord2f(uvs[3].X, uvs[3].Y)
-		rl.Vertex2f(SCREEN_WIDTH,0)
+		rl.Vertex2f(SCREEN_WIDTH, 0)
 
 		rl.End()
 		rl.SetTexture(0)
@@ -235,7 +235,6 @@ func DrawTextureTransfromed(
 		uv1 := rl.Vector2{srcRect.X / texW, (srcRect.Y + srcRect.Height) / texH}
 		uv2 := rl.Vector2{(srcRect.X + srcRect.Width) / texW, (srcRect.Y + srcRect.Height) / texH}
 		uv3 := rl.Vector2{(srcRect.X + srcRect.Width) / texW, srcRect.Y / texH}
-
 
 		v0 := rl.Vector2{0, 0}
 		v1 := rl.Vector2{0, srcRect.Height}

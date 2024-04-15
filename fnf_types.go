@@ -2,7 +2,6 @@ package main
 
 import (
 	"time"
-
 	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -29,12 +28,12 @@ type FnfNote struct {
 	Player    int
 	Direction NoteDir
 
-	StartsAt  time.Duration
-	Duration  time.Duration
-	Index     int
+	StartsAt time.Duration
+	Duration time.Duration
+	Index    int
 
 	// variables that change during gameplay
-	IsHit  bool
+	IsHit bool
 
 	HoldReleaseAt time.Duration
 }
@@ -54,11 +53,11 @@ func (n FnfNote) IsOverlapped(otherN FnfNote) bool {
 	return AbsI(n.StartsAt-otherN.StartsAt) < time.Millisecond*2
 }
 
-func (n FnfNote) IsSustain() bool{
+func (n FnfNote) IsSustain() bool {
 	// NOTE : I'm check if it's bigger than 1 millisecond rather than 0
 	// because original fnf stores time in flating point number
 	// and I'm scared of them
-	return n.Duration >= time.Microsecond * 500
+	return n.Duration >= time.Microsecond*500
 }
 
 func (n FnfNote) IsInWindow(audioPos, windowSize time.Duration) bool {
@@ -74,12 +73,12 @@ func (n FnfNote) IsAudioPositionInDuration(audioPos, windowSize time.Duration) b
 	return start <= audioPos && audioPos <= end
 }
 
-func (n FnfNote) NotReachedHitWindow(audioPos, windowSize time.Duration) bool{
-	return n.StartsAt > audioPos + windowSize/2
+func (n FnfNote) NotReachedHitWindow(audioPos, windowSize time.Duration) bool {
+	return n.StartsAt > audioPos+windowSize/2
 }
 
-func (n FnfNote) StartPassedHitWindow(audioPos, windowSize time.Duration) bool{
-	return n.StartsAt < audioPos - windowSize/2
+func (n FnfNote) StartPassedHitWindow(audioPos, windowSize time.Duration) bool {
+	return n.StartsAt < audioPos-windowSize/2
 }
 
 const PlayerAny = -1

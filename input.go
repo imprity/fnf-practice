@@ -2,15 +2,15 @@ package main
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
-	"time"
-	"sync"
 	"math"
+	"sync"
+	"time"
 )
 
 var isInputDisabled bool
 var inputDisabledCheckMutex sync.Mutex
 
-func IsInputDisabled() bool{
+func IsInputDisabled() bool {
 	inputDisabledCheckMutex.Lock()
 	defer inputDisabledCheckMutex.Unlock()
 	return isInputDisabled
@@ -33,9 +33,9 @@ func EnableInput() {
 // ========================================
 
 var (
-	NoteKeysLeft  = []int32{rl.KeyA,          rl.KeyLeft}
-	NoteKeysDown  = []int32{rl.KeyS,          rl.KeyDown}
-	NoteKeysUp    = []int32{rl.KeySemicolon,  rl.KeyUp}
+	NoteKeysLeft  = []int32{rl.KeyA, rl.KeyLeft}
+	NoteKeysDown  = []int32{rl.KeyS, rl.KeyDown}
+	NoteKeysUp    = []int32{rl.KeySemicolon, rl.KeyUp}
 	NotekeysRight = []int32{rl.KeyApostrophe, rl.KeyRight}
 )
 
@@ -56,41 +56,41 @@ var (
 )
 
 var (
-	AudioSpeedUpKey int32 = rl.KeyEqual
+	AudioSpeedUpKey   int32 = rl.KeyEqual
 	AudioSpeedDownKey int32 = rl.KeyMinus
 )
 
 var SongResetKey int32 = rl.KeyR
 
 var (
-	ToggleDebugKey int32 = rl.KeyF1
+	ToggleDebugKey  int32 = rl.KeyF1
 	ReloadAssetsKey int32 = rl.KeyF5
 )
 
 // TODO : remove these keys
 var (
 	ZoomOutKey int32 = rl.KeyLeftBracket
-	ZoomInKey int32 = rl.KeyRightBracket
+	ZoomInKey  int32 = rl.KeyRightBracket
 )
 
 var (
-	DifficultyUpKey int32 = rl.KeyW
+	DifficultyUpKey   int32 = rl.KeyW
 	DifficultyDownKey int32 = rl.KeyQ
 )
 
 var ToggleBotPlayKey int32 = rl.KeyB
+
 // ========================================
 // end of key map
 // ========================================
 
-
-func AreKeysPressed(keys ...int32) bool{
-	if IsInputDisabled(){
+func AreKeysPressed(keys ...int32) bool {
+	if IsInputDisabled() {
 		return false
 	}
 
-	for _, key := range keys{
-		if rl.IsKeyPressed(key){
+	for _, key := range keys {
+		if rl.IsKeyPressed(key) {
 			return true
 		}
 	}
@@ -98,13 +98,13 @@ func AreKeysPressed(keys ...int32) bool{
 	return false
 }
 
-func AreKeysDown(keys ...int32) bool{
-	if IsInputDisabled(){
+func AreKeysDown(keys ...int32) bool {
+	if IsInputDisabled() {
 		return false
 	}
 
-	for _, key := range keys{
-		if rl.IsKeyDown(key){
+	for _, key := range keys {
+		if rl.IsKeyDown(key) {
 			return true
 		}
 	}
@@ -112,23 +112,23 @@ func AreKeysDown(keys ...int32) bool{
 	return false
 }
 
-func AreKeysUp(keys ...int32) bool{
-	if IsInputDisabled(){
+func AreKeysUp(keys ...int32) bool {
+	if IsInputDisabled() {
 		return true
 	}
 
 	return !AreKeysDown(keys...)
 }
 
-func AreKeysReleased(keys ...int32) bool{
-	if IsInputDisabled(){
+func AreKeysReleased(keys ...int32) bool {
+	if IsInputDisabled() {
 		// NOTE : retruning false because I think key being released
 		// feels like something that would only happen if input is enabled
 		return false
 	}
 
-	for _, key := range keys{
-		if rl.IsKeyReleased(key){
+	for _, key := range keys {
+		if rl.IsKeyReleased(key) {
 			return true
 		}
 	}
@@ -139,9 +139,9 @@ func AreKeysReleased(keys ...int32) bool{
 var keyRepeatMap = make(map[int32]time.Duration)
 
 func HandleKeyRepeat(firstRate, repeatRate time.Duration, keys ...int32) bool {
-	minKey := int32(math.MaxInt32 )
+	minKey := int32(math.MaxInt32)
 
-	for _, key := range keys{
+	for _, key := range keys {
 		minKey = min(key, minKey)
 	}
 

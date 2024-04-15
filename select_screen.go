@@ -8,9 +8,9 @@ import (
 	//"time"
 )
 
-type SelectUpdateResult struct{
-	Quit bool
-	PathGroup FnfPathGroup
+type SelectUpdateResult struct {
+	Quit       bool
+	PathGroup  FnfPathGroup
 	Difficulty FnfDifficulty
 }
 
@@ -24,12 +24,12 @@ type SelectScreen struct {
 	PreferredDifficulty FnfDifficulty
 
 	DirectoryOpenItemId int64
-	SongDecoItemId int64
+	SongDecoItemId      int64
 
-	MenuToGroup map[int64] FnfPathGroup
+	MenuToGroup map[int64]FnfPathGroup
 
-	IsGroupSelected bool
-	SelectedGroup FnfPathGroup
+	IsGroupSelected    bool
+	SelectedGroup      FnfPathGroup
 	SelectedDifficulty FnfDifficulty
 }
 
@@ -38,7 +38,7 @@ func NewSelectScreen() *SelectScreen {
 
 	ss.PreferredDifficulty = DifficultyNormal
 
-	ss.MenuToGroup = make(map[int64] FnfPathGroup)
+	ss.MenuToGroup = make(map[int64]FnfPathGroup)
 
 	ss.MenuDrawer = NewMenuDrawer()
 
@@ -50,7 +50,7 @@ func NewSelectScreen() *SelectScreen {
 	menuDeco.ColSelected = Color255(0x4A, 0x7F, 0xD7, 0xFF)
 
 	menuDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-	menuDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.7
+	menuDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 
 	ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuDeco)
 
@@ -93,21 +93,21 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen) Update() UpdateResult{
+func (ss *SelectScreen) Update() UpdateResult {
 	ss.MenuDrawer.Update()
 
-	if ss.IsGroupSelected && IsShowTransitionDone(){
+	if ss.IsGroupSelected && IsShowTransitionDone() {
 		ss.IsGroupSelected = false
 		return SelectUpdateResult{
-			Quit : true,
-			PathGroup : ss.SelectedGroup,
-			Difficulty : ss.SelectedDifficulty,
+			Quit:       true,
+			PathGroup:  ss.SelectedGroup,
+			Difficulty: ss.SelectedDifficulty,
 		}
 	}
 
-	for _, item := range ss.MenuDrawer.Items{
-		if item.Type == MenuItemTrigger && item.Bvalue{
-			if group, ok := ss.MenuToGroup[item.Id]; ok{
+	for _, item := range ss.MenuDrawer.Items {
+		if item.Type == MenuItemTrigger && item.Bvalue {
+			if group, ok := ss.MenuToGroup[item.Id]; ok {
 				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 				ShowTransition(SongLoadingScreen)
@@ -125,22 +125,22 @@ func (ss *SelectScreen) Update() UpdateResult{
 	// load group
 	// =============================
 
-	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok{
-		if directoryItem.Bvalue{
+	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok {
+		if directoryItem.Bvalue {
 			ShowTransition(DirSelectScreen)
 			DisableInput()
 
-			go func(){
+			go func() {
 				directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
-				if err != nil && err != dialog.ErrCancelled{
+				if err != nil && err != dialog.ErrCancelled {
 					ErrorLogger.Fatal(err)
 				}
 
-				if err != dialog.ErrCancelled{
+				if err != dialog.ErrCancelled {
 					groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
 
 					if len(groups) > 0 {
-						for _, group := range groups{
+						for _, group := range groups {
 							menuItem := MakeMenuItem()
 
 							menuItem.Type = MenuItemTrigger
@@ -154,7 +154,7 @@ func (ss *SelectScreen) Update() UpdateResult{
 						// =====================
 						// add song deco
 						// =====================
-						if _, hasSongDeco := ss.MenuDrawer.GetItemById(ss.SongDecoItemId); !hasSongDeco{
+						if _, hasSongDeco := ss.MenuDrawer.GetItemById(ss.SongDecoItemId); !hasSongDeco {
 							songDeco := MakeMenuItem()
 
 							songDeco.Type = MenuItemDeco
@@ -165,7 +165,7 @@ func (ss *SelectScreen) Update() UpdateResult{
 							songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
 
 							songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-							songDeco.SizeSelected =MenuItemSizeSelectedDefault * 1.7
+							songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 
 							ss.MenuDrawer.InsertAt(2, songDeco)
 
@@ -196,7 +196,7 @@ func (ss *SelectScreen) Update() UpdateResult{
 	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
 
 	return SelectUpdateResult{
-		Quit : false,
+		Quit: false,
 	}
 }
 
@@ -208,7 +208,7 @@ func (ss *SelectScreen) Draw() {
 
 	group, ok := ss.MenuToGroup[ss.MenuDrawer.GetSeletedId()]
 
-	if ok{
+	if ok {
 		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 		str := DifficultyStrs[difficulty]
@@ -224,8 +224,8 @@ func (ss *SelectScreen) Draw() {
 	}
 }
 
-func (ss *SelectScreen) BeforeScreenTransition(){
-	if IsTransitionOn(){
+func (ss *SelectScreen) BeforeScreenTransition() {
+	if IsTransitionOn() {
 		HideTransition()
 	}
 	ss.IsGroupSelected = false

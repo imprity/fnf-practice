@@ -32,12 +32,12 @@ var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile
 
 var TheRenderTexture rl.RenderTexture2D
 
-func FnfBeginTextureMode(renderTexture rl.RenderTexture2D){
+func FnfBeginTextureMode(renderTexture rl.RenderTexture2D) {
 	rl.EndTextureMode()
 	rl.BeginTextureMode(renderTexture)
 }
 
-func FnfEndTextureMode(){
+func FnfEndTextureMode() {
 	rl.EndTextureMode()
 	rl.BeginTextureMode(TheRenderTexture)
 }
@@ -56,7 +56,7 @@ func main() {
 
 	var err error
 
-    rl.SetConfigFlags(rl.FlagWindowResizable);
+	rl.SetConfigFlags(rl.FlagWindowResizable)
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
@@ -71,7 +71,7 @@ func main() {
 	TheRenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 	defer rl.UnloadRenderTexture(TheRenderTexture)
 
-	if !rl.IsRenderTextureReady(TheRenderTexture){
+	if !rl.IsRenderTextureReady(TheRenderTexture) {
 		ErrorLogger.Fatal("failed to load the render texture")
 	}
 
@@ -112,17 +112,17 @@ func main() {
 			LoadAssets()
 		}
 
-		if transitioned{
+		if transitioned {
 			screen.BeforeScreenTransition()
 			transitioned = false
 		}
 
 		updateResult := screen.Update()
 
-		if updateResult.DoQuit(){
+		if updateResult.DoQuit() {
 			transitioned = true
 
-			switch updateResult.(type){
+			switch updateResult.(type) {
 			case GameUpdateResult:
 				screen = ss
 			case SelectUpdateResult:
@@ -151,7 +151,7 @@ func main() {
 		screenW := float32(rl.GetScreenWidth())
 		screenH := float32(rl.GetScreenHeight())
 
-		scale := min(screenW / SCREEN_WIDTH, screenH / SCREEN_HEIGHT)
+		scale := min(screenW/SCREEN_WIDTH, screenH/SCREEN_HEIGHT)
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{0, 0, 0, 255})

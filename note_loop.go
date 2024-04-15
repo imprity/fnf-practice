@@ -2,7 +2,6 @@ package main
 
 import (
 	"time"
-
 	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -14,15 +13,15 @@ type PlayerState struct {
 	IsHoldingKey    [NoteDirSize]bool
 	IsHoldingBadKey [NoteDirSize]bool
 
-	KeyPressedAt  [NoteDirSize]time.Duration
-	KeyReleasedAt [NoteDirSize]time.Duration
+	KeyPressedAt     [NoteDirSize]time.Duration
+	KeyReleasedAt    [NoteDirSize]time.Duration
 	DidReleaseBadKey [NoteDirSize]bool
 
-	NoteMissAt [NoteDirSize]time.Duration
+	NoteMissAt  [NoteDirSize]time.Duration
 	DidMissNote [NoteDirSize]bool
 }
 
-type NoteEvent struct{
+type NoteEvent struct {
 	// event bit can have 6 different values
 	// none : 0000
 	// hit               : 0001
@@ -34,59 +33,59 @@ type NoteEvent struct{
 	// this is done this way because I was afraid that I might set conflicting state
 	// but I'm not sure if it's a good appoach
 	EventBit int
-	Time time.Duration
-	Index int
+	Time     time.Duration
+	Index    int
 }
 
-func (ne *NoteEvent) ClearHit(){
+func (ne *NoteEvent) ClearHit() {
 	ne.EventBit = ne.EventBit & 0b1100
 }
 
-func (ne *NoteEvent) ClearRelease(){
+func (ne *NoteEvent) ClearRelease() {
 	ne.EventBit = ne.EventBit & 0b0011
 }
 
-func (ne *NoteEvent) SetHit(){
+func (ne *NoteEvent) SetHit() {
 	ne.ClearRelease()
 	ne.EventBit = ne.EventBit | 0b0001
 }
 
-func (ne *NoteEvent) SetFirstHit(){
+func (ne *NoteEvent) SetFirstHit() {
 	ne.ClearRelease()
 	ne.EventBit = 0b0011
 }
 
-func (ne *NoteEvent) SetRelease(){
+func (ne *NoteEvent) SetRelease() {
 	ne.ClearHit()
 	ne.EventBit = ne.EventBit | 0b1000
 }
 
-func (ne *NoteEvent) SetMiss(){
+func (ne *NoteEvent) SetMiss() {
 	ne.ClearHit()
 	ne.EventBit = ne.EventBit | 0b0100
 }
 
-func (ne *NoteEvent) IsHit() bool{
-	return ne.EventBit & 0b0001 > 0
+func (ne *NoteEvent) IsHit() bool {
+	return ne.EventBit&0b0001 > 0
 }
 
-func (ne *NoteEvent) IsFirstHit() bool{
+func (ne *NoteEvent) IsFirstHit() bool {
 	return ne.EventBit == 0b0011
 }
 
-func (ne *NoteEvent) IsRelease() bool{
-	return ne.EventBit & 0b1000 > 0
+func (ne *NoteEvent) IsRelease() bool {
+	return ne.EventBit&0b1000 > 0
 }
 
-func (ne *NoteEvent) IsMiss() bool{
-	return ne.EventBit & 0b0100 > 0
+func (ne *NoteEvent) IsMiss() bool {
+	return ne.EventBit&0b0100 > 0
 }
 
-func (ne *NoteEvent) IsNone() bool{
+func (ne *NoteEvent) IsNone() bool {
 	return ne.EventBit == 0
 }
 
-func (ne *NoteEvent) SameKind(other NoteEvent) bool{
+func (ne *NoteEvent) SameKind(other NoteEvent) bool {
 	return ne.EventBit == other.EventBit
 }
 
@@ -95,7 +94,7 @@ func NoteStartTunneled(
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	hitWindow time.Duration,
-)bool{
+) bool {
 	tunneled := note.StartPassedHitWindow(audioPos, hitWindow)
 	tunneled = tunneled && note.NotReachedHitWindow(prevAudioPos, hitWindow)
 	return tunneled
@@ -106,8 +105,8 @@ func SustainNoteTunneled(
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	hitWindow time.Duration,
-)bool{
-	tunneled := note.StartsAt + note.Duration < prevAudioPos - hitWindow / 2
+) bool {
+	tunneled := note.StartsAt+note.Duration < prevAudioPos-hitWindow/2
 	tunneled = tunneled && note.NotReachedHitWindow(audioPos, hitWindow)
 	return tunneled
 }
@@ -118,7 +117,7 @@ func UpdateNotesAndStates(
 	wasKeyPressed [2][NoteDirSize]bool,
 	isKeyPressed [2][NoteDirSize]bool,
 	prevAudioPos time.Duration,
-	audioPos     time.Duration,
+	audioPos time.Duration,
 	isPlayingAudio bool,
 	hitWindow time.Duration,
 	botPlay bool,
@@ -129,7 +128,7 @@ func UpdateNotesAndStates(
 	var noteEvents []NoteEvent
 
 	if isPlayingAudio {
-		avgPos := (audioPos + prevAudioPos)/2
+		avgPos := (audioPos + prevAudioPos) / 2
 
 		var isKeyJustPressed [2][NoteDirSize]bool
 		var isKeyJustReleased [2][NoteDirSize]bool
@@ -160,9 +159,9 @@ func UpdateNotesAndStates(
 		hitNote := [2][NoteDirSize]FnfNote{}
 
 		onNoteHit := func(note FnfNote, event *NoteEvent) {
-			if !notes[note.Index].IsHit{
+			if !notes[note.Index].IsHit {
 				event.SetFirstHit()
-			}else{
+			} else {
 				event.SetHit()
 			}
 
@@ -199,9 +198,9 @@ func UpdateNotesAndStates(
 					if pStates[player].IsHoldingKey[dir] {
 						pStates[player].KeyReleasedAt[dir] = GlobalTimerNow()
 
-						if pStates[player].IsHoldingBadKey[dir]{
+						if pStates[player].IsHoldingBadKey[dir] {
 							pStates[player].DidReleaseBadKey[dir] = true
-						}else{
+						} else {
 							pStates[player].DidReleaseBadKey[dir] = false
 						}
 					}
@@ -222,8 +221,8 @@ func UpdateNotesAndStates(
 					pStates[player].IsHoldingNote[dir] = false
 
 					event := NoteEvent{
-						Time : avgPos,
-						Index : note.Index,
+						Time:  avgPos,
+						Index: note.Index,
 					}
 					event.SetRelease()
 
@@ -234,7 +233,6 @@ func UpdateNotesAndStates(
 
 		newNoteIndexSet := false
 
-
 		for ; noteIndexStart < len(notes); noteIndexStart++ {
 			note := notes[noteIndexStart]
 
@@ -242,18 +240,18 @@ func UpdateNotesAndStates(
 			nd := note.Direction
 
 			event := NoteEvent{
-				Time : avgPos,
-				Index : note.Index,
+				Time:  avgPos,
+				Index: note.Index,
 			}
 
 			//check if user hit note
-			if isKeyJustPressed[np][nd]{
+			if isKeyJustPressed[np][nd] {
 				var hit bool
 
-				if note.IsSustain(){
+				if note.IsSustain() {
 					hit = note.IsAudioPositionInDuration(audioPos, hitWindow)
 					hit = hit || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
-				}else{
+				} else {
 					hit = !note.IsHit
 					hit = hit && note.IsInWindow(audioPos, hitWindow)
 					hit = hit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
@@ -262,10 +260,10 @@ func UpdateNotesAndStates(
 				hitElse := (didHitNote[np][nd] && !hitNote[np][nd].IsSustain())
 				hit = hit && (!hitElse || (hitElse && hitNote[np][nd].IsOverlapped(note)))
 
-				if hit{
+				if hit {
 					if note.IsSustain() {
 						onNoteHold(note, &event)
-					}else{
+					} else {
 						onNoteHit(note, &event)
 					}
 				}
@@ -273,38 +271,38 @@ func UpdateNotesAndStates(
 
 			// if sustain note passed hit window and key is pressed
 			// just treat it as good enough
-			if (note.IsSustain() &&
+			if note.IsSustain() &&
 				!note.IsHit &&
 				note.StartPassedHitWindow(audioPos, hitWindow) &&
-				note.IsAudioPositionInDuration(audioPos, hitWindow)){
-				if isKeyPressed[np][nd]{
+				note.IsAudioPositionInDuration(audioPos, hitWindow) {
+				if isKeyPressed[np][nd] {
 					onNoteHold(note, &event)
 				}
 			}
 
 			//check if user missed note
-			if note.IsSustain(){
+			if note.IsSustain() {
 				missed := !pStates[np].IsHoldingNote[nd]
 				missed = missed || (pStates[np].IsHoldingNote[nd] && !pStates[np].HoldingNote[nd].Equals(note))
 				missed = missed && note.StartPassedHitWindow(audioPos, hitWindow)
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
-				missed = missed && note.HoldReleaseAt < note.StartsAt + note.Duration
+				missed = missed && note.HoldReleaseAt < note.StartsAt+note.Duration
 				if missed {
 					onNoteMiss(note, &event)
 				}
-			}else if !note.IsHit{
+			} else if !note.IsHit {
 				wasInHitWindow := false
 				isInHitWindow := false
 
 				wasInHitWindow = note.IsInWindow(prevAudioPos, hitWindow)
 				isInHitWindow = note.IsInWindow(audioPos, hitWindow)
 
-				if wasInHitWindow && !isInHitWindow{
+				if wasInHitWindow && !isInHitWindow {
 					onNoteMiss(note, &event)
 				}
 			}
 
-			if !event.IsNone(){
+			if !event.IsNone() {
 				noteEvents = append(noteEvents, event)
 			}
 
@@ -373,10 +371,10 @@ func GetBotKeyPresseState(
 	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
 		if isNoteForBot(note, isBotPlay) {
-			if !note.IsHit && !note.IsSustain(){
+			if !note.IsHit && !note.IsSustain() {
 				shouldHit := note.StartsAt <= audioPos && note.StartsAt >= prevAudioPos
 				shouldHit = shouldHit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
-				if shouldHit{
+				if shouldHit {
 					keyPressed[note.Player][note.Direction] = true
 				}
 			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow) {

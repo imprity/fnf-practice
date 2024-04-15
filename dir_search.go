@@ -140,7 +140,7 @@ func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 	// ==========================================================
 	songPaths := make([]string, 0, len(pathToSong))
 
-	for path, _ := range pathToSong {
+	for path := range pathToSong {
 		songPaths = append(songPaths, path)
 	}
 

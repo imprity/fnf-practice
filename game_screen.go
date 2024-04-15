@@ -12,16 +12,16 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type GameUpdateResult struct{
+type GameUpdateResult struct {
 	Quit bool
 }
 
-func (gr GameUpdateResult) DoQuit() bool{
+func (gr GameUpdateResult) DoQuit() bool {
 	return gr.Quit
 }
 
-type NotePopup struct{
-	Start time.Duration
+type NotePopup struct {
+	Start  time.Duration
 	Rating FnfHitRating
 }
 
@@ -61,7 +61,7 @@ type GameScreen struct {
 	PixelsPerMillis float32
 
 	// private members
-	isKeyPressed  [2][NoteDirSize]bool
+	isKeyPressed   [2][NoteDirSize]bool
 	noteIndexStart int
 
 	audioPosition              time.Duration
@@ -69,7 +69,7 @@ type GameScreen struct {
 
 	// TODO : Does it really have to be a private member?
 	// Make this a public member later if you think it's more convinient
-	botPlay                    bool
+	botPlay bool
 }
 
 func NewGameScreen() *GameScreen {
@@ -95,7 +95,7 @@ func NewGameScreen() *GameScreen {
 	gs.PixelsPerMillis = 0.5
 
 	gs.PopupQueue = CircularQueue[NotePopup]{
-		Data : make([]NotePopup, 128), // 128 popups should be enough for everyone right?
+		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
 	}
 
 	return gs
@@ -173,10 +173,10 @@ func (gs *GameScreen) PauseAudio() {
 		return
 	}
 
-	if gs.InstPlayer.IsReady{
+	if gs.InstPlayer.IsReady {
 		gs.InstPlayer.Pause()
 	}
-	if gs.VoicePlayer.IsReady{
+	if gs.VoicePlayer.IsReady {
 		gs.VoicePlayer.Pause()
 	}
 }
@@ -198,10 +198,10 @@ func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 
 	gs.audioPosition = at
 
-	if gs.InstPlayer.IsReady{
+	if gs.InstPlayer.IsReady {
 		gs.InstPlayer.SetPosition(at)
 	}
-	if gs.VoicePlayer.IsReady{
+	if gs.VoicePlayer.IsReady {
 		gs.VoicePlayer.SetPosition(at)
 	}
 }
@@ -221,10 +221,10 @@ func (gs *GameScreen) SetAudioSpeed(speed float64) {
 		return
 	}
 
-	if gs.InstPlayer.IsReady{
+	if gs.InstPlayer.IsReady {
 		gs.InstPlayer.SetSpeed(speed)
 	}
-	if gs.VoicePlayer.IsReady{
+	if gs.VoicePlayer.IsReady {
 		gs.VoicePlayer.SetSpeed(speed)
 	}
 }
@@ -237,7 +237,7 @@ func (gs *GameScreen) SetBotPlay(bot bool) {
 	gs.botPlay = bot
 }
 
-func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
+func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 	for player := 0; player <= 1; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			gs.isKeyPressed[player][dir] = false
@@ -257,7 +257,7 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges(){
 
 	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
 
-	for i := range len(gs.NoteEvents){
+	for i := range len(gs.NoteEvents) {
 		gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
 	}
 }
@@ -293,7 +293,7 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 // returns true when it wants to quit
-func (gs *GameScreen) Update() UpdateResult{
+func (gs *GameScreen) Update() UpdateResult {
 	// handle quit
 	if AreKeysPressed(rl.KeyEscape) {
 		if gs.IsSongLoaded {
@@ -301,14 +301,14 @@ func (gs *GameScreen) Update() UpdateResult{
 		}
 
 		return GameUpdateResult{
-			Quit : true,
+			Quit: true,
 		}
 	}
 
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
 		return GameUpdateResult{
-			Quit : false,
+			Quit: false,
 		}
 	}
 
@@ -424,15 +424,15 @@ func (gs *GameScreen) Update() UpdateResult{
 		wheelT := gs.PixelsToTime(40)
 		wheelmove := rl.GetMouseWheelMove()
 
-		if math.Abs(float64(wheelmove)) > 0.001{
+		if math.Abs(float64(wheelmove)) > 0.001 {
 			changedPosition = true
 			pos += time.Duration(wheelmove * float32(-wheelT))
 		}
 
 		if changedPosition {
-			if gs.IsPlayingAudio(){
+			if gs.IsPlayingAudio() {
 				gs.PauseAudio()
-				if changedUsingKey{
+				if changedUsingKey {
 					gs.PausedBecausePositionChangeKey = true
 				}
 			}
@@ -445,16 +445,15 @@ func (gs *GameScreen) Update() UpdateResult{
 		// NOTE : thought about doing this for mouse wheel as well but it's harder to
 		// detect whether mouse wheel stopped scrolling for reals
 		// TODO : Maybe we can do this by a timer
-		if (
-			gs.PausedBecausePositionChangeKey &&
+		if gs.PausedBecausePositionChangeKey &&
 			AreKeysUp(NoteScrollUpKey) &&
-			AreKeysUp(NoteScrollDownKey)){
+			AreKeysUp(NoteScrollDownKey) {
 
 			gs.PlayAudio()
 			gs.PausedBecausePositionChangeKey = false
 		}
 
-		if AreKeysPressed(SongResetKey){
+		if AreKeysPressed(SongResetKey) {
 			changedPosition = true
 			gs.ResetStatesThatTracksGamePlayChanges()
 			gs.SetAudioPosition(0)
@@ -473,7 +472,7 @@ func (gs *GameScreen) Update() UpdateResult{
 
 	// currently audio player position's delta is 0 or 10ms
 	// so we are trying to calculate better audio position
-	if !changedPosition{
+	if !changedPosition {
 		if !gs.IsPlayingAudio() {
 			gs.audioPosition = gs.InstPlayer.Position()
 		} else if gs.audioPositionSafetyCounter > 5 {
@@ -526,72 +525,72 @@ func (gs *GameScreen) Update() UpdateResult{
 		gs.noteIndexStart,
 	)
 
-	reportEvent := func (e NoteEvent){
+	reportEvent := func(e NoteEvent) {
 		i := e.Index
 		note := gs.Song.Notes[i]
 		p := note.Player
 		dir := note.Direction
 
-		if e.IsFirstHit(){
-			fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt - e.Time))
-		}else{
-			if e.IsRelease(){
+		if e.IsFirstHit() {
+			fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt-e.Time))
+		} else {
+			if e.IsRelease() {
 				fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
 			}
-			if e.IsMiss(){
+			if e.IsMiss() {
 				fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
 			}
 		}
 	}
 
-	pushPopupIfHumanPlayerHit := func (e NoteEvent){
-		if gs.IsBotPlay(){
+	pushPopupIfHumanPlayerHit := func(e NoteEvent) {
+		if gs.IsBotPlay() {
 			return
 		}
 
 		note := gs.Song.Notes[e.Index]
-		if e.IsFirstHit() && note.Player == 0{
+		if e.IsFirstHit() && note.Player == 0 {
 			var rating FnfHitRating
 
 			t := AbsI(note.StartsAt - e.Time)
 
 			// NOTE : these ratings are based on Psych engine
 			// TODO : provice options for these (acutally when are we gonna implement options???)
-			if t < time.Millisecond * 45{
+			if t < time.Millisecond*45 {
 				rating = HitRatingSick
-			}else if t < time.Millisecond * 90{
+			} else if t < time.Millisecond*90 {
 				rating = HitRatingGood
-			}else {
+			} else {
 				rating = HitRatingBad
 			}
 
 			popup := NotePopup{
-				Start : GlobalTimerNow(),
-				Rating : rating,
+				Start:  GlobalTimerNow(),
+				Rating: rating,
 			}
 			gs.PopupQueue.Enqueue(popup)
 		}
 	}
 
-	for _, e := range noteEvents{
+	for _, e := range noteEvents {
 		events := gs.NoteEvents[e.Index]
 
-		if len(events) <= 0{
+		if len(events) <= 0 {
 			reportEvent(e)
 			pushPopupIfHumanPlayerHit(e)
 			gs.NoteEvents[e.Index] = append(events, e)
-		}else{
-			last := events[len(events) - 1]
+		} else {
+			last := events[len(events)-1]
 
-			if last.SameKind(e){
-				if last.IsMiss(){
+			if last.SameKind(e) {
+				if last.IsMiss() {
 					t := e.Time - last.Time
-					if t > time.Millisecond * 500{ // only report miss every 500 ms
+					if t > time.Millisecond*500 { // only report miss every 500 ms
 						reportEvent(e)
 						gs.NoteEvents[e.Index] = append(events, e)
 					}
 				}
-			}else{
+			} else {
 				reportEvent(e)
 				pushPopupIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
@@ -600,7 +599,7 @@ func (gs *GameScreen) Update() UpdateResult{
 	}
 
 	return GameUpdateResult{
-		Quit : false,
+		Quit: false,
 	}
 }
 
@@ -619,8 +618,8 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 
 	mat = rl.MatrixMultiply(mat,
 		rl.MatrixTranslate(
-			x - glowW * scale * 0.5,
-			y - glowH * scale * 0.5,
+			x-glowW*scale*0.5,
+			y-glowH*scale*0.5,
 			0),
 	)
 
@@ -640,8 +639,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 
 	mat = rl.MatrixMultiply(mat,
 		rl.MatrixTranslate(
-			x - texW * scale * 0.5,
-			y - texH * scale * 0.5,
+			x-texW*scale*0.5,
+			y-texH*scale*0.5,
 			0),
 	)
 
@@ -652,7 +651,7 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 }
 
 func (gs *GameScreen) Draw() {
-	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{255,255,255,255})
+	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
 
 	if !gs.IsSongLoaded {
 		return
@@ -694,7 +693,7 @@ func (gs *GameScreen) Draw() {
 
 	noteStroke := [4]Color{}
 
-	for i, c := range noteFill{
+	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[2] *= 0.1
 		hsv[1] *= 0.3
@@ -704,19 +703,21 @@ func (gs *GameScreen) Draw() {
 
 	noteFillLight := [4]Color{}
 
-	for i, c := range noteFill{
+	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.3
 		hsv[2] *= 1.9
 
-		if hsv[2] > 100{ hsv[2] = 100 }
+		if hsv[2] > 100 {
+			hsv[2] = 100
+		}
 
 		noteFillLight[i] = FromHSV(hsv)
 	}
 
 	noteStrokeLight := [4]Color{}
 
-	for i, c := range noteFill{
+	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[2] *= 0.5
 
@@ -725,19 +726,21 @@ func (gs *GameScreen) Draw() {
 
 	noteFlash := [4]Color{}
 
-	for i, c := range noteFill{
+	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.1
 		hsv[2] *= 3
 
-		if hsv[2] > 100 { hsv[2] = 100 }
+		if hsv[2] > 100 {
+			hsv[2] = 100
+		}
 
 		noteFlash[i] = FromHSV(hsv)
 	}
 
 	noteFillGrey := [4]Color{}
 
-	for i, c := range noteFill{
+	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.3
 		hsv[2] *= 0.7
@@ -747,7 +750,7 @@ func (gs *GameScreen) Draw() {
 
 	noteStrokeGrey := [4]Color{}
 
-	for i, c := range noteFill{
+	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.2
 		hsv[2] *= 0.3
@@ -760,40 +763,44 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 
 	statusScaleOffset := [2][NoteDirSize]float32{}
-	statusOffsetX     := [2][NoteDirSize]float32{}
-	statusOffsetY     := [2][NoteDirSize]float32{}
+	statusOffsetX := [2][NoteDirSize]float32{}
+	statusOffsetY := [2][NoteDirSize]float32{}
 
-	for player :=0; player<=1; player++{
-		for dir := NoteDir(0); dir<NoteDirSize; dir++{
+	for player := 0; player <= 1; player++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			statusScaleOffset[player][dir] = 1
 		}
 	}
 
 	// it we hit note, raise note up
-	for p :=0; p<=1; p++{
-		for dir := NoteDir(0); dir<NoteDirSize; dir++{
-			if gs.Pstates[p].IsHoldingBadKey[dir]{
+	for p := 0; p <= 1; p++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			if gs.Pstates[p].IsHoldingBadKey[dir] {
 				statusScaleOffset[p][dir] += 0.1
-			}else if gs.Pstates[p].DidReleaseBadKey[dir]{
-				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir]))  / float32(time.Millisecond * 40)
-				if t > 1 { t = 1 }
+			} else if gs.Pstates[p].DidReleaseBadKey[dir] {
+				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir])) / float32(time.Millisecond*40)
+				if t > 1 {
+					t = 1
+				}
 				t = 1 - t
 
 				statusScaleOffset[p][dir] += 0.1 * t
 			}
-			if gs.Pstates[p].IsHoldingKey[dir] && !gs.Pstates[p].IsHoldingBadKey[dir]{
-				statusOffsetY[p][dir] = - 5
+			if gs.Pstates[p].IsHoldingKey[dir] && !gs.Pstates[p].IsHoldingBadKey[dir] {
+				statusOffsetY[p][dir] = -5
 				statusScaleOffset[p][dir] += 0.1
-				if gs.Pstates[p].IsHoldingNote[dir]{
-					statusOffsetX[p][dir] += (rand.Float32() * 2 - 1) * 3
-					statusOffsetY[p][dir] += (rand.Float32() * 2 - 1) * 3
+				if gs.Pstates[p].IsHoldingNote[dir] {
+					statusOffsetX[p][dir] += (rand.Float32()*2 - 1) * 3
+					statusOffsetY[p][dir] += (rand.Float32()*2 - 1) * 3
 				}
-			}else if !gs.Pstates[p].DidReleaseBadKey[dir]{
-				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir]))  / float32(time.Millisecond * 40)
-				if t > 1 { t = 1 }
+			} else if !gs.Pstates[p].DidReleaseBadKey[dir] {
+				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir])) / float32(time.Millisecond*40)
+				if t > 1 {
+					t = 1
+				}
 				t = 1 - t
 
-				statusOffsetY[p][dir] = - 5 * t
+				statusOffsetY[p][dir] = -5 * t
 				statusScaleOffset[p][dir] += 0.1 * t
 			}
 		}
@@ -803,17 +810,17 @@ func (gs *GameScreen) Draw() {
 	// NOTE : we have to define it as a function because
 	// we want to draw it below note if it's just a regular note
 	// but we want to draw on top of holding note
-	drawHitOverlay := func(player int, dir NoteDir){
+	drawHitOverlay := func(player int, dir NoteDir) {
 		x := noteX(player, dir) + statusOffsetX[player][dir]
 		y := SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
 		scale := gs.NotesSize * statusScaleOffset[player][dir]
 
 		sincePressed := GlobalTimerNow() - gs.Pstates[player].KeyPressedAt[dir]
-		glowT := float64(sincePressed) / float64(time.Millisecond * 50)
+		glowT := float64(sincePressed) / float64(time.Millisecond*50)
 		glowT = Clamp(glowT, 0.1, 1.0)
 
-		flashT := float64(sincePressed) / float64(time.Millisecond * 20)
-		if flashT > 1{
+		flashT := float64(sincePressed) / float64(time.Millisecond*20)
+		if flashT > 1 {
 			flashT = 1
 		}
 		flashT = 1 - flashT
@@ -834,7 +841,7 @@ func (gs *GameScreen) Draw() {
 		}
 
 		// draw flash
-		if !gs.Pstates[player].IsHoldingBadKey[dir] && flashT >= 0{
+		if !gs.Pstates[player].IsHoldingBadKey[dir] && flashT >= 0 {
 			color := Color{}
 
 			color = Col(noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, flashT)
@@ -842,7 +849,6 @@ func (gs *GameScreen) Draw() {
 			DrawNoteArrow(x, y, scale*1.1, dir, color, color)
 		}
 	}
-
 
 	// ============================================
 	// draw input status
@@ -868,14 +874,13 @@ func (gs *GameScreen) Draw() {
 	// draw regular note hit
 	// ============================================
 
-	for player := 0; player <= 1; player++{
-		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir]{
+	for player := 0; player <= 1; player++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir] {
 				drawHitOverlay(player, dir)
 			}
 		}
 	}
-
 
 	// ============================================
 	// draw notes
@@ -940,12 +945,12 @@ func (gs *GameScreen) Draw() {
 						stroke = badStroke
 					}
 
-					if !isHoldingNote{ // draw note if we are not holding it
+					if !isHoldingNote { // draw note if we are not holding it
 						DrawNoteArrow(x, sustainBeginY, gs.NotesSize, note.Direction, fill, stroke)
 					}
 				}
 			} else if !note.IsHit { // draw regular note
-				if note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow){
+				if note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow) {
 					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, badFill, badStroke)
 				} else {
 					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, normalFill, normalStroke)
@@ -963,9 +968,9 @@ func (gs *GameScreen) Draw() {
 	// draw sustain note hit
 	// ============================================
 
-	for player := 0; player <= 1; player++{
-		for dir:=NoteDir(0); dir < NoteDirSize; dir++{
-			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir]{
+	for player := 0; player <= 1; player++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir] {
 				drawHitOverlay(player, dir)
 			}
 		}
@@ -980,13 +985,13 @@ func (gs *GameScreen) Draw() {
 		dequeue := 0
 		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-		for i := range gs.PopupQueue.Length{
+		for i := range gs.PopupQueue.Length {
 			popup := gs.PopupQueue.At(i)
 
 			delta := GlobalTimerNow() - popup.Start
 
-			if delta > duration{
-				dequeue = i+1
+			if delta > duration {
+				dequeue = i + 1
 			}
 
 			projectileX := float32(0)
@@ -996,10 +1001,10 @@ func (gs *GameScreen) Draw() {
 				const heightReachAt = float32(duration) * 0.4
 
 				const a = float32(height) / -(heightReachAt * heightReachAt)
-				const b = -2.0* a * heightReachAt
+				const b = -2.0 * a * heightReachAt
 				yt := float32(delta)
 
-				projectileY = a * yt * yt + b * yt
+				projectileY = a*yt*yt + b*yt
 
 				xt := float32(delta) / (float32(duration) * 0.7)
 				xt = float32(math.Pow(float64(xt), 1.3))
@@ -1008,7 +1013,7 @@ func (gs *GameScreen) Draw() {
 			}
 
 			y := SCREEN_HEIGHT - gs.NotesMarginBottom - 200 + projectileY
-			x := float32(SCREEN_WIDTH / 2) + projectileX - 200
+			x := float32(SCREEN_WIDTH/2) + projectileX - 200
 
 			tex := HitRatingTexs[popup.Rating]
 
@@ -1016,12 +1021,12 @@ func (gs *GameScreen) Draw() {
 			texH := float32(tex.Height)
 
 			texRect := rl.Rectangle{
-				0,0, texW, texH,
+				0, 0, texW, texH,
 			}
 
 			mat := rl.MatrixTranslate(
 				x,
-				y - texH * 0.5,
+				y-texH*0.5,
 				0)
 
 			alpha := float32(0)
@@ -1050,7 +1055,7 @@ func (gs *GameScreen) Draw() {
 		}
 		rl.EndBlendMode()
 
-		for _ = range dequeue{
+		for range dequeue {
 			gs.PopupQueue.Dequeue()
 		}
 	}
@@ -1076,8 +1081,8 @@ func (gs *GameScreen) Draw() {
 	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{0, 0, 0, 255})
 }
 
-func (gs *GameScreen) BeforeScreenTransition(){
-	if IsTransitionOn(){
+func (gs *GameScreen) BeforeScreenTransition() {
+	if IsTransitionOn() {
 		HideTransition()
 	}
 	EnableInput()

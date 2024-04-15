@@ -1,27 +1,27 @@
 package main
 
 import (
-	"math"
-	"time"
 	_ "embed"
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"math"
+	"time"
 )
 
-type TransitionManager struct{
-	DiamonWidth float32
+type TransitionManager struct {
+	DiamonWidth  float32
 	DiamonHeight float32
 
 	ShowTransition bool
 
 	AnimStartedAt time.Duration
-	AnimDuration time.Duration
+	AnimDuration  time.Duration
 
-	ImgTexture rl.Texture2D
+	ImgTexture  rl.Texture2D
 	MaskTexture rl.RenderTexture2D
 
 	MaskShader rl.Shader
 
-	MaskLoc int32
+	MaskLoc  int32
 	ImageLoc int32
 
 	ScreenSizeLoc int32
@@ -34,7 +34,7 @@ var TheTransitionManager TransitionManager
 //go:embed mask.fs
 var maskFsShader string
 
-func InitTransition(){
+func InitTransition() {
 	manager := &TheTransitionManager
 
 	manager.DiamonWidth = 80
@@ -45,7 +45,7 @@ func InitTransition(){
 
 	manager.MaskTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-	if !rl.IsRenderTextureReady(manager.MaskTexture){
+	if !rl.IsRenderTextureReady(manager.MaskTexture) {
 		ErrorLogger.Fatal("failed to load mask render texture")
 	}
 
@@ -60,29 +60,28 @@ func InitTransition(){
 	manager.ImageLoc = rl.GetShaderLocation(manager.MaskShader, "image")
 
 	manager.ScreenSizeLoc = rl.GetShaderLocation(manager.MaskShader, "screenSize")
-	manager.ImageSizeLoc = rl.GetShaderLocation(manager.MaskShader,  "imageSize")
+	manager.ImageSizeLoc = rl.GetShaderLocation(manager.MaskShader, "imageSize")
 }
 
-func DrawTransition(){
+func DrawTransition() {
 	manager := &TheTransitionManager
 
-	if manager.ImgTexture.ID <= 0{ //just in case
+	if manager.ImgTexture.ID <= 0 { //just in case
 		return
 	}
 
-	timeT :=  float32(GlobalTimerNow() - manager.AnimStartedAt)
+	timeT := float32(GlobalTimerNow() - manager.AnimStartedAt)
 	timeT /= float32(manager.AnimDuration)
 
-	if timeT < 0 || timeT > 1{
-		if manager.ShowTransition{
-			DrawPatternBackground(manager.ImgTexture, 0,0, rl.Color{255,255,255,255})
+	if timeT < 0 || timeT > 1 {
+		if manager.ShowTransition {
+			DrawPatternBackground(manager.ImgTexture, 0, 0, rl.Color{255, 255, 255, 255})
 		}
 		return
 	}
 
-
 	diaW := manager.DiamonWidth
-	diaH :=manager.DiamonHeight
+	diaH := manager.DiamonHeight
 
 	intW := int(SCREEN_WIDTH / diaW)
 	intH := int(SCREEN_HEIGHT / (diaH * 0.5))
@@ -94,10 +93,10 @@ func DrawTransition(){
 
 	count := 0
 
-	if diaNy%2 == 1{
-		count = diaNx1 * (diaNy/2 + 1) + diaNx2 * diaNy/2
-	}else{
-		count = diaNx1 * diaNy/2 + diaNx2 * diaNy/2
+	if diaNy%2 == 1 {
+		count = diaNx1*(diaNy/2+1) + diaNx2*diaNy/2
+	} else {
+		count = diaNx1*diaNy/2 + diaNx2*diaNy/2
 	}
 
 	diaTotalW1 := f32(diaNx1) * diaW
@@ -115,40 +114,40 @@ func DrawTransition(){
 	index := 0
 
 	FnfBeginTextureMode(manager.MaskTexture)
-	rl.ClearBackground(rl.Color{0,0,0,0})
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 
-	for yi := 0; yi < diaNy; yi++{
+	for yi := 0; yi < diaNy; yi++ {
 		xEnd := diaNx1
 		xStart := xStart1
 
-		if yi%2 == 1{
+		if yi%2 == 1 {
 			xEnd = diaNx2
 			xStart = xStart2
 		}
 
-		y := yStart + f32(yi) * diaH * 0.5
+		y := yStart + f32(yi)*diaH*0.5
 
-		for xi := 0; xi < xEnd; xi++{
-			x := xStart + f32(xi) * diaW
+		for xi := 0; xi < xEnd; xi++ {
+			x := xStart + f32(xi)*diaW
 
 			scale := float32(1.0)
 
-			t := (f32(index) + Lerp(f32(-count +1), f32(count - 1), 1 - timeT)) / f32(count - 1)
-			t = Clamp(t,0,1)
+			t := (f32(index) + Lerp(f32(-count+1), f32(count-1), 1-timeT)) / f32(count-1)
+			t = Clamp(t, 0, 1)
 			t = 1 - t
 			t = t * t
 			scale = t
 
-			if !manager.ShowTransition{
-				scale = 1-scale
+			if !manager.ShowTransition {
+				scale = 1 - scale
 			}
 
-			points[0] = rl.Vector2{x,                      y - diaH * scale * 0.5}
-			points[1] = rl.Vector2{x - diaW * scale * 0.5, y }
-			points[2] = rl.Vector2{x + diaW * scale * 0.5, y }
-			points[3] = rl.Vector2{x,                      y + diaH * scale * 0.5}
+			points[0] = rl.Vector2{x, y - diaH*scale*0.5}
+			points[1] = rl.Vector2{x - diaW*scale*0.5, y}
+			points[2] = rl.Vector2{x + diaW*scale*0.5, y}
+			points[3] = rl.Vector2{x, y + diaH*scale*0.5}
 
-			rl.DrawTriangleStrip(points, rl.Color{255, 255, 255,255})
+			rl.DrawTriangleStrip(points, rl.Color{255, 255, 255, 255})
 			index++
 		}
 	}
@@ -175,30 +174,30 @@ func DrawTransition(){
 		[]float32{f32(manager.ImgTexture.Width), f32(manager.ImgTexture.Height)},
 		rl.ShaderUniformVec2)
 
-	rl.DrawTexture(manager.MaskTexture.Texture, 0,0, rl.Color{255,255,255,255})
+	rl.DrawTexture(manager.MaskTexture.Texture, 0, 0, rl.Color{255, 255, 255, 255})
 
 	rl.EndShaderMode()
 }
 
-func ShowTransition(texture rl.Texture2D){
+func ShowTransition(texture rl.Texture2D) {
 	TheTransitionManager.ShowTransition = true
 	TheTransitionManager.AnimStartedAt = GlobalTimerNow()
 	TheTransitionManager.ImgTexture = texture
 }
 
-func IsShowTransitionDone() bool{
-	return GlobalTimerNow() - TheTransitionManager.AnimStartedAt > TheTransitionManager.AnimDuration
+func IsShowTransitionDone() bool {
+	return GlobalTimerNow()-TheTransitionManager.AnimStartedAt > TheTransitionManager.AnimDuration
 }
 
-func HideTransition(){
+func HideTransition() {
 	TheTransitionManager.ShowTransition = false
 	TheTransitionManager.AnimStartedAt = GlobalTimerNow()
 }
 
-func IsHideTransitionDone() bool{
-	return GlobalTimerNow() - TheTransitionManager.AnimStartedAt > TheTransitionManager.AnimDuration
+func IsHideTransitionDone() bool {
+	return GlobalTimerNow()-TheTransitionManager.AnimStartedAt > TheTransitionManager.AnimDuration
 }
 
-func IsTransitionOn() bool{
+func IsTransitionOn() bool {
 	return TheTransitionManager.ShowTransition
 }

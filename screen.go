@@ -1,10 +1,10 @@
 package main
 
-type UpdateResult interface{
+type UpdateResult interface {
 	DoQuit() bool
 }
 
-type Screen interface{
+type Screen interface {
 	Update() UpdateResult
 	Draw()
 	BeforeScreenTransition()
