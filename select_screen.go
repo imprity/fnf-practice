@@ -185,11 +185,11 @@ func (ss *SelectScreen) Update() UpdateResult{
 	// end of loading group
 	// =============================
 
-	if rl.IsKeyPressed(rl.KeyLeft) {
+	if AreKeysPressed(NoteKeysLeft...) {
 		ss.PreferredDifficulty -= 1
 	}
 
-	if rl.IsKeyPressed(rl.KeyRight) {
+	if AreKeysPressed(NotekeysRight...) {
 		ss.PreferredDifficulty += 1
 	}
 

@@ -1,0 +1,19 @@
+old input system
+
+enter to select
+esc to exit menu
+space to pause
+q and w to change difficulty
+- and + to change audio speed
+[ and ] to change zoom
+b to set botplay
+
+<- and -> to change audio position
+
+f1 to enable debug
+f5 to reload assets
+
+new input system
+
+<- and -> to change audio position WHEN PAUSED
+shift + <- and -> to change audio position WHEN PAUSED

@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	rl "github.com/gen2brain/raylib-go/raylib"
+	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type NoteDir int
@@ -17,20 +17,6 @@ const (
 
 	NoteDirAny = -1
 )
-
-const (
-	NoteKeyLeft  = rl.KeyA
-	NoteKeyDown  = rl.KeyS
-	NoteKeyUp    = rl.KeySemicolon
-	NotekeyRight = rl.KeyApostrophe
-)
-
-var NoteKeys = [NoteDirSize]int32{
-	NoteKeyLeft,
-	NoteKeyDown,
-	NoteKeyUp,
-	NotekeyRight,
-}
 
 var NoteDirStrs = [NoteDirSize]string{
 	"left",

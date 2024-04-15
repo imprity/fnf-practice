@@ -295,7 +295,7 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 // returns true when it wants to quit
 func (gs *GameScreen) Update() UpdateResult{
 	// handle quit
-	if rl.IsKeyPressed(rl.KeyEscape) {
+	if AreKeysPressed(rl.KeyEscape) {
 		if gs.IsSongLoaded {
 			gs.PauseAudio()
 		}
@@ -317,7 +317,7 @@ func (gs *GameScreen) Update() UpdateResult{
 	// =============================================
 
 	// pause unpause
-	if rl.IsKeyPressed(rl.KeySpace) {
+	if AreKeysPressed(PauseKey) {
 		if gs.IsPlayingAudio() {
 			gs.PauseAudio()
 		} else {
@@ -329,7 +329,7 @@ func (gs *GameScreen) Update() UpdateResult{
 	//changing difficulty
 	prevDifficulty := gs.SelectedDifficulty
 
-	if rl.IsKeyPressed(rl.KeyW) {
+	if AreKeysPressed(DifficultyUpKey) {
 		for gs.SelectedDifficulty+1 < DifficultySize {
 			gs.SelectedDifficulty++
 			if gs.HasSong[gs.SelectedDifficulty] {
@@ -338,7 +338,7 @@ func (gs *GameScreen) Update() UpdateResult{
 		}
 	}
 
-	if rl.IsKeyPressed(rl.KeyQ) {
+	if AreKeysPressed(DifficultyDownKey) {
 		for gs.SelectedDifficulty-1 >= 0 {
 			gs.SelectedDifficulty--
 			if gs.HasSong[gs.SelectedDifficulty] {
@@ -360,7 +360,7 @@ func (gs *GameScreen) Update() UpdateResult{
 	}
 
 	// set bot play
-	if rl.IsKeyPressed(rl.KeyB) {
+	if AreKeysPressed(ToggleBotPlayKey) {
 		gs.SetBotPlay(!gs.IsBotPlay())
 	}
 
@@ -368,12 +368,12 @@ func (gs *GameScreen) Update() UpdateResult{
 	changedSpeed := false
 	audioSpeed := gs.AudioSpeed()
 
-	if rl.IsKeyPressed(rl.KeyMinus) {
+	if rl.IsKeyPressed(AudioSpeedDownKey) {
 		changedSpeed = true
 		audioSpeed -= 0.1
 	}
 
-	if rl.IsKeyPressed(rl.KeyEqual) {
+	if rl.IsKeyPressed(AudioSpeedUpKey) {
 		changedSpeed = true
 		audioSpeed += 0.1
 	}
@@ -387,11 +387,11 @@ func (gs *GameScreen) Update() UpdateResult{
 	}
 
 	// zoom in and out
-	if HandleKeyRepeat(rl.KeyLeftBracket, time.Millisecond*50, time.Millisecond*50) {
+	if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomInKey) {
 		gs.Zoom -= 0.01
 	}
 
-	if HandleKeyRepeat(rl.KeyRightBracket, time.Millisecond*50, time.Millisecond*50) {
+	if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomOutKey) {
 		gs.Zoom += 0.01
 	}
 
@@ -407,13 +407,13 @@ func (gs *GameScreen) Update() UpdateResult{
 		keyT := gs.PixelsToTime(50)
 		changedUsingKey := false
 
-		if HandleKeyRepeat(rl.KeyLeft, time.Millisecond*50, time.Millisecond*10) {
+		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteKeysLeft...) {
 			changedPosition = true
 			changedUsingKey = true
 			pos -= keyT
 		}
 
-		if HandleKeyRepeat(rl.KeyRight, time.Millisecond*50, time.Millisecond*10) {
+		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NotekeysRight...) {
 			changedPosition = true
 			changedUsingKey = true
 			pos += keyT
@@ -445,14 +445,14 @@ func (gs *GameScreen) Update() UpdateResult{
 		// TODO : Maybe we can do this by a timer
 		if (
 			gs.PausedBecausePositionChangeKey &&
-			rl.IsKeyUp(rl.KeyRight) &&
-			rl.IsKeyUp(rl.KeyLeft)){
+			AreKeysUp(NoteKeysLeft...) &&
+			AreKeysUp(NotekeysRight...)){
 
 			gs.PlayAudio()
 			gs.PausedBecausePositionChangeKey = false
 		}
 
-		if rl.IsKeyPressed(rl.KeyR){
+		if AreKeysPressed(SongResetKey){
 			changedPosition = true
 			gs.ResetStatesThatTracksGamePlayChanges()
 			gs.SetAudioPosition(0)
@@ -1047,10 +1047,6 @@ func (gs *GameScreen) Draw() {
 
 		}
 		rl.EndBlendMode()
-
-		if rl.IsKeyPressed(rl.KeyF){
-			println("debug")
-		}
 
 		for _ = range dequeue{
 			gs.PopupQueue.Dequeue()

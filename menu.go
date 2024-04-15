@@ -148,12 +148,12 @@ func (md *MenuDrawer) Update(){
 
 
 	if !md.IsInputDiabled{
-		if rl.IsKeyDown(rl.KeyUp){
+		if AreKeysDown(NoteKeysUp...){
 			tryingToMove = true
 			tryingToMoveUp = true
 		}
 
-		if rl.IsKeyDown(rl.KeyDown){
+		if AreKeysDown(NoteKeysDown...){
 			tryingToMove = true
 			tryingToMoveUp = false
 		}
@@ -162,21 +162,21 @@ func (md *MenuDrawer) Update(){
 		firstRate := time.Millisecond * 200
 		repeateRate := time.Millisecond * 110
 
-		if HandleKeyRepeat(rl.KeyUp, firstRate, repeateRate){
+		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...){
 			if !allDeco{
 				scrollUntilNonDeco(false)
 			}
 
 		}
 
-		if HandleKeyRepeat(rl.KeyDown, firstRate, repeateRate){
+		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...){
 			if !allDeco{
 				scrollUntilNonDeco(true)
 			}
 		}
 
 
-		if rl.IsKeyPressed(rl.KeyEnter){
+		if AreKeysPressed(SelectKey){
 			item := md.Items[md.SelectedIndex]
 
 			if item.Type == MenuItemTrigger{

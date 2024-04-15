@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	rl "github.com/gen2brain/raylib-go/raylib"
+	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type PlayerState struct {
@@ -339,8 +339,8 @@ func GetKeyPressState(
 		notes, noteIndexStart, prevAudioPos, audioPos, isBotPlay, hitWindow)
 
 	if !isBotPlay {
-		for dir, key := range NoteKeys {
-			if rl.IsKeyDown(key) {
+		for dir, keys := range NoteKeys {
+			if AreKeysDown(keys...) {
 				keyPressState[0][dir] = true
 			}
 		}

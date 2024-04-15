@@ -104,11 +104,11 @@ func main() {
 	transitioned := true
 
 	for !rl.WindowShouldClose() {
-		if rl.IsKeyPressed(rl.KeyF1) {
+		if rl.IsKeyPressed(ToggleDebugKey) {
 			GlobalDebugFlag = !GlobalDebugFlag
 		}
 
-		if rl.IsKeyPressed(rl.KeyF5) {
+		if rl.IsKeyPressed(ReloadAssetsKey) {
 			LoadAssets()
 		}
 
