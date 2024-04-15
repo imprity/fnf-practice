@@ -116,7 +116,7 @@ func (ss *SelectScreen) Update() UpdateResult{
 				ss.SelectedGroup = group
 				ss.SelectedDifficulty = difficulty
 
-				IsInputDisabled = true
+				DisableInput()
 			}
 		}
 	}
@@ -128,7 +128,7 @@ func (ss *SelectScreen) Update() UpdateResult{
 	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok{
 		if directoryItem.Bvalue{
 			ShowTransition(DirSelectScreen)
-			IsInputDisabled = true
+			DisableInput()
 
 			go func(){
 				directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
@@ -176,7 +176,7 @@ func (ss *SelectScreen) Update() UpdateResult{
 				}
 
 				HideTransition()
-				IsInputDisabled = false
+				EnableInput()
 			}()
 		}
 	}
@@ -230,5 +230,5 @@ func (ss *SelectScreen) BeforeScreenTransition(){
 	}
 	ss.IsGroupSelected = false
 	ss.MenuDrawer.ResetAnimation()
-	IsInputDisabled = false
+	EnableInput()
 }

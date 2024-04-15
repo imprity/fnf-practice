@@ -3,8 +3,34 @@ package main
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"time"
+	"sync"
 	"math"
 )
+
+var isInputDisabled bool
+var inputDisabledCheckMutex sync.Mutex
+
+func IsInputDisabled() bool{
+	inputDisabledCheckMutex.Lock()
+	defer inputDisabledCheckMutex.Unlock()
+	return isInputDisabled
+}
+
+func DisableInput() {
+	inputDisabledCheckMutex.Lock()
+	defer inputDisabledCheckMutex.Unlock()
+	isInputDisabled = true
+}
+
+func EnableInput() {
+	inputDisabledCheckMutex.Lock()
+	defer inputDisabledCheckMutex.Unlock()
+	isInputDisabled = false
+}
+
+// ========================================
+// key map
+// ========================================
 
 var (
 	NoteKeysLeft  = []int32{rl.KeyA,          rl.KeyLeft}
@@ -20,9 +46,6 @@ var NoteKeys = [NoteDirSize][]int32{
 	NotekeysRight,
 }
 
-// ========================================
-// key map
-// ========================================
 var SelectKey int32 = rl.KeyEnter
 var PauseKey int32 = rl.KeySpace
 var EscapeKey int32 = rl.KeyEscape
@@ -60,10 +83,9 @@ var ToggleBotPlayKey int32 = rl.KeyB
 // end of key map
 // ========================================
 
-var IsInputDisabled bool
 
 func AreKeysPressed(keys ...int32) bool{
-	if IsInputDisabled{
+	if IsInputDisabled(){
 		return false
 	}
 
@@ -77,7 +99,7 @@ func AreKeysPressed(keys ...int32) bool{
 }
 
 func AreKeysDown(keys ...int32) bool{
-	if IsInputDisabled{
+	if IsInputDisabled(){
 		return false
 	}
 
@@ -91,7 +113,7 @@ func AreKeysDown(keys ...int32) bool{
 }
 
 func AreKeysUp(keys ...int32) bool{
-	if IsInputDisabled{
+	if IsInputDisabled(){
 		return true
 	}
 
@@ -99,7 +121,7 @@ func AreKeysUp(keys ...int32) bool{
 }
 
 func AreKeysReleased(keys ...int32) bool{
-	if IsInputDisabled{
+	if IsInputDisabled(){
 		// NOTE : retruning false because I think key being released
 		// feels like something that would only happen if input is enabled
 		return false
