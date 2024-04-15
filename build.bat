@@ -1,3 +1,3 @@
 @echo off
 
-go build -tags noaudio . && gofmt -w -s .
+go build -tags noaudio .
