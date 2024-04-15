@@ -73,8 +73,6 @@ type MenuDrawer struct{
 	ScrollAnimT float32
 
 	TriggerAnimDuraiton time.Duration
-
-	IsInputDiabled bool
 }
 
 func NewMenuDrawer() *MenuDrawer{
@@ -147,42 +145,40 @@ func (md *MenuDrawer) Update(){
 	}
 
 
-	if !md.IsInputDiabled{
-		if AreKeysDown(NoteKeysUp...){
-			tryingToMove = true
-			tryingToMoveUp = true
+	if AreKeysDown(NoteKeysUp...){
+		tryingToMove = true
+		tryingToMoveUp = true
+	}
+
+	if AreKeysDown(NoteKeysDown...){
+		tryingToMove = true
+		tryingToMoveUp = false
+	}
+
+	// check if menu items are all deco
+	firstRate := time.Millisecond * 200
+	repeateRate := time.Millisecond * 110
+
+	if HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...){
+		if !allDeco{
+			scrollUntilNonDeco(false)
 		}
 
-		if AreKeysDown(NoteKeysDown...){
-			tryingToMove = true
-			tryingToMoveUp = false
+	}
+
+	if HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...){
+		if !allDeco{
+			scrollUntilNonDeco(true)
 		}
-
-		// check if menu items are all deco
-		firstRate := time.Millisecond * 200
-		repeateRate := time.Millisecond * 110
-
-		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...){
-			if !allDeco{
-				scrollUntilNonDeco(false)
-			}
-
-		}
-
-		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...){
-			if !allDeco{
-				scrollUntilNonDeco(true)
-			}
-		}
+	}
 
 
-		if AreKeysPressed(SelectKey){
-			item := md.Items[md.SelectedIndex]
+	if AreKeysPressed(SelectKey){
+		item := md.Items[md.SelectedIndex]
 
-			if item.Type == MenuItemTrigger{
-				md.Items[md.SelectedIndex].Bvalue = true
-				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-			}
+		if item.Type == MenuItemTrigger{
+			md.Items[md.SelectedIndex].Bvalue = true
+			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
 		}
 	}
 

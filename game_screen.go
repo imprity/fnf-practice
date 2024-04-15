@@ -1080,4 +1080,5 @@ func (gs *GameScreen) BeforeScreenTransition(){
 	if IsTransitionOn(){
 		HideTransition()
 	}
+	IsInputDisabled = false
 }
