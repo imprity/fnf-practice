@@ -28,6 +28,24 @@ func EnableInput() {
 	isInputDisabled = false
 }
 
+func MouseX() float32 {
+	screenRect := GetScreenRect()
+
+	mx := f32(rl.GetMouseX())
+	mx -= screenRect.X
+
+	return mx / screenRect.Width * SCREEN_WIDTH
+}
+
+func MouseY() float32 {
+	screenRect := GetScreenRect()
+
+	my := f32(rl.GetMouseY())
+	my -= screenRect.Y
+
+	return my / screenRect.Height * SCREEN_HEIGHT
+}
+
 // ========================================
 // key map
 // ========================================

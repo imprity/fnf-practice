@@ -136,6 +136,11 @@ func (ss *SelectScreen) Update() UpdateResult {
 					ErrorLogger.Fatal(err)
 				}
 
+				// TODO : I thought it wouldn't happend but this sometimes cases crash
+				// because this go thread is trying to write to  ss's members
+				// whie ss is doing something else
+				// do mutex lock or some shit
+
 				if err != dialog.ErrCancelled {
 					groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
 

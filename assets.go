@@ -30,6 +30,8 @@ var HitRatingTexs [HitRatingSize]rl.Texture2D
 var FontRegular rl.Font
 var FontBold rl.Font
 
+var HelpMsgFont rl.Font
+
 var imgsToUnload []*rl.Image
 var texsToUnload []rl.Texture2D
 var fontsToUnload []rl.Font
@@ -188,4 +190,8 @@ func LoadAssets() {
 
 	FontRegular = loadFont(regularPath, 128, ".ttf")
 	FontBold = loadFont(boldPath, 128, ".ttf")
+
+	helpFontPath := "assets/Pangolin/Pangolin-Regular.ttf"
+
+	HelpMsgFont = loadFont(helpFontPath, 30, ".ttf")
 }

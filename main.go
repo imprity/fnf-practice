@@ -42,6 +42,19 @@ func FnfEndTextureMode() {
 	rl.BeginTextureMode(TheRenderTexture)
 }
 
+func GetScreenRect() rl.Rectangle {
+	screenW := float32(rl.GetScreenWidth())
+	screenH := float32(rl.GetScreenHeight())
+
+	scale := min(screenW/SCREEN_WIDTH, screenH/SCREEN_HEIGHT)
+
+	return rl.Rectangle{
+		(screenW - (SCREEN_WIDTH * scale)) * 0.5,
+		(screenH - (SCREEN_HEIGHT * scale)) * 0.5,
+		SCREEN_WIDTH * scale,
+		SCREEN_HEIGHT * scale}
+}
+
 var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
 var FlagHotReloading = flag.Bool("hot", false, "enable hot reloading")
 
@@ -148,21 +161,12 @@ func main() {
 		DrawTransition()
 		rl.EndTextureMode()
 
-		screenW := float32(rl.GetScreenWidth())
-		screenH := float32(rl.GetScreenHeight())
-
-		scale := min(screenW/SCREEN_WIDTH, screenH/SCREEN_HEIGHT)
-
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{0, 0, 0, 255})
 		rl.DrawTexturePro(
 			TheRenderTexture.Texture,
 			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-			rl.Rectangle{
-				(screenW - (SCREEN_WIDTH * scale)) * 0.5,
-				(screenH - (SCREEN_HEIGHT * scale)) * 0.5,
-				SCREEN_WIDTH * scale,
-				SCREEN_HEIGHT * scale},
+			GetScreenRect(),
 			rl.Vector2{},
 			0,
 			rl.Color{255, 255, 255, 255},

@@ -25,6 +25,35 @@ type NotePopup struct {
 	Rating FnfHitRating
 }
 
+type HelpMsgStyle struct {
+	TextImage rl.RenderTexture2D
+
+	TextBoxMarginLeft   float32
+	TextBoxMarginRight  float32
+	TextBoxMarginTop    float32
+	TextBoxMarginBottom float32
+
+	ButtonWidth  float32
+	ButtonHeight float32
+
+	PosX float32
+	PosY float32
+}
+
+func NewHelpMessage() *HelpMsgStyle {
+	hm := new(HelpMsgStyle)
+
+	hm.TextBoxMarginLeft = 20
+	hm.TextBoxMarginRight = 30
+	hm.TextBoxMarginTop = 40
+	hm.TextBoxMarginBottom = 50
+
+	hm.ButtonWidth = 180
+	hm.ButtonHeight = 70
+
+	return hm
+}
+
 type GameScreen struct {
 	Songs   [DifficultySize]FnfSong
 	HasSong [DifficultySize]bool
@@ -59,6 +88,9 @@ type GameScreen struct {
 	NotesSize float32
 
 	PixelsPerMillis float32
+
+	// variables about rendering help message
+	HelpMsgStyle *HelpMsgStyle
 
 	// private members
 	isKeyPressed   [2][NoteDirSize]bool
@@ -97,6 +129,12 @@ func NewGameScreen() *GameScreen {
 	gs.PopupQueue = CircularQueue[NotePopup]{
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
 	}
+
+	// TODO : define more prettier values
+	gs.HelpMsgStyle = NewHelpMessage()
+
+	gs.HelpMsgStyle.PosX = 10
+	gs.HelpMsgStyle.PosX = 20
 
 	return gs
 }
@@ -204,6 +242,24 @@ func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 	if gs.VoicePlayer.IsReady {
 		gs.VoicePlayer.SetPosition(at)
 	}
+}
+
+func (gs *GameScreen) AudioDuration() time.Duration {
+	if !gs.IsSongLoaded {
+		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
+		return 0
+	}
+
+	if gs.InstPlayer.IsReady {
+		return gs.InstPlayer.AudioDuration()
+	}
+
+	if gs.VoicePlayer.IsReady {
+		return gs.VoicePlayer.AudioDuration()
+	}
+
+	ErrorLogger.Fatal("GameScreen: Trying to get audio duration but both audios are not loaded!")
+	return 0
 }
 
 func (gs *GameScreen) AudioSpeed() float64 {
@@ -849,6 +905,19 @@ func (gs *GameScreen) Draw() {
 			DrawNoteArrow(x, y, scale*1.1, dir, color, color)
 		}
 	}
+	// ============================================
+	// draw bot play icon
+	// ============================================
+	if gs.IsBotPlay() {
+		gs.DrawBotPlayIcon()
+	}
+
+	// ============================================
+	// draw pause icon
+	// ============================================
+	if !gs.IsPlayingAudio() {
+		gs.DrawPauseIcon()
+	}
 
 	// ============================================
 	// draw input status
@@ -1061,29 +1130,421 @@ func (gs *GameScreen) Draw() {
 	}
 
 	// ============================================
+	// draw progress bar
+	// ============================================
+	gs.DrawProgressBar()
+
+	// ============================================
+	// draw help menu
+	// ============================================
+	gs.HelpMsgStyle.Draw()
+
+	// ============================================
 	// draw debug msg
 	// ============================================
 
-	const format = "" +
-		"speed : %v\n" +
-		"zoom  : %v\n" +
-		"\n" +
-		"bot play : %v\n" +
-		"\n" +
-		"difficulty : %v\n"
+	/*
+		const format = "" +
+			"speed : %v\n" +
+			"zoom  : %v\n" +
+			"\n" +
+			"bot play : %v\n" +
+			"\n" +
+			"difficulty : %v\n"
 
-	msg := fmt.Sprintf(format,
-		gs.AudioSpeed(),
-		gs.Zoom,
-		gs.IsBotPlay(),
-		DifficultyStrs[gs.SelectedDifficulty])
+		msg := fmt.Sprintf(format,
+			gs.AudioSpeed(),
+			gs.Zoom,
+			gs.IsBotPlay(),
+			DifficultyStrs[gs.SelectedDifficulty])
 
-	rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{0, 0, 0, 255})
+		rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{0, 0, 0, 255})
+	*/
 }
+
+func (gs *GameScreen) DrawProgressBar() {
+	const centerX = SCREEN_WIDTH / 2
+
+	const barW = 300
+	const barH = 13
+	const barStroke = 4
+
+	const barMarginBottom = 10
+
+	outRect := rl.Rectangle{Width: barW + barStroke*2, Height: barH + barStroke*2}
+	inRect := rl.Rectangle{Width: barW, Height: barH}
+
+	outRect.X = centerX - outRect.Width*0.5
+	outRect.Y = SCREEN_HEIGHT - barMarginBottom - outRect.Height
+
+	inRect.X = centerX - inRect.Width*0.5
+	inRect.Y = outRect.Y + barStroke
+
+	inRect.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
+
+	rl.DrawRectangleRec(outRect, rl.Color{0, 0, 0, 100})
+	rl.DrawRectangleRec(inRect, rl.Color{255, 255, 255, 255})
+}
+
+func (gs *GameScreen) DrawBotPlayIcon() {
+	const centerX = SCREEN_WIDTH / 2
+
+	const fontSize = 65
+
+	textSize := rl.MeasureTextEx(FontBold, "Bot Play", fontSize, 0)
+
+	textX := f32(centerX - textSize.X*0.5)
+	textY := f32(165)
+
+	rl.DrawTextEx(
+		FontBold, "Bot Play",
+		rl.Vector2{textX, textY},
+		fontSize, 0, rl.Color{0, 0, 0, 255})
+}
+
+func (gs *GameScreen) DrawPauseIcon() {
+	const pauseW = 35
+	const pauseH = 90
+	const pauseMargin = 25
+
+	const centerX = SCREEN_WIDTH / 2
+	const centerY = SCREEN_HEIGHT / 2
+
+	const totalW = pauseW*2 + pauseMargin
+
+	rect := rl.Rectangle{
+		Width:  pauseW,
+		Height: pauseH,
+	}
+
+	// left pause rect
+	rect.X = centerX - totalW*0.5
+	rect.Y = centerY - pauseH*0.5
+
+	rl.DrawRectangleRounded(rect, 0.35, 10, rl.Color{0, 0, 0, 200})
+
+	// right pause rect
+	rect.X = centerX + totalW*0.5 - pauseW
+	rect.Y = centerY - pauseH*0.5
+
+	rl.DrawRectangleRounded(rect, 0.35, 10, rl.Color{0, 0, 0, 200})
+
+	//draw text
+
+	const fontSize = 65
+
+	textSize := rl.MeasureTextEx(FontRegular, "paused", fontSize, 0)
+
+	textX := f32(centerX - textSize.X*0.5)
+	textY := f32(centerY + pauseH*0.5 + 20)
+
+	rl.DrawTextEx(
+		FontRegular, "paused",
+		rl.Vector2{textX, textY},
+		fontSize, 0, rl.Color{0, 0, 0, 200})
+}
+
+// =================================
+// help message related stuffs
+// =================================
+
+func (hm *HelpMsgStyle) InitTextImage() {
+	if hm.TextImage.ID > 0 {
+		rl.UnloadRenderTexture(hm.TextImage)
+	}
+
+	// NOTE : resized font looks very ugly
+	// so we have to use whatever size font is loaded in
+	// if you want to resize the help message, modify it in assets.go
+	fontSize := f32(HelpMsgFont.BaseSize)
+
+	type textPosColor struct {
+		Text string
+		Pos  rl.Vector2
+		Col  rl.Color
+	}
+
+	var textsToDraw []textPosColor
+
+	drawMsgAndKey := func(msg string, key int32, x, y float32) rl.Rectangle {
+		totalRect := rl.Rectangle{X: x, Y: y}
+
+		// Draw message
+		msg = msg + " : "
+
+		msgSize := rl.MeasureTextEx(HelpMsgFont, msg, fontSize, 0)
+
+		textsToDraw = append(textsToDraw,
+			textPosColor{
+				Text: msg,
+				Pos:  rl.Vector2{totalRect.X + totalRect.Width, y},
+				Col:  rl.Color{0, 0, 0, 255},
+			})
+
+		totalRect.Height = max(totalRect.Height, msgSize.Y)
+		totalRect.Width += msgSize.X
+
+		// Draw key name
+		keyName := GetKeyName(key)
+
+		keyNameSize := rl.MeasureTextEx(HelpMsgFont, keyName, fontSize, 0)
+
+		textsToDraw = append(textsToDraw,
+			textPosColor{
+				Text: keyName,
+				Pos:  rl.Vector2{totalRect.X + totalRect.Width, y},
+				Col:  rl.Color{0xF6, 0x08, 0x08, 0xFF},
+			})
+
+		totalRect.Height = max(totalRect.Height, keyNameSize.Y)
+		totalRect.Width += keyNameSize.X
+
+		return totalRect
+	}
+
+	drawManyMsgAndKeys := func(msgs []string, keys []int32, x, y float32) rl.Rectangle {
+		totalRect := rl.Rectangle{X: x, Y: y}
+
+		limit := min(len(msgs), len(keys))
+
+		for i := 0; i < limit; i++ {
+			msg := msgs[i]
+			key := keys[i]
+
+			rect := drawMsgAndKey(msg, key, totalRect.X, totalRect.Y+totalRect.Height)
+
+			totalRect = RectUnion(totalRect, rect)
+		}
+
+		return totalRect
+	}
+
+	txtTotalRect := rl.Rectangle{}
+
+	offsetX := f32(0)
+	offsetY := f32(0)
+
+	const marginX = 20
+	const marginY = 20
+
+	// pasue and play
+	{
+		rect := drawMsgAndKey("pause/play", PauseKey, offsetX, offsetY)
+		offsetY += rect.Height + marginY
+		txtTotalRect = RectUnion(txtTotalRect, rect)
+	}
+
+	// scroll up and down
+	// audio speed adjustment
+	{
+		x := offsetX
+		y := offsetY
+
+		var rect rl.Rectangle
+
+		totalH := float32(0)
+
+		// scroll up and down
+		rect = drawManyMsgAndKeys(
+			[]string{"scroll up", "scroll down"},
+			[]int32{NoteScrollUpKey, NoteScrollDownKey},
+			x, y)
+		txtTotalRect = RectUnion(txtTotalRect, rect)
+
+		x += rect.Width + marginX
+		totalH = max(totalH, rect.Height)
+
+		// audio speed adjustment
+		rect = drawManyMsgAndKeys(
+			[]string{"audio speed up", "audio speed down"},
+			[]int32{AudioSpeedUpKey, AudioSpeedDownKey},
+			x, y)
+
+		totalH = max(totalH, rect.Height)
+
+		offsetY += totalH + marginY
+
+		txtTotalRect = RectUnion(txtTotalRect, rect)
+	}
+
+	// note spacing
+	{
+		rect := drawManyMsgAndKeys(
+			[]string{"note spacing up", "note spacing down"},
+			[]int32{ZoomInKey, ZoomOutKey},
+			offsetX, offsetY)
+		txtTotalRect = RectUnion(txtTotalRect, rect)
+
+		offsetY += rect.Height + marginY
+	}
+
+	// bookmarking
+	// TODO : properly implement this after implementing book mark feature
+	/*
+		{
+			rect = drawManyMsgAndKeys(
+				[]string{"set bookmark", "jump to bookmark"},
+				[]int32{BookMarkKey, JumpToBookMarkKey},
+				offsetX, offsetY)
+			txtTotalRect = RectUnion(txtTotalRect, rect)
+
+			offsetY += rect.Height + marginY
+		}
+	*/
+
+	hm.TextImage = rl.LoadRenderTexture(i32(txtTotalRect.Width), i32(txtTotalRect.Height))
+
+	FnfBeginTextureMode(hm.TextImage)
+
+	for _, toDraw := range textsToDraw {
+		pos := toDraw.Pos
+
+		rl.DrawTextEx(HelpMsgFont, toDraw.Text, pos,
+			fontSize, 0, toDraw.Col)
+	}
+
+	FnfEndTextureMode()
+}
+
+func (hm *HelpMsgStyle) Draw() {
+	buttonRect := hm.ButtonRect()
+	textBoxRect := hm.TextBoxRect()
+
+	const boxRoundness = 0.3
+	const boxSegments = 10
+
+	const buttonRoundness = 0.6
+	const buttonSegments = 5
+
+	const lineThick = 8
+
+	// ==========================
+	// draw outline
+	// ==========================
+
+	DrawRectangleRoundedCornersLines(
+		buttonRect,
+		[4]float32{0, 0, buttonRoundness, 0}, [4]int32{0, 0, buttonSegments, 0},
+		lineThick, rl.Color{0, 0, 0, 255},
+	)
+
+	DrawRectangleRoundedCornersLines(
+		textBoxRect,
+		[4]float32{0, 0, boxRoundness, 0}, [4]int32{0, 0, boxSegments, 0},
+		lineThick, rl.Color{0, 0, 0, 255},
+	)
+
+	// ==========================
+	// draw text box
+	// ==========================
+
+	// draw background
+	DrawRectangleRoundedCorners(
+		textBoxRect,
+		[4]float32{0, 0, boxRoundness, 0}, [4]int32{0, 0, boxSegments, 0},
+		rl.Color{255, 255, 255, 255},
+	)
+
+	// draw text
+
+	// help text is a render texture so if we just render it using
+	// rl.DrawTexture, it will be flipped vertically
+	// so we have to do some work before rendering
+	textRect := hm.TextRect()
+
+	srcRect := textRect
+	srcRect.X = 0
+	srcRect.Y = 0
+	srcRect.Height *= -1
+
+	dstRect := textRect
+
+	rl.DrawTexturePro(
+		hm.TextImage.Texture,
+		srcRect, dstRect,
+		rl.Vector2{}, 0,
+		rl.Color{255, 255, 255, 255})
+
+	// ==========================
+	// draw button
+	// ==========================
+
+	// draw button background
+	DrawRectangleRoundedCorners(
+		buttonRect,
+		[4]float32{0, 0, buttonRoundness, 0}, [4]int32{0, 0, buttonSegments, 0},
+		rl.Color{255, 255, 255, 255},
+	)
+
+	// draw button text
+	const buttonText = "Help?!"
+	const buttonFontSize = 65
+
+	buttonColor := rl.Color{0, 0, 0, 255}
+
+	mouseV := rl.Vector2{
+		X: MouseX(),
+		Y: MouseY(),
+	}
+
+	if rl.CheckCollisionPointRec(mouseV, buttonRect) {
+		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
+			buttonColor = rl.Color{100, 100, 100, 255}
+		} else {
+			buttonColor = rl.Color{0xF6, 0x08, 0x08, 0xFF}
+		}
+	}
+
+	buttonTextSize := rl.MeasureTextEx(FontBold, buttonText, buttonFontSize, 0)
+
+	textX := buttonRect.X + (buttonRect.Width-buttonTextSize.X)*0.5
+	textY := buttonRect.Y + (buttonRect.Height-buttonTextSize.Y)*0.5
+
+	rl.DrawTextEx(FontBold, buttonText, rl.Vector2{textX, textY},
+		buttonFontSize, 0, buttonColor)
+}
+
+func (hm *HelpMsgStyle) TextRect() rl.Rectangle {
+	x := hm.PosX + hm.TextBoxMarginLeft
+	y := hm.PosY + hm.TextBoxMarginTop
+	w := f32(hm.TextImage.Texture.Width)
+	h := f32(hm.TextImage.Texture.Height)
+
+	return rl.Rectangle{X: x, Y: y, Width: w, Height: h}
+}
+
+func (hm *HelpMsgStyle) TextBoxRect() rl.Rectangle {
+	w := hm.TextBoxMarginLeft + f32(hm.TextImage.Texture.Width) + hm.TextBoxMarginRight
+	h := hm.TextBoxMarginTop + f32(hm.TextImage.Texture.Height) + hm.TextBoxMarginBottom
+
+	return rl.Rectangle{
+		X:     hm.PosX,
+		Y:     hm.PosY,
+		Width: w, Height: h,
+	}
+}
+
+func (hm *HelpMsgStyle) ButtonRect() rl.Rectangle {
+	boxRect := hm.TextBoxRect()
+
+	rect := rl.Rectangle{}
+	rect.X = boxRect.X
+	rect.Y = boxRect.Y + boxRect.Height
+	rect.Width = hm.ButtonWidth
+	rect.Height = hm.ButtonHeight
+
+	return rect
+}
+
+// ====================================
+// end of help message related stuffs
+// ====================================
 
 func (gs *GameScreen) BeforeScreenTransition() {
 	if IsTransitionOn() {
 		HideTransition()
 	}
 	EnableInput()
+
+	gs.HelpMsgStyle.InitTextImage()
 }
