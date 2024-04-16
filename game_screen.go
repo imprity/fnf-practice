@@ -25,7 +25,7 @@ type NotePopup struct {
 	Rating FnfHitRating
 }
 
-type HelpMsgStyle struct {
+type HelpMessage struct {
 	TextImage rl.RenderTexture2D
 
 	TextBoxMarginLeft   float32
@@ -40,8 +40,8 @@ type HelpMsgStyle struct {
 	PosY float32
 }
 
-func NewHelpMessage() *HelpMsgStyle {
-	hm := new(HelpMsgStyle)
+func NewHelpMessage() *HelpMessage {
+	hm := new(HelpMessage)
 
 	hm.TextBoxMarginLeft = 20
 	hm.TextBoxMarginRight = 30
@@ -90,7 +90,7 @@ type GameScreen struct {
 	PixelsPerMillis float32
 
 	// variables about rendering help message
-	HelpMsgStyle *HelpMsgStyle
+	HelpMessage *HelpMessage
 
 	// private members
 	isKeyPressed   [2][NoteDirSize]bool
@@ -131,10 +131,10 @@ func NewGameScreen() *GameScreen {
 	}
 
 	// TODO : define more prettier values
-	gs.HelpMsgStyle = NewHelpMessage()
+	gs.HelpMessage = NewHelpMessage()
 
-	gs.HelpMsgStyle.PosX = 10
-	gs.HelpMsgStyle.PosX = 20
+	gs.HelpMessage.PosX = 10
+	gs.HelpMessage.PosX = 20
 
 	return gs
 }
@@ -1137,7 +1137,7 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw help menu
 	// ============================================
-	gs.HelpMsgStyle.Draw()
+	gs.HelpMessage.Draw()
 
 	// ============================================
 	// draw debug msg
@@ -1248,7 +1248,7 @@ func (gs *GameScreen) DrawPauseIcon() {
 // help message related stuffs
 // =================================
 
-func (hm *HelpMsgStyle) InitTextImage() {
+func (hm *HelpMessage) InitTextImage() {
 	if hm.TextImage.ID > 0 {
 		rl.UnloadRenderTexture(hm.TextImage)
 	}
@@ -1406,7 +1406,7 @@ func (hm *HelpMsgStyle) InitTextImage() {
 	FnfEndTextureMode()
 }
 
-func (hm *HelpMsgStyle) Draw() {
+func (hm *HelpMessage) Draw() {
 	buttonRect := hm.ButtonRect()
 	textBoxRect := hm.TextBoxRect()
 
@@ -1504,7 +1504,7 @@ func (hm *HelpMsgStyle) Draw() {
 		buttonFontSize, 0, buttonColor)
 }
 
-func (hm *HelpMsgStyle) TextRect() rl.Rectangle {
+func (hm *HelpMessage) TextRect() rl.Rectangle {
 	x := hm.PosX + hm.TextBoxMarginLeft
 	y := hm.PosY + hm.TextBoxMarginTop
 	w := f32(hm.TextImage.Texture.Width)
@@ -1513,7 +1513,7 @@ func (hm *HelpMsgStyle) TextRect() rl.Rectangle {
 	return rl.Rectangle{X: x, Y: y, Width: w, Height: h}
 }
 
-func (hm *HelpMsgStyle) TextBoxRect() rl.Rectangle {
+func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
 	w := hm.TextBoxMarginLeft + f32(hm.TextImage.Texture.Width) + hm.TextBoxMarginRight
 	h := hm.TextBoxMarginTop + f32(hm.TextImage.Texture.Height) + hm.TextBoxMarginBottom
 
@@ -1524,7 +1524,7 @@ func (hm *HelpMsgStyle) TextBoxRect() rl.Rectangle {
 	}
 }
 
-func (hm *HelpMsgStyle) ButtonRect() rl.Rectangle {
+func (hm *HelpMessage) ButtonRect() rl.Rectangle {
 	boxRect := hm.TextBoxRect()
 
 	rect := rl.Rectangle{}
@@ -1546,5 +1546,5 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	}
 	EnableInput()
 
-	gs.HelpMsgStyle.InitTextImage()
+	gs.HelpMessage.InitTextImage()
 }
