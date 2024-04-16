@@ -38,18 +38,22 @@ type HelpMessage struct {
 
 	PosX float32
 	PosY float32
+
+	offsetY float32
+
+	DoShow bool
 }
 
 func NewHelpMessage() *HelpMessage {
 	hm := new(HelpMessage)
 
 	hm.TextBoxMarginLeft = 20
-	hm.TextBoxMarginRight = 30
-	hm.TextBoxMarginTop = 40
-	hm.TextBoxMarginBottom = 50
+	hm.TextBoxMarginRight = 35
+	hm.TextBoxMarginTop = 15
+	hm.TextBoxMarginBottom = 35
 
 	hm.ButtonWidth = 180
-	hm.ButtonHeight = 70
+	hm.ButtonHeight = 75
 
 	return hm
 }
@@ -133,8 +137,8 @@ func NewGameScreen() *GameScreen {
 	// TODO : define more prettier values
 	gs.HelpMessage = NewHelpMessage()
 
-	gs.HelpMessage.PosX = 10
-	gs.HelpMessage.PosX = 20
+	gs.HelpMessage.PosX = -5
+	gs.HelpMessage.PosY = -4
 
 	return gs
 }
@@ -367,6 +371,9 @@ func (gs *GameScreen) Update() UpdateResult {
 			Quit: false,
 		}
 	}
+
+	// update help message
+	gs.HelpMessage.Update()
 
 	// =============================================
 	// handle user input
@@ -1504,24 +1511,27 @@ func (hm *HelpMessage) Draw() {
 		buttonFontSize, 0, buttonColor)
 }
 
-func (hm *HelpMessage) TextRect() rl.Rectangle {
-	x := hm.PosX + hm.TextBoxMarginLeft
-	y := hm.PosY + hm.TextBoxMarginTop
-	w := f32(hm.TextImage.Texture.Width)
-	h := f32(hm.TextImage.Texture.Height)
-
-	return rl.Rectangle{X: x, Y: y, Width: w, Height: h}
-}
-
 func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
 	w := hm.TextBoxMarginLeft + f32(hm.TextImage.Texture.Width) + hm.TextBoxMarginRight
 	h := hm.TextBoxMarginTop + f32(hm.TextImage.Texture.Height) + hm.TextBoxMarginBottom
 
 	return rl.Rectangle{
 		X:     hm.PosX,
-		Y:     hm.PosY,
+		Y:     hm.PosY + hm.offsetY,
 		Width: w, Height: h,
 	}
+}
+
+func (hm *HelpMessage) TextRect() rl.Rectangle {
+	w := f32(hm.TextImage.Texture.Width)
+	h := f32(hm.TextImage.Texture.Height)
+
+	boxRect := hm.TextBoxRect()
+
+	x := boxRect.X + hm.TextBoxMarginLeft
+	y := boxRect.Y + hm.TextBoxMarginTop
+
+	return rl.Rectangle{X: x, Y: y, Width: w, Height: h}
 }
 
 func (hm *HelpMessage) ButtonRect() rl.Rectangle {
@@ -1536,6 +1546,44 @@ func (hm *HelpMessage) ButtonRect() rl.Rectangle {
 	return rect
 }
 
+func (hm *HelpMessage) TotalRect() rl.Rectangle {
+	boxRect := hm.TextBoxRect()
+	buttonRect := hm.ButtonRect()
+
+	return RectUnion(boxRect, buttonRect)
+}
+
+func (hm *HelpMessage) Update(){	
+	buttonRect := hm.ButtonRect()
+
+	if rl.IsMouseButtonReleased(rl.MouseButtonLeft){
+		if rl.CheckCollisionPointRec(MouseV(), buttonRect) {
+			hm.DoShow = !hm.DoShow
+		}
+	}
+
+	delta := rl.GetFrameTime() * 1000
+
+	if hm.DoShow{
+		hm.offsetY += delta
+	}else{
+		hm.offsetY -= delta
+	}
+
+	totalRect := hm.TotalRect()
+
+	hm.offsetY = Clamp(hm.offsetY, -totalRect.Height + buttonRect.Height, 0)
+}
+
+func (hm *HelpMessage) BeforeScreenTransition(){
+	hm.InitTextImage()
+
+	totalRect := hm.TotalRect()
+	buttonRect := hm.ButtonRect()
+
+	hm.offsetY = -totalRect.Height + buttonRect.Height
+	hm.DoShow = false
+}
 // ====================================
 // end of help message related stuffs
 // ====================================
@@ -1546,5 +1594,5 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	}
 	EnableInput()
 
-	gs.HelpMessage.InitTextImage()
+	gs.HelpMessage.BeforeScreenTransition()
 }
