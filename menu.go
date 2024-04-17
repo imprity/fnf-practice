@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math"
+	//"math"
 	"sync"
 	"time"
 
@@ -57,7 +57,7 @@ func MakeMenuItem() MenuItem {
 	item.ColSelected = Col(1, 1, 1, 1)
 	item.ColRegular = Col(1, 1, 1, 0.5)
 
-	item.ValueChangedAt = time.Duration(math.MaxInt64)
+	item.ValueChangedAt = Years150
 
 	return item
 }

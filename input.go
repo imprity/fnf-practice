@@ -46,10 +46,10 @@ func MouseY() float32 {
 	return my / screenRect.Height * SCREEN_HEIGHT
 }
 
-func MouseV() rl.Vector2{
+func MouseV() rl.Vector2 {
 	return rl.Vector2{
-		X : MouseX(),
-		Y : MouseY(),
+		X: MouseX(),
+		Y: MouseY(),
 	}
 }
 

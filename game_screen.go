@@ -76,7 +76,7 @@ type GameScreen struct {
 
 	Pstates [2]PlayerState
 
-	PausedBecausePositionChangeKey bool
+	PausedBecausePositionChanged bool
 
 	NoteEvents [][]NoteEvent
 
@@ -102,6 +102,8 @@ type GameScreen struct {
 
 	audioPosition              time.Duration
 	audioPositionSafetyCounter int
+
+	audioPositionChangedAt time.Duration
 
 	// TODO : Does it really have to be a private member?
 	// Make this a public member later if you think it's more convinient
@@ -134,7 +136,8 @@ func NewGameScreen() *GameScreen {
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
 	}
 
-	// TODO : define more prettier values
+	gs.audioPositionChangedAt = Years150
+
 	gs.HelpMessage = NewHelpMessage()
 
 	gs.HelpMessage.PosX = -5
@@ -468,19 +471,16 @@ func (gs *GameScreen) Update() UpdateResult {
 	{
 		pos := gs.AudioPosition()
 		keyT := gs.PixelsToTime(50)
-		changedUsingKey := false
 
 		// NOTE : If we ever implement note up scroll
 		// this keybindings have to reversed
 		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
 			changedPosition = true
-			changedUsingKey = true
 			pos -= keyT
 		}
 
 		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
 			changedPosition = true
-			changedUsingKey = true
 			pos += keyT
 		}
 
@@ -492,13 +492,16 @@ func (gs *GameScreen) Update() UpdateResult {
 			pos += time.Duration(wheelmove * float32(-wheelT))
 		}
 
+		pos = Clamp(pos, 0, gs.AudioDuration())
+
 		if changedPosition {
+			gs.audioPositionChangedAt = GlobalTimerNow()
+
 			if gs.IsPlayingAudio() {
 				gs.PauseAudio()
-				if changedUsingKey {
-					gs.PausedBecausePositionChangeKey = true
-				}
+				gs.PausedBecausePositionChanged = true
 			}
+
 			gs.ResetStatesThatTracksGamePlayChanges()
 			gs.SetAudioPosition(pos)
 		}
@@ -508,12 +511,10 @@ func (gs *GameScreen) Update() UpdateResult {
 		// NOTE : thought about doing this for mouse wheel as well but it's harder to
 		// detect whether mouse wheel stopped scrolling for reals
 		// TODO : Maybe we can do this by a timer
-		if gs.PausedBecausePositionChangeKey &&
-			AreKeysUp(NoteScrollUpKey) &&
-			AreKeysUp(NoteScrollDownKey) {
-
+		if gs.PausedBecausePositionChanged &&
+			TimeSinceNow(gs.audioPositionChangedAt) > time.Millisecond*100 {
 			gs.PlayAudio()
-			gs.PausedBecausePositionChangeKey = false
+			gs.PausedBecausePositionChanged = false
 		}
 
 		if AreKeysPressed(SongResetKey) {
@@ -922,7 +923,7 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw pause icon
 	// ============================================
-	if !gs.IsPlayingAudio() {
+	if !gs.IsPlayingAudio() && !gs.PausedBecausePositionChanged {
 		gs.DrawPauseIcon()
 	}
 
@@ -1553,10 +1554,10 @@ func (hm *HelpMessage) TotalRect() rl.Rectangle {
 	return RectUnion(boxRect, buttonRect)
 }
 
-func (hm *HelpMessage) Update(){	
+func (hm *HelpMessage) Update() {
 	buttonRect := hm.ButtonRect()
 
-	if rl.IsMouseButtonReleased(rl.MouseButtonLeft){
+	if rl.IsMouseButtonReleased(rl.MouseButtonLeft) {
 		if rl.CheckCollisionPointRec(MouseV(), buttonRect) {
 			hm.DoShow = !hm.DoShow
 		}
@@ -1564,18 +1565,18 @@ func (hm *HelpMessage) Update(){
 
 	delta := rl.GetFrameTime() * 1000
 
-	if hm.DoShow{
+	if hm.DoShow {
 		hm.offsetY += delta
-	}else{
+	} else {
 		hm.offsetY -= delta
 	}
 
 	totalRect := hm.TotalRect()
 
-	hm.offsetY = Clamp(hm.offsetY, -totalRect.Height + buttonRect.Height, 0)
+	hm.offsetY = Clamp(hm.offsetY, -totalRect.Height+buttonRect.Height, 0)
 }
 
-func (hm *HelpMessage) BeforeScreenTransition(){
+func (hm *HelpMessage) BeforeScreenTransition() {
 	hm.InitTextImage()
 
 	totalRect := hm.TotalRect()
@@ -1584,6 +1585,7 @@ func (hm *HelpMessage) BeforeScreenTransition(){
 	hm.offsetY = -totalRect.Height + buttonRect.Height
 	hm.DoShow = false
 }
+
 // ====================================
 // end of help message related stuffs
 // ====================================

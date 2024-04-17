@@ -3,7 +3,7 @@ package main
 import (
 	_ "embed"
 	rl "github.com/gen2brain/raylib-go/raylib"
-	"math"
+	//"math"
 	"time"
 )
 
@@ -40,7 +40,7 @@ func InitTransition() {
 	manager.DiamonWidth = 80
 	manager.DiamonHeight = 100
 
-	manager.AnimStartedAt = time.Duration(math.MaxInt64) / 2
+	manager.AnimStartedAt = Years150
 	manager.AnimDuration = time.Millisecond * 300
 
 	manager.MaskTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
