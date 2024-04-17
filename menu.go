@@ -74,6 +74,8 @@ type MenuDrawer struct {
 	ScrollAnimT float32
 
 	TriggerAnimDuraiton time.Duration
+
+	InputDisabled bool
 }
 
 func NewMenuDrawer() *MenuDrawer {
@@ -145,12 +147,12 @@ func (md *MenuDrawer) Update() {
 		canNotMove = true
 	}
 
-	if AreKeysDown(NoteKeysUp...) {
+	if !md.InputDisabled && AreKeysDown(NoteKeysUp...) {
 		tryingToMove = true
 		tryingToMoveUp = true
 	}
 
-	if AreKeysDown(NoteKeysDown...) {
+	if !md.InputDisabled && AreKeysDown(NoteKeysDown...) {
 		tryingToMove = true
 		tryingToMoveUp = false
 	}
@@ -159,20 +161,20 @@ func (md *MenuDrawer) Update() {
 	firstRate := time.Millisecond * 200
 	repeateRate := time.Millisecond * 110
 
-	if HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...) {
+	if !md.InputDisabled && HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...) {
 		if !allDeco {
 			scrollUntilNonDeco(false)
 		}
 
 	}
 
-	if HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...) {
+	if !md.InputDisabled && HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...) {
 		if !allDeco {
 			scrollUntilNonDeco(true)
 		}
 	}
 
-	if AreKeysPressed(SelectKey) {
+	if !md.InputDisabled && AreKeysPressed(SelectKey) {
 		item := md.Items[md.SelectedIndex]
 
 		if item.Type == MenuItemTrigger {

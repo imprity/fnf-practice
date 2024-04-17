@@ -39,6 +39,8 @@ type HelpMessage struct {
 	PosX float32
 	PosY float32
 
+	InputDisabled bool
+
 	offsetY float32
 
 	DoShow bool
@@ -76,11 +78,16 @@ type GameScreen struct {
 
 	Pstates [2]PlayerState
 
-	PausedBecausePositionChanged bool
-
 	NoteEvents [][]NoteEvent
 
 	PopupQueue CircularQueue[NotePopup]
+
+	HelpMessage *HelpMessage
+
+	MenuDrawer *MenuDrawer
+	DrawMenu   bool
+
+	QuitMenuItemId int64
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -93,17 +100,15 @@ type GameScreen struct {
 
 	PixelsPerMillis float32
 
-	// variables about rendering help message
-	HelpMessage *HelpMessage
-
 	// private members
 	isKeyPressed   [2][NoteDirSize]bool
 	noteIndexStart int
 
+	tempPauseUntil          time.Duration
+	wasPlayingWhenTempPause bool
+
 	audioPosition              time.Duration
 	audioPositionSafetyCounter int
-
-	audioPositionChangedAt time.Duration
 
 	// TODO : Does it really have to be a private member?
 	// Make this a public member later if you think it's more convinient
@@ -136,12 +141,28 @@ func NewGameScreen() *GameScreen {
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
 	}
 
-	gs.audioPositionChangedAt = Years150
+	gs.tempPauseUntil = -Years150
 
 	gs.HelpMessage = NewHelpMessage()
 
 	gs.HelpMessage.PosX = -5
 	gs.HelpMessage.PosY = -4
+
+	// set up menu
+	gs.MenuDrawer = NewMenuDrawer()
+
+	quitItem := MakeMenuItem()
+	quitItem.Type = MenuItemTrigger
+	quitItem.Name = "Return To Menu"
+
+	gs.QuitMenuItemId = quitItem.Id
+
+	dummyItem2 := MakeMenuItem()
+	dummyItem2.Type = MenuItemDeco
+	dummyItem2.Name = "dummy2"
+
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, quitItem)
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, dummyItem2)
 
 	return gs
 }
@@ -233,6 +254,21 @@ func (gs *GameScreen) AudioPosition() time.Duration {
 	}
 
 	return gs.audioPosition
+}
+
+func (gs *GameScreen) TempPause(howLong time.Duration) {
+	if gs.IsPlayingAudio() {
+		gs.wasPlayingWhenTempPause = true
+	}
+
+	gs.PauseAudio()
+
+	gs.tempPauseUntil = GlobalTimerNow() + howLong
+}
+
+func (gs *GameScreen) OnlyTemporarilyPaused() bool {
+	return gs.tempPauseUntil > GlobalTimerNow() &&
+		gs.wasPlayingWhenTempPause && !gs.IsPlayingAudio()
 }
 
 func (gs *GameScreen) SetAudioPosition(at time.Duration) {
@@ -357,17 +393,6 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 
 // returns true when it wants to quit
 func (gs *GameScreen) Update() UpdateResult {
-	// handle quit
-	if AreKeysPressed(rl.KeyEscape) {
-		if gs.IsSongLoaded {
-			gs.PauseAudio()
-		}
-
-		return GameUpdateResult{
-			Quit: true,
-		}
-	}
-
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
 		return GameUpdateResult{
@@ -375,112 +400,145 @@ func (gs *GameScreen) Update() UpdateResult {
 		}
 	}
 
+	// =============================================
+	// menu stuff
+	// =============================================
+	if AreKeysPressed(rl.KeyEscape) {
+		gs.DrawMenu = !gs.DrawMenu
+	}
+
+	if gs.DrawMenu {
+		gs.TempPause(time.Millisecond * 5)
+	}
+
+	gs.MenuDrawer.InputDisabled = !gs.DrawMenu
+
+	gs.MenuDrawer.Update()
+
+	// handle quit
+	quitItem, _ := gs.MenuDrawer.GetItemById(gs.QuitMenuItemId)
+	if quitItem.Bvalue {
+		if gs.IsSongLoaded {
+			gs.PauseAudio()
+		}
+		gs.MenuDrawer.InputDisabled = true
+
+		ShowTransition(DirSelectScreen)
+
+		return GameUpdateResult{
+			Quit: true,
+		}
+	}
+
+	// =============================================
 	// update help message
+	// =============================================
+	gs.HelpMessage.InputDisabled = gs.DrawMenu
 	gs.HelpMessage.Update()
 
 	// =============================================
 	// handle user input
 	// =============================================
+	changePositionFromUserInput := false
 
-	// pause unpause
-	if AreKeysPressed(PauseKey) {
-		if gs.IsPlayingAudio() {
-			gs.PauseAudio()
-		} else {
-			gs.PlayAudio()
+	if !gs.DrawMenu {
+		// pause unpause
+		if AreKeysPressed(PauseKey) {
+			if gs.IsPlayingAudio() {
+				gs.PauseAudio()
+			} else {
+				gs.PlayAudio()
+			}
+
 		}
 
-	}
+		//changing difficulty
+		prevDifficulty := gs.SelectedDifficulty
 
-	//changing difficulty
-	prevDifficulty := gs.SelectedDifficulty
-
-	if AreKeysPressed(DifficultyUpKey) {
-		for gs.SelectedDifficulty+1 < DifficultySize {
-			gs.SelectedDifficulty++
-			if gs.HasSong[gs.SelectedDifficulty] {
-				break
+		if AreKeysPressed(DifficultyUpKey) {
+			for gs.SelectedDifficulty+1 < DifficultySize {
+				gs.SelectedDifficulty++
+				if gs.HasSong[gs.SelectedDifficulty] {
+					break
+				}
 			}
 		}
-	}
 
-	if AreKeysPressed(DifficultyDownKey) {
-		for gs.SelectedDifficulty-1 >= 0 {
-			gs.SelectedDifficulty--
-			if gs.HasSong[gs.SelectedDifficulty] {
-				break
+		if AreKeysPressed(DifficultyDownKey) {
+			for gs.SelectedDifficulty-1 >= 0 {
+				gs.SelectedDifficulty--
+				if gs.HasSong[gs.SelectedDifficulty] {
+					break
+				}
 			}
 		}
-	}
 
-	if prevDifficulty != gs.SelectedDifficulty {
-		if gs.HasSong[gs.SelectedDifficulty] {
-			gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+		if prevDifficulty != gs.SelectedDifficulty {
+			if gs.HasSong[gs.SelectedDifficulty] {
+				gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-			gs.PauseAudio()
+				gs.PauseAudio()
 
-			gs.ResetStatesThatTracksGamePlayChanges()
-		} else {
-			gs.SelectedDifficulty = prevDifficulty
-		}
-	}
-
-	// set bot play
-	if AreKeysPressed(ToggleBotPlayKey) {
-		gs.SetBotPlay(!gs.IsBotPlay())
-	}
-
-	// speed change
-	changedSpeed := false
-	audioSpeed := gs.AudioSpeed()
-
-	if rl.IsKeyPressed(AudioSpeedDownKey) {
-		changedSpeed = true
-		audioSpeed -= 0.1
-	}
-
-	if rl.IsKeyPressed(AudioSpeedUpKey) {
-		changedSpeed = true
-		audioSpeed += 0.1
-	}
-
-	if changedSpeed {
-		if audioSpeed <= 0 {
-			audioSpeed = 0.1
+				gs.ResetStatesThatTracksGamePlayChanges()
+			} else {
+				gs.SelectedDifficulty = prevDifficulty
+			}
 		}
 
-		gs.SetAudioSpeed(audioSpeed)
-	}
+		// set bot play
+		if AreKeysPressed(ToggleBotPlayKey) {
+			gs.SetBotPlay(!gs.IsBotPlay())
+		}
 
-	// zoom in and out
-	if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomInKey) {
-		gs.Zoom -= 0.01
-	}
+		// speed change
+		changedSpeed := false
+		audioSpeed := gs.AudioSpeed()
 
-	if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomOutKey) {
-		gs.Zoom += 0.01
-	}
+		if rl.IsKeyPressed(AudioSpeedDownKey) {
+			changedSpeed = true
+			audioSpeed -= 0.1
+		}
 
-	if gs.Zoom < 0.01 {
-		gs.Zoom = 0.01
-	}
+		if rl.IsKeyPressed(AudioSpeedUpKey) {
+			changedSpeed = true
+			audioSpeed += 0.1
+		}
 
-	// changing time
-	changedPosition := false
+		if changedSpeed {
+			if audioSpeed <= 0 {
+				audioSpeed = 0.1
+			}
 
-	{
+			gs.SetAudioSpeed(audioSpeed)
+		}
+
+		// zoom in and out
+		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomInKey) {
+			gs.Zoom -= 0.01
+		}
+
+		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomOutKey) {
+			gs.Zoom += 0.01
+		}
+
+		if gs.Zoom < 0.01 {
+			gs.Zoom = 0.01
+		}
+
+		// changing time
+
 		pos := gs.AudioPosition()
 		keyT := gs.PixelsToTime(50)
 
 		// NOTE : If we ever implement note up scroll
 		// this keybindings have to reversed
 		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
-			changedPosition = true
+			changePositionFromUserInput = true
 			pos -= keyT
 		}
 
 		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
-			changedPosition = true
+			changePositionFromUserInput = true
 			pos += keyT
 		}
 
@@ -488,37 +546,21 @@ func (gs *GameScreen) Update() UpdateResult {
 		wheelmove := rl.GetMouseWheelMove()
 
 		if math.Abs(float64(wheelmove)) > 0.001 {
-			changedPosition = true
+			changePositionFromUserInput = true
 			pos += time.Duration(wheelmove * float32(-wheelT))
 		}
 
 		pos = Clamp(pos, 0, gs.AudioDuration())
 
-		if changedPosition {
-			gs.audioPositionChangedAt = GlobalTimerNow()
-
-			if gs.IsPlayingAudio() {
-				gs.PauseAudio()
-				gs.PausedBecausePositionChanged = true
-			}
+		if changePositionFromUserInput {
+			gs.TempPause(time.Millisecond * 60)
 
 			gs.ResetStatesThatTracksGamePlayChanges()
 			gs.SetAudioPosition(pos)
 		}
 
-		// if we changed position while playing the song we pause the song
-		// and we unpuase here
-		// NOTE : thought about doing this for mouse wheel as well but it's harder to
-		// detect whether mouse wheel stopped scrolling for reals
-		// TODO : Maybe we can do this by a timer
-		if gs.PausedBecausePositionChanged &&
-			TimeSinceNow(gs.audioPositionChangedAt) > time.Millisecond*100 {
-			gs.PlayAudio()
-			gs.PausedBecausePositionChanged = false
-		}
-
 		if AreKeysPressed(SongResetKey) {
-			changedPosition = true
+			changePositionFromUserInput = true
 			gs.ResetStatesThatTracksGamePlayChanges()
 			gs.SetAudioPosition(0)
 		}
@@ -529,6 +571,17 @@ func (gs *GameScreen) Update() UpdateResult {
 	// =============================================
 
 	// =============================================
+	// temporary pause and unpause
+	// =============================================
+
+	if gs.tempPauseUntil < GlobalTimerNow() {
+		if gs.wasPlayingWhenTempPause {
+			gs.PlayAudio()
+			gs.wasPlayingWhenTempPause = false
+		}
+	}
+
+	// =============================================
 	// try to calculate audio position
 	// =============================================
 
@@ -536,7 +589,7 @@ func (gs *GameScreen) Update() UpdateResult {
 
 	// currently audio player position's delta is 0 or 10ms
 	// so we are trying to calculate better audio position
-	if !changedPosition {
+	if !changePositionFromUserInput {
 		if !gs.IsPlayingAudio() {
 			gs.audioPosition = gs.InstPlayer.Position()
 		} else if gs.audioPositionSafetyCounter > 5 {
@@ -923,7 +976,7 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw pause icon
 	// ============================================
-	if !gs.IsPlayingAudio() && !gs.PausedBecausePositionChanged {
+	if !gs.IsPlayingAudio() && !gs.OnlyTemporarilyPaused() {
 		gs.DrawPauseIcon()
 	}
 
@@ -1148,6 +1201,13 @@ func (gs *GameScreen) Draw() {
 	gs.HelpMessage.Draw()
 
 	// ============================================
+	// draw menu
+	// ============================================
+	if gs.DrawMenu {
+		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
+		gs.MenuDrawer.Draw()
+	}
+	// ============================================
 	// draw debug msg
 	// ============================================
 
@@ -1250,6 +1310,19 @@ func (gs *GameScreen) DrawPauseIcon() {
 		FontRegular, "paused",
 		rl.Vector2{textX, textY},
 		fontSize, 0, rl.Color{0, 0, 0, 200})
+}
+
+func (gs *GameScreen) BeforeScreenTransition() {
+	if IsTransitionOn() {
+		HideTransition()
+	}
+	EnableInput()
+
+	gs.DrawMenu = false
+
+	gs.HelpMessage.BeforeScreenTransition()
+
+	gs.MenuDrawer.ResetAnimation()
 }
 
 // =================================
@@ -1495,7 +1568,7 @@ func (hm *HelpMessage) Draw() {
 		Y: MouseY(),
 	}
 
-	if rl.CheckCollisionPointRec(mouseV, buttonRect) {
+	if !hm.InputDisabled && rl.CheckCollisionPointRec(mouseV, buttonRect) {
 		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
 			buttonColor = rl.Color{100, 100, 100, 255}
 		} else {
@@ -1557,7 +1630,7 @@ func (hm *HelpMessage) TotalRect() rl.Rectangle {
 func (hm *HelpMessage) Update() {
 	buttonRect := hm.ButtonRect()
 
-	if rl.IsMouseButtonReleased(rl.MouseButtonLeft) {
+	if rl.IsMouseButtonReleased(rl.MouseButtonLeft) && !hm.InputDisabled {
 		if rl.CheckCollisionPointRec(MouseV(), buttonRect) {
 			hm.DoShow = !hm.DoShow
 		}
@@ -1584,17 +1657,10 @@ func (hm *HelpMessage) BeforeScreenTransition() {
 
 	hm.offsetY = -totalRect.Height + buttonRect.Height
 	hm.DoShow = false
+
+	hm.InputDisabled = false
 }
 
 // ====================================
 // end of help message related stuffs
 // ====================================
-
-func (gs *GameScreen) BeforeScreenTransition() {
-	if IsTransitionOn() {
-		HideTransition()
-	}
-	EnableInput()
-
-	gs.HelpMessage.BeforeScreenTransition()
-}

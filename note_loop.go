@@ -13,19 +13,25 @@ type PlayerState struct {
 	IsHoldingKey    [NoteDirSize]bool
 	IsHoldingBadKey [NoteDirSize]bool
 
+	// since these are for animations and stuff,
+	// time is in real time (i.e. time since app started)
 	KeyPressedAt     [NoteDirSize]time.Duration
 	KeyReleasedAt    [NoteDirSize]time.Duration
 	DidReleaseBadKey [NoteDirSize]bool
 
+	// this is also in real time
 	NoteMissAt  [NoteDirSize]time.Duration
 	DidMissNote [NoteDirSize]bool
 }
 
 type NoteEvent struct {
-	// event bit can have 6 different values
+	// EventBit can have 6 different values
+	//
 	// none : 0000
+	//
 	// hit               : 0001
 	// hit and first hit : 0011
+	//
 	// release           : 1000
 	// miss              : 0100
 	// release and miss  : 1100
@@ -33,8 +39,11 @@ type NoteEvent struct {
 	// this is done this way because I was afraid that I might set conflicting state
 	// but I'm not sure if it's a good appoach
 	EventBit int
-	Time     time.Duration
-	Index    int
+
+	// this is in audio time (i.e. audio position when this event happened)
+	Time time.Duration
+
+	Index int
 }
 
 func (ne *NoteEvent) ClearHit() {
