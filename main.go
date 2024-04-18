@@ -102,13 +102,18 @@ func main() {
 	}
 
 	InitTransition()
+	defer FreeTransition()
 
 	TheGameScreen = NewGameScreen()
 	TheSelectScreen = NewSelectScreen()
 
 	var screen Screen = TheSelectScreen
 
+	CreateAssets()
+	defer DestroyAssets()
+
 	LoadAssets()
+	defer UnloadAssets()
 
 	GlobalTimerStart()
 

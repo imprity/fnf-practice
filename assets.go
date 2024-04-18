@@ -39,6 +39,8 @@ var (
 	HelpMsgFont rl.Font
 )
 
+var BlackPixel rl.Texture2D
+
 var (
 	imgsToUnload  []*rl.Image
 	texsToUnload  []rl.Texture2D
@@ -47,16 +49,8 @@ var (
 
 var isAssetLoaded bool
 
-func LoadAssets() {
+func UnloadAssets() {
 	if isAssetLoaded {
-		for _, img := range imgsToUnload {
-			if rl.IsImageReady(img) {
-				rl.UnloadImage(img)
-			}
-		}
-
-		imgsToUnload = imgsToUnload[:0]
-
 		for _, tex := range texsToUnload {
 			if tex.ID > 0 {
 				rl.UnloadTexture(tex)
@@ -64,6 +58,14 @@ func LoadAssets() {
 		}
 
 		texsToUnload = texsToUnload[:0]
+
+		for _, img := range imgsToUnload {
+			if rl.IsImageReady(img) {
+				rl.UnloadImage(img)
+			}
+		}
+
+		imgsToUnload = imgsToUnload[:0]
 
 		for _, font := range fontsToUnload {
 			if rl.IsFontReady(font) {
@@ -75,6 +77,10 @@ func LoadAssets() {
 
 		isAssetLoaded = false
 	}
+}
+
+func LoadAssets() {
+	UnloadAssets()
 
 	defer func() {
 		isAssetLoaded = true
@@ -203,4 +209,23 @@ func LoadAssets() {
 	helpFontPath := "assets/Pangolin/Pangolin-Regular.ttf"
 
 	HelpMsgFont = loadFont(helpFontPath, 30, ".ttf")
+}
+
+func DestroyAssets() {
+	rl.UnloadTexture(BlackPixel)
+}
+
+func CreateAssets() {
+	// create black pixel
+	blackPixelImg := rl.NewImage(
+		[]byte{
+			0, 0, 0, 255,
+			0, 0, 0, 255,
+			0, 0, 0, 255,
+			0, 0, 0, 255},
+		2, 2,
+		1,
+		rl.UncompressedR8g8b8a8)
+
+	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 }

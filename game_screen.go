@@ -408,7 +408,7 @@ func (gs *GameScreen) Update() {
 			gs.PauseAudio()
 		}
 
-		ShowTransition(DirSelectScreen, func() {
+		ShowTransition(BlackPixel, func() {
 			SetNextScreen(TheSelectScreen)
 			HideTransition()
 		})

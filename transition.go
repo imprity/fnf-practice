@@ -66,6 +66,14 @@ func InitTransition() {
 	manager.ImageSizeLoc = rl.GetShaderLocation(manager.MaskShader, "imageSize")
 }
 
+func FreeTransition() {
+	manager := &TheTransitionManager
+
+	rl.UnloadRenderTexture(manager.MaskTexture)
+	rl.UnloadRenderTexture(manager.TransitionTexture)
+	rl.UnloadShader(manager.MaskShader)
+}
+
 func CallTransitionCallbackIfNeeded() {
 	manager := &TheTransitionManager
 
