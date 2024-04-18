@@ -13,7 +13,7 @@ import (
 )
 
 type GameUpdateResult struct {
-	Quit bool
+	UpdateResultBase
 }
 
 func (gr GameUpdateResult) DoQuit() bool {
@@ -206,10 +206,6 @@ func (gs *GameScreen) LoadSongs(
 		gs.VoicePlayer.SetSpeed(1)
 	}
 
-	gs.Zoom = 1.0
-
-	gs.botPlay = false
-
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
@@ -395,9 +391,9 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 func (gs *GameScreen) Update() UpdateResult {
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
-		return GameUpdateResult{
-			Quit: false,
-		}
+		res := GameUpdateResult{}
+		res.SetQuit(true)
+		return res
 	}
 
 	// =============================================
@@ -423,11 +419,10 @@ func (gs *GameScreen) Update() UpdateResult {
 		}
 		gs.MenuDrawer.InputDisabled = true
 
-		ShowTransition(DirSelectScreen)
-
-		return GameUpdateResult{
-			Quit: true,
-		}
+		res := GameUpdateResult{}
+		res.SetQuit(true)
+		res.SetTransitionTexture(DirSelectScreen)
+		return res
 	}
 
 	// =============================================
@@ -715,8 +710,10 @@ func (gs *GameScreen) Update() UpdateResult {
 		}
 	}
 
-	return GameUpdateResult{
-		Quit: false,
+	{
+		res := GameUpdateResult{}
+		res.SetQuit(false)
+		return res
 	}
 }
 
@@ -1316,13 +1313,23 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	if IsTransitionOn() {
 		HideTransition()
 	}
+
+	gs.Zoom = 1.0
+
+	gs.botPlay = false
+
 	EnableInput()
 
 	gs.DrawMenu = false
 
+	gs.tempPauseUntil = -Years150
+	gs.wasPlayingWhenTempPause = false
+
 	gs.HelpMessage.BeforeScreenTransition()
 
 	gs.MenuDrawer.ResetAnimation()
+
+	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
 // =================================

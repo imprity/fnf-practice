@@ -101,6 +101,7 @@ func main() {
 	ss := NewSelectScreen()
 
 	var screen Screen = ss
+	var nextScreen Screen
 
 	LoadAssets()
 
@@ -116,6 +117,8 @@ func main() {
 
 	transitioned := true
 
+	transitionTexture := rl.Texture2D{}
+
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(ToggleDebugKey) {
 			GlobalDebugFlag = !GlobalDebugFlag
@@ -125,34 +128,51 @@ func main() {
 			LoadAssets()
 		}
 
-		if transitioned {
-			screen.BeforeScreenTransition()
-			transitioned = false
-		}
+		if transitionTexture.ID > 0{
+			if IsTransitionOn(){
+				if IsShowTransitionDone(){
+					HideTransition()
+					transitionTexture.ID = 0
+					screen = nextScreen
+				}
+			}	
+		}else{
+			if transitioned {
+				screen.BeforeScreenTransition()
+				transitioned = false
+			}
 
-		updateResult := screen.Update()
+			updateResult := screen.Update()
 
-		if updateResult.DoQuit() {
-			transitioned = true
+			if updateResult.DoQuit() {
+				transitioned = true
 
-			switch updateResult.(type) {
-			case GameUpdateResult:
-				screen = ss
-			case SelectUpdateResult:
-				sResult := updateResult.(SelectUpdateResult)
-				group := sResult.PathGroup
-				difficulty := sResult.Difficulty
+				switch updateResult.(type) {
+				case GameUpdateResult:
+					nextScreen = ss
+				case SelectUpdateResult:
+					sResult := updateResult.(SelectUpdateResult)
+					group := sResult.PathGroup
+					difficulty := sResult.Difficulty
 
-				// TODO : We probably should use same slice for this
-				// we don't need to create new buffer
-				// TODO : dosomething with this error
-				instBytes, err = LoadAudio(group.InstPath)
-				if group.VoicePath != "" {
-					voiceBytes, err = LoadAudio(group.VoicePath)
+					// TODO : We probably should use same slice for this
+					// we don't need to create new buffer
+					// TODO : dosomething with this error
+					instBytes, err = LoadAudio(group.InstPath)
+					if group.VoicePath != "" {
+						voiceBytes, err = LoadAudio(group.VoicePath)
+					}
+
+					gs.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
+					nextScreen = gs
 				}
 
-				gs.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
-				screen = gs
+				if updateResult.QuitWithTransition(){
+					transitionTexture = updateResult.QuitTransitionTexture()
+					ShowTransition(transitionTexture)
+				}else{
+					screen = nextScreen
+				}
 			}
 		}
 

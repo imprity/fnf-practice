@@ -9,14 +9,11 @@ import (
 )
 
 type SelectUpdateResult struct {
-	Quit       bool
+	UpdateResultBase
 	PathGroup  FnfPathGroup
 	Difficulty FnfDifficulty
 }
 
-func (sr SelectUpdateResult) DoQuit() bool {
-	return sr.Quit
-}
 
 type SelectScreen struct {
 	MenuDrawer *MenuDrawer
@@ -98,11 +95,13 @@ func (ss *SelectScreen) Update() UpdateResult {
 
 	if ss.IsGroupSelected && IsShowTransitionDone() {
 		ss.IsGroupSelected = false
-		return SelectUpdateResult{
-			Quit:       true,
-			PathGroup:  ss.SelectedGroup,
-			Difficulty: ss.SelectedDifficulty,
-		}
+
+		res := SelectUpdateResult{}
+		res.SetQuit(true)
+		res.PathGroup = ss.SelectedGroup
+		res.Difficulty = ss.SelectedDifficulty
+
+		return res
 	}
 
 	for _, item := range ss.MenuDrawer.Items {
@@ -200,8 +199,10 @@ func (ss *SelectScreen) Update() UpdateResult {
 
 	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
 
-	return SelectUpdateResult{
-		Quit: false,
+	{
+		res := SelectUpdateResult{}
+		res.SetQuit(false)
+		return res
 	}
 }
 
