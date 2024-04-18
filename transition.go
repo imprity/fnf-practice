@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed"
 	rl "github.com/gen2brain/raylib-go/raylib"
-	//"math"
 	"time"
 )
 
@@ -19,7 +18,10 @@ type TransitionManager struct {
 	ImgTexture  rl.Texture2D
 	MaskTexture rl.RenderTexture2D
 
-	MaskShader rl.Shader
+	Callback func()
+
+	MaskShader        rl.Shader
+	TransitionTexture rl.RenderTexture2D
 
 	MaskLoc  int32
 	ImageLoc int32
@@ -44,6 +46,7 @@ func InitTransition() {
 	manager.AnimDuration = time.Millisecond * 300
 
 	manager.MaskTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
+	manager.TransitionTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 	if !rl.IsRenderTextureReady(manager.MaskTexture) {
 		ErrorLogger.Fatal("failed to load mask render texture")
@@ -63,7 +66,18 @@ func InitTransition() {
 	manager.ImageSizeLoc = rl.GetShaderLocation(manager.MaskShader, "imageSize")
 }
 
-func DrawTransition() {
+func CallTransitionCallbackIfNeeded() {
+	manager := &TheTransitionManager
+
+	if manager.ShowTransition && TimeSinceNow(manager.AnimStartedAt) > manager.AnimDuration {
+		if manager.Callback != nil {
+			manager.Callback()
+			manager.Callback = nil
+		}
+	}
+}
+
+func UpdateTransitionTexture() {
 	manager := &TheTransitionManager
 
 	if manager.ImgTexture.ID <= 0 { //just in case
@@ -113,7 +127,7 @@ func DrawTransition() {
 
 	index := 0
 
-	FnfBeginTextureMode(manager.MaskTexture)
+	rl.BeginTextureMode(manager.MaskTexture)
 	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 
 	for yi := 0; yi < diaNy; yi++ {
@@ -152,8 +166,10 @@ func DrawTransition() {
 		}
 	}
 
-	FnfEndTextureMode()
+	rl.EndTextureMode()
 
+	rl.BeginTextureMode(manager.TransitionTexture)
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 	rl.BeginShaderMode(manager.MaskShader)
 
 	rl.SetShaderValueTexture(
@@ -177,25 +193,19 @@ func DrawTransition() {
 	rl.DrawTexture(manager.MaskTexture.Texture, 0, 0, rl.Color{255, 255, 255, 255})
 
 	rl.EndShaderMode()
+	rl.EndTextureMode()
 }
 
-func ShowTransition(texture rl.Texture2D) {
+func ShowTransition(texture rl.Texture2D, callback func()) {
 	TheTransitionManager.ShowTransition = true
 	TheTransitionManager.AnimStartedAt = GlobalTimerNow()
 	TheTransitionManager.ImgTexture = texture
-}
-
-func IsShowTransitionDone() bool {
-	return GlobalTimerNow()-TheTransitionManager.AnimStartedAt > TheTransitionManager.AnimDuration
+	TheTransitionManager.Callback = callback
 }
 
 func HideTransition() {
 	TheTransitionManager.ShowTransition = false
 	TheTransitionManager.AnimStartedAt = GlobalTimerNow()
-}
-
-func IsHideTransitionDone() bool {
-	return GlobalTimerNow()-TheTransitionManager.AnimStartedAt > TheTransitionManager.AnimDuration
 }
 
 func IsTransitionOn() bool {

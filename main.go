@@ -6,15 +6,10 @@ import (
 	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"strings"
-
-	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
-	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -25,6 +20,17 @@ const (
 	SCREEN_WIDTH  = 1280
 	SCREEN_HEIGHT = 720
 )
+
+var (
+	TheSelectScreen *SelectScreen
+	TheGameScreen   *GameScreen
+
+	NextScreen Screen
+)
+
+func SetNextScreen(screen Screen) {
+	NextScreen = screen
+}
 
 var GlobalDebugFlag bool
 
@@ -97,11 +103,10 @@ func main() {
 
 	InitTransition()
 
-	gs := NewGameScreen()
-	ss := NewSelectScreen()
+	TheGameScreen = NewGameScreen()
+	TheSelectScreen = NewSelectScreen()
 
-	var screen Screen = ss
-	var nextScreen Screen
+	var screen Screen = TheSelectScreen
 
 	LoadAssets()
 
@@ -112,13 +117,6 @@ func main() {
 		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
 	}
 
-	var instBytes []byte
-	var voiceBytes []byte
-
-	transitioned := true
-
-	transitionTexture := rl.Texture2D{}
-
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(ToggleDebugKey) {
 			GlobalDebugFlag = !GlobalDebugFlag
@@ -128,63 +126,42 @@ func main() {
 			LoadAssets()
 		}
 
-		if transitionTexture.ID > 0{
-			if IsTransitionOn(){
-				if IsShowTransitionDone(){
-					HideTransition()
-					transitionTexture.ID = 0
-					screen = nextScreen
-				}
-			}	
-		}else{
-			if transitioned {
+		//update screen
+		if !TheTransitionManager.ShowTransition {
+			if NextScreen != nil {
+				screen = NextScreen
 				screen.BeforeScreenTransition()
-				transitioned = false
+				NextScreen = nil
 			}
 
-			updateResult := screen.Update()
-
-			if updateResult.DoQuit() {
-				transitioned = true
-
-				switch updateResult.(type) {
-				case GameUpdateResult:
-					nextScreen = ss
-				case SelectUpdateResult:
-					sResult := updateResult.(SelectUpdateResult)
-					group := sResult.PathGroup
-					difficulty := sResult.Difficulty
-
-					// TODO : We probably should use same slice for this
-					// we don't need to create new buffer
-					// TODO : dosomething with this error
-					instBytes, err = LoadAudio(group.InstPath)
-					if group.VoicePath != "" {
-						voiceBytes, err = LoadAudio(group.VoicePath)
-					}
-
-					gs.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
-					nextScreen = gs
-				}
-
-				if updateResult.QuitWithTransition(){
-					transitionTexture = updateResult.QuitTransitionTexture()
-					ShowTransition(transitionTexture)
-				}else{
-					screen = nextScreen
-				}
-			}
+			screen.Update()
 		}
 
+		CallTransitionCallbackIfNeeded()
+
+		UpdateTransitionTexture()
+
+		//draw screen
 		rl.BeginTextureMode(TheRenderTexture)
 		screen.Draw()
-		DrawTransition()
 		rl.EndTextureMode()
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{0, 0, 0, 255})
+
+		// draw render texture
 		rl.DrawTexturePro(
 			TheRenderTexture.Texture,
+			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+			GetScreenRect(),
+			rl.Vector2{},
+			0,
+			rl.Color{255, 255, 255, 255},
+		)
+
+		// draw transition texture
+		rl.DrawTexturePro(
+			TheTransitionManager.TransitionTexture.Texture,
 			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
 			GetScreenRect(),
 			rl.Vector2{},
@@ -198,37 +175,4 @@ func main() {
 		}
 		rl.EndDrawing()
 	}
-}
-
-func LoadAudio(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	defer file.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	type audioStream interface {
-		io.ReadSeeker
-		Length() int64
-	}
-
-	var stream audioStream
-
-	if strings.HasSuffix(strings.ToLower(path), ".mp3") {
-		stream, err = mp3.DecodeWithSampleRate(SampleRate, file)
-	} else {
-		stream, err = vorbis.DecodeWithSampleRate(SampleRate, file)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	audioBytes, err := io.ReadAll(stream)
-	if err != nil {
-		return nil, err
-	}
-
-	return audioBytes, nil
 }

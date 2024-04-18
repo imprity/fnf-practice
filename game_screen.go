@@ -12,14 +12,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type GameUpdateResult struct {
-	UpdateResultBase
-}
-
-func (gr GameUpdateResult) DoQuit() bool {
-	return gr.Quit
-}
-
 type NotePopup struct {
 	Start  time.Duration
 	Rating FnfHitRating
@@ -388,12 +380,10 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 // returns true when it wants to quit
-func (gs *GameScreen) Update() UpdateResult {
+func (gs *GameScreen) Update() {
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
-		res := GameUpdateResult{}
-		res.SetQuit(true)
-		return res
+		return
 	}
 
 	// =============================================
@@ -417,12 +407,12 @@ func (gs *GameScreen) Update() UpdateResult {
 		if gs.IsSongLoaded {
 			gs.PauseAudio()
 		}
-		gs.MenuDrawer.InputDisabled = true
 
-		res := GameUpdateResult{}
-		res.SetQuit(true)
-		res.SetTransitionTexture(DirSelectScreen)
-		return res
+		ShowTransition(DirSelectScreen, func() {
+			SetNextScreen(TheSelectScreen)
+			HideTransition()
+		})
+		return
 	}
 
 	// =============================================
@@ -708,12 +698,6 @@ func (gs *GameScreen) Update() UpdateResult {
 				gs.NoteEvents[e.Index] = append(events, e)
 			}
 		}
-	}
-
-	{
-		res := GameUpdateResult{}
-		res.SetQuit(false)
-		return res
 	}
 }
 
@@ -1310,10 +1294,6 @@ func (gs *GameScreen) DrawPauseIcon() {
 }
 
 func (gs *GameScreen) BeforeScreenTransition() {
-	if IsTransitionOn() {
-		HideTransition()
-	}
-
 	gs.Zoom = 1.0
 
 	gs.botPlay = false
