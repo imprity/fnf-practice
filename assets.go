@@ -11,30 +11,39 @@ import (
 //go:embed assets
 var EmebededAssets embed.FS
 
-var ArrowsOuterTex rl.Texture2D
-var ArrowsInnerTex rl.Texture2D
+var (
+	ArrowsOuterTex rl.Texture2D
+	ArrowsInnerTex rl.Texture2D
 
-var ArrowsRects [NoteDirSize]rl.Rectangle
+	ArrowsRects [NoteDirSize]rl.Rectangle
+)
 
-var ArrowsGlowTex rl.Texture2D
-var ArrowsGlowRects [NoteDirSize]rl.Rectangle
+var (
+	ArrowsGlowTex   rl.Texture2D
+	ArrowsGlowRects [NoteDirSize]rl.Rectangle
+)
 
 var GameScreenBg rl.Texture2D
 
-var SongLoadingScreen rl.Texture2D
-
-var DirSelectScreen rl.Texture2D
+var (
+	SongLoadingScreen rl.Texture2D
+	DirSelectScreen   rl.Texture2D
+)
 
 var HitRatingTexs [HitRatingSize]rl.Texture2D
 
-var FontRegular rl.Font
-var FontBold rl.Font
+var (
+	FontRegular rl.Font
+	FontBold    rl.Font
 
-var HelpMsgFont rl.Font
+	HelpMsgFont rl.Font
+)
 
-var imgsToUnload []*rl.Image
-var texsToUnload []rl.Texture2D
-var fontsToUnload []rl.Font
+var (
+	imgsToUnload  []*rl.Image
+	texsToUnload  []rl.Texture2D
+	fontsToUnload []rl.Font
+)
 
 var isAssetLoaded bool
 
