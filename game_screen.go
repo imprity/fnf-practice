@@ -1076,8 +1076,9 @@ func (gs *GameScreen) Draw() {
 			time := note.StartsAt + note.Duration
 			y := timeToY(time)
 
+			firstNote = note
+
 			if y < SCREEN_HEIGHT+gs.NotesSize*2 {
-				firstNote = note
 				break
 			}
 		}
