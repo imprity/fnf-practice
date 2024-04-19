@@ -92,18 +92,10 @@ var (
 	ReloadAssetsKey int32 = rl.KeyF5
 )
 
-// TODO : remove these keys
 var (
 	ZoomOutKey int32 = rl.KeyLeftBracket
 	ZoomInKey  int32 = rl.KeyRightBracket
 )
-
-var (
-	DifficultyUpKey   int32 = rl.KeyW
-	DifficultyDownKey int32 = rl.KeyQ
-)
-
-var ToggleBotPlayKey int32 = rl.KeyB
 
 // ========================================
 // end of key map

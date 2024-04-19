@@ -509,24 +509,6 @@ func (gs *GameScreen) Update() {
 		//changing difficulty
 		prevDifficulty := gs.SelectedDifficulty
 
-		if AreKeysPressed(DifficultyUpKey) {
-			for gs.SelectedDifficulty+1 < DifficultySize {
-				gs.SelectedDifficulty++
-				if gs.HasSong[gs.SelectedDifficulty] {
-					break
-				}
-			}
-		}
-
-		if AreKeysPressed(DifficultyDownKey) {
-			for gs.SelectedDifficulty-1 >= 0 {
-				gs.SelectedDifficulty--
-				if gs.HasSong[gs.SelectedDifficulty] {
-					break
-				}
-			}
-		}
-
 		if prevDifficulty != gs.SelectedDifficulty {
 			if gs.HasSong[gs.SelectedDifficulty] {
 				gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
@@ -537,11 +519,6 @@ func (gs *GameScreen) Update() {
 			} else {
 				gs.SelectedDifficulty = prevDifficulty
 			}
-		}
-
-		// set bot play
-		if AreKeysPressed(ToggleBotPlayKey) {
-			gs.SetBotPlay(!gs.IsBotPlay())
 		}
 
 		// speed change
