@@ -88,6 +88,9 @@ func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 	err := filepath.Walk(root, onVisit)
 	_ = err
 
+	slices.Sort(audioPaths)
+	slices.Sort(jsonPaths)
+
 	// ==========================================================
 	// try to parse collected json files and see what sticks
 	// ==========================================================
@@ -147,7 +150,6 @@ func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 	type Directory struct {
 		Path     string
 		Children []string
-		Taken    bool
 	}
 
 	var audioDirs []*Directory
@@ -239,40 +241,29 @@ func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 			}
 		}
 
-		var audioDirsToCheck []*Directory
+		slices.SortFunc(audioDirs, func(a, b *Directory) int {
+			return dirSortFunc(a.Path, b.Path, nameLow)
+		})
 
-		for _, dir := range audioDirs {
-			if !dir.Taken {
-				audioDirsToCheck = append(audioDirsToCheck, dir)
-			}
-		}
+		audioDir := audioDirs[0]
 
-		if len(audioDirsToCheck) > 0 {
-			slices.SortFunc(audioDirsToCheck, func(a, b *Directory) int {
-				return dirSortFunc(a.Path, b.Path, nameLow)
-			})
+		for _, child := range audioDir.Children {
+			childName := strings.ToLower(filepath.Base(child))
 
-			audioDir := audioDirsToCheck[0]
-			audioDir.Taken = true
-
-			for _, child := range audioDir.Children {
-				childName := strings.ToLower(filepath.Base(child))
-
-				if strings.HasSuffix(childName, ".ogg") {
-					if strings.Contains(childName, "inst") {
-						group.InstPath = child
-					} else if strings.Contains(childName, "voice") {
-						group.VoicePath = child
-					}
-				} else if strings.HasSuffix(childName, ".mp3") {
-					if strings.Contains(childName, "inst") && group.InstPath == "" {
-						group.InstPath = child
-					} else if strings.Contains(childName, "voice") && group.VoicePath == "" {
-						group.VoicePath = child
-					}
+			if strings.HasSuffix(childName, ".ogg") {
+				if strings.Contains(childName, "inst") {
+					group.InstPath = child
+				} else if strings.Contains(childName, "voice") {
+					group.VoicePath = child
 				}
-
+			} else if strings.HasSuffix(childName, ".mp3") {
+				if strings.Contains(childName, "inst") && group.InstPath == "" {
+					group.InstPath = child
+				} else if strings.Contains(childName, "voice") && group.VoicePath == "" {
+					group.VoicePath = child
+				}
 			}
+
 		}
 
 		pathGroups = append(pathGroups, group)

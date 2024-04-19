@@ -76,10 +76,14 @@ type GameScreen struct {
 
 	HelpMessage *HelpMessage
 
+	// menu stuff
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
 
 	QuitMenuItemId int64
+	ResumeMenuItemId int64
+	BotPlayMenuItemId int64
+	DifficultyMenuItemId int64
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -143,18 +147,29 @@ func NewGameScreen() *GameScreen {
 	// set up menu
 	gs.MenuDrawer = NewMenuDrawer()
 
+	resumeItem := MakeMenuItem()
+	resumeItem.Type = MenuItemTrigger
+	resumeItem.Name = "Resume"
+	gs.ResumeMenuItemId = resumeItem.Id
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, resumeItem)
+
+	botPlayItem := MakeMenuItem()
+	botPlayItem.Type = MenuItemToggle
+	botPlayItem.Name = "Bot Play"
+	gs.BotPlayMenuItemId = botPlayItem.Id
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, botPlayItem)
+
+	difficultyItem := MakeMenuItem()
+	difficultyItem.Type = MenuItemList
+	difficultyItem.Name = "Difficulty"
+	gs.DifficultyMenuItemId = difficultyItem.Id
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, difficultyItem)
+
 	quitItem := MakeMenuItem()
 	quitItem.Type = MenuItemTrigger
 	quitItem.Name = "Return To Menu"
-
 	gs.QuitMenuItemId = quitItem.Id
-
-	dummyItem2 := MakeMenuItem()
-	dummyItem2.Type = MenuItemDeco
-	dummyItem2.Name = "dummy2"
-
 	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, quitItem)
-	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, dummyItem2)
 
 	return gs
 }
@@ -390,7 +405,30 @@ func (gs *GameScreen) Update() {
 	// menu stuff
 	// =============================================
 	if AreKeysPressed(rl.KeyEscape) {
+		wasDrawingMenu := gs.DrawMenu
+
 		gs.DrawMenu = !gs.DrawMenu
+
+		// we popped up menu
+		if !wasDrawingMenu && gs.DrawMenu{
+			botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+			botPlayItem.Bvalue = gs.IsBotPlay()
+			gs.MenuDrawer.SetItem(botPlayItem)
+
+			difficultyItem, _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+			difficultyItem.List = difficultyItem.List[:0]
+
+			for d := FnfDifficulty(0); d<DifficultySize; d++{
+				if gs.HasSong[d]{
+					difficultyItem.List = append(difficultyItem.List, DifficultyStrs[d])
+					if d == gs.SelectedDifficulty{
+						difficultyItem.ListSelected = len(difficultyItem.List) - 1
+					}
+				}
+			}
+
+			gs.MenuDrawer.SetItem(difficultyItem)
+		}
 	}
 
 	if gs.DrawMenu {
@@ -401,18 +439,49 @@ func (gs *GameScreen) Update() {
 
 	gs.MenuDrawer.Update()
 
-	// handle quit
-	quitItem, _ := gs.MenuDrawer.GetItemById(gs.QuitMenuItemId)
-	if quitItem.Bvalue {
-		if gs.IsSongLoaded {
-			gs.PauseAudio()
+	if gs.DrawMenu{
+		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId)
+		if resumeItem.Bvalue {
+			gs.DrawMenu = false
 		}
 
-		ShowTransition(BlackPixel, func() {
-			SetNextScreen(TheSelectScreen)
-			HideTransition()
-		})
-		return
+		botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+		if botPlayItem.Bvalue != gs.IsBotPlay(){
+			gs.SetBotPlay(botPlayItem.Bvalue)
+		}
+
+		// handle quit
+		quitItem, _ := gs.MenuDrawer.GetItemById(gs.QuitMenuItemId)
+		if quitItem.Bvalue {
+			if gs.IsSongLoaded {
+				gs.PauseAudio()
+			}
+			gs.MenuDrawer.InputDisabled = true
+
+			ShowTransition(BlackPixel, func() {
+				SetNextScreen(TheSelectScreen)
+				HideTransition()
+			})
+			return
+		}
+
+		dItem , _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+		dStr := dItem.List[dItem.ListSelected]
+
+		for d, str := range DifficultyStrs{
+			difficulty := FnfDifficulty(d)
+			if dStr == str{
+				if difficulty != gs.SelectedDifficulty{
+					gs.SelectedDifficulty = difficulty
+
+					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+
+					gs.PauseAudio()
+
+					gs.ResetStatesThatTracksGamePlayChanges()
+				}
+			}
+		}
 	}
 
 	// =============================================
@@ -1301,6 +1370,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	EnableInput()
 
 	gs.DrawMenu = false
+	gs.MenuDrawer.SelectedIndex = 0
 
 	gs.tempPauseUntil = -Years150
 	gs.wasPlayingWhenTempPause = false
