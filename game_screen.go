@@ -83,6 +83,7 @@ type GameScreen struct {
 	QuitMenuItemId int64
 	ResumeMenuItemId int64
 	BotPlayMenuItemId int64
+	DifficultyMenuItemId int64
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -157,6 +158,12 @@ func NewGameScreen() *GameScreen {
 	botPlayItem.Name = "Bot Play"
 	gs.BotPlayMenuItemId = botPlayItem.Id
 	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, botPlayItem)
+
+	difficultyItem := MakeMenuItem()
+	difficultyItem.Type = MenuItemList
+	difficultyItem.Name = "Difficulty"
+	gs.DifficultyMenuItemId = difficultyItem.Id
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, difficultyItem)
 
 	quitItem := MakeMenuItem()
 	quitItem.Type = MenuItemTrigger
@@ -407,6 +414,20 @@ func (gs *GameScreen) Update() {
 			botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
 			botPlayItem.Bvalue = gs.IsBotPlay()
 			gs.MenuDrawer.SetItem(botPlayItem)
+
+			difficultyItem, _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+			difficultyItem.List = difficultyItem.List[:0]
+
+			for d := FnfDifficulty(0); d<DifficultySize; d++{
+				if gs.HasSong[d]{
+					difficultyItem.List = append(difficultyItem.List, DifficultyStrs[d])
+					if d == gs.SelectedDifficulty{
+						difficultyItem.ListSelected = len(difficultyItem.List) - 1
+					}
+				}
+			}
+
+			gs.MenuDrawer.SetItem(difficultyItem)
 		}
 	}
 
@@ -417,7 +438,8 @@ func (gs *GameScreen) Update() {
 	gs.MenuDrawer.InputDisabled = !gs.DrawMenu
 
 	gs.MenuDrawer.Update()
-	{
+
+	if gs.DrawMenu{
 		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId)
 		if resumeItem.Bvalue {
 			gs.DrawMenu = false
@@ -441,6 +463,24 @@ func (gs *GameScreen) Update() {
 				HideTransition()
 			})
 			return
+		}
+
+		dItem , _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+		dStr := dItem.List[dItem.ListSelected]
+
+		for d, str := range DifficultyStrs{
+			difficulty := FnfDifficulty(d)
+			if dStr == str{
+				if difficulty != gs.SelectedDifficulty{
+					gs.SelectedDifficulty = difficulty
+
+					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+
+					gs.PauseAudio()
+
+					gs.ResetStatesThatTracksGamePlayChanges()
+				}
+			}
 		}
 	}
 
@@ -1330,6 +1370,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	EnableInput()
 
 	gs.DrawMenu = false
+	gs.MenuDrawer.SelectedIndex = 0
 
 	gs.tempPauseUntil = -Years150
 	gs.wasPlayingWhenTempPause = false

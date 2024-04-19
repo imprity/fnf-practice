@@ -13,6 +13,7 @@ type MenuItemType int
 const (
 	MenuItemTrigger MenuItemType = iota
 	MenuItemToggle
+	MenuItemList
 	MenuItemDeco
 )
 
@@ -30,6 +31,9 @@ type MenuItem struct {
 	Name string
 
 	Bvalue bool
+
+	ListSelected int
+	List []string
 
 	ValueChangedAt time.Duration
 }
@@ -148,52 +152,72 @@ func (md *MenuDrawer) Update() {
 		canNotMove = true
 	}
 
-	if !md.InputDisabled && AreKeysDown(NoteKeysUp...) {
-		tryingToMove = true
-		tryingToMoveUp = true
-	}
-
-	if !md.InputDisabled && AreKeysDown(NoteKeysDown...) {
-		tryingToMove = true
-		tryingToMoveUp = false
-	}
-
-	// check if menu items are all deco
-	firstRate := time.Millisecond * 200
-	repeateRate := time.Millisecond * 110
-
-	if !md.InputDisabled && HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...) {
-		if !allDeco {
-			scrollUntilNonDeco(false)
+	// ==========================
+	// handling input
+	// ==========================
+	if !md.InputDisabled {
+		if AreKeysDown(NoteKeysUp...) {
+			tryingToMove = true
+			tryingToMoveUp = true
 		}
 
-	}
-
-	if !md.InputDisabled && HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...) {
-		if !allDeco {
-			scrollUntilNonDeco(true)
+		if AreKeysDown(NoteKeysDown...) {
+			tryingToMove = true
+			tryingToMoveUp = false
 		}
-	}
 
-	if !md.InputDisabled && AreKeysPressed(SelectKey) {
+		// check if menu items are all deco
+		firstRate := time.Millisecond * 200
+		repeateRate := time.Millisecond * 110
+
+		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...) {
+			if !allDeco {
+				scrollUntilNonDeco(false)
+			}
+
+		}
+
+		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...) {
+			if !allDeco {
+				scrollUntilNonDeco(true)
+			}
+		}
+
+		if AreKeysPressed(SelectKey) {
+			item := md.Items[md.SelectedIndex]
+
+			switch item.Type {
+			case MenuItemTrigger:
+				md.Items[md.SelectedIndex].Bvalue = true
+				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+			case MenuItemToggle:
+				md.Items[md.SelectedIndex].Bvalue = !md.Items[md.SelectedIndex].Bvalue
+				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+			}
+		}
+
 		item := md.Items[md.SelectedIndex]
 
-		switch item.Type{
-		case MenuItemTrigger :
-			md.Items[md.SelectedIndex].Bvalue = true
-			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-		case MenuItemToggle :
-			md.Items[md.SelectedIndex].Bvalue = !md.Items[md.SelectedIndex].Bvalue
-			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-		default :
-			ErrorLogger.Printf("unselectable menu item type : %v\n", item.Type)
-		}
+		if item.Type == MenuItemList && len(item.List) > 0{
+			selectedNew := item.ListSelected
 
-		if item.Type == MenuItemTrigger {
-			md.Items[md.SelectedIndex].Bvalue = true
-			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+			if AreKeysPressed(NoteKeysLeft...){
+				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+				selectedNew -= 1
+			}
+
+			if AreKeysPressed(NotekeysRight...){
+				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+				selectedNew += 1
+			}
+
+			selectedNew = Clamp(selectedNew, 0, len(item.List) - 1)
+			md.Items[md.SelectedIndex].ListSelected = selectedNew
 		}
 	}
+	// ==========================
+	// end of handling input
+	// ==========================
 
 	if md.SelectedIndex != prevSelected {
 		md.ScrollAnimT = 0
@@ -274,12 +298,15 @@ func (md *MenuDrawer) Draw() {
 
 		textToDraw := item.Name
 
-		if item.Type == MenuItemToggle{
-			if item.Bvalue{
+		if item.Type == MenuItemToggle {
+			if item.Bvalue {
 				textToDraw += " : Yes"
-			}else{
+			} else {
 				textToDraw += " : No"
 			}
+		}else if item.Type == MenuItemList && len(item.List) > 0{
+			textToDraw += " : "
+			textToDraw += item.List[item.ListSelected]
 		}
 
 		rl.DrawTextEx(FontBold, textToDraw, rl.Vector2{x, y},
