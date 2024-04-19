@@ -12,6 +12,7 @@ type MenuItemType int
 
 const (
 	MenuItemTrigger MenuItemType = iota
+	MenuItemToggle
 	MenuItemDeco
 )
 
@@ -177,6 +178,17 @@ func (md *MenuDrawer) Update() {
 	if !md.InputDisabled && AreKeysPressed(SelectKey) {
 		item := md.Items[md.SelectedIndex]
 
+		switch item.Type{
+		case MenuItemTrigger :
+			md.Items[md.SelectedIndex].Bvalue = true
+			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+		case MenuItemToggle :
+			md.Items[md.SelectedIndex].Bvalue = !md.Items[md.SelectedIndex].Bvalue
+			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+		default :
+			ErrorLogger.Printf("unselectable menu item type : %v\n", item.Type)
+		}
+
 		if item.Type == MenuItemTrigger {
 			md.Items[md.SelectedIndex].Bvalue = true
 			md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
@@ -245,14 +257,14 @@ func (md *MenuDrawer) Draw() {
 			x += Lerp(0, 30, md.ScrollAnimT)
 		}
 
-		if item.Type == MenuItemTrigger {
-			triggerT := float32(GlobalTimerNow()-item.ValueChangedAt) / float32(md.TriggerAnimDuraiton)
+		if item.Type == MenuItemTrigger || item.Type == MenuItemToggle {
+			clickT := float32(GlobalTimerNow()-item.ValueChangedAt) / float32(md.TriggerAnimDuraiton)
 
-			if triggerT > 0 {
-				if triggerT > 1 {
-					triggerT = 1
+			if clickT > 0 {
+				if clickT > 1 {
+					clickT = 1
 				}
-				tt := -triggerT * (triggerT - 1)
+				tt := -clickT * (clickT - 1)
 
 				scale *= (1 - tt*0.4)
 			}
@@ -260,7 +272,17 @@ func (md *MenuDrawer) Draw() {
 
 		y += item.SizeRegular*0.5 - size*0.5*scale
 
-		rl.DrawTextEx(FontBold, item.Name, rl.Vector2{x, y},
+		textToDraw := item.Name
+
+		if item.Type == MenuItemToggle{
+			if item.Bvalue{
+				textToDraw += " : Yes"
+			}else{
+				textToDraw += " : No"
+			}
+		}
+
+		rl.DrawTextEx(FontBold, textToDraw, rl.Vector2{x, y},
 			size*scale, 0, col.ToRlColor())
 
 		yOffset += item.SizeRegular + md.ListInterval
@@ -289,6 +311,16 @@ func (md *MenuDrawer) GetItemById(id int64) (MenuItem, bool) {
 	}
 
 	return MenuItem{}, false
+}
+
+func (md *MenuDrawer) SetItem(toSet MenuItem) bool {
+	for i, item := range md.Items {
+		if item.Id == toSet.Id {
+			md.Items[i] = toSet
+		}
+	}
+
+	return false
 }
 
 func (md *MenuDrawer) InsertAt(at int, items ...MenuItem) {

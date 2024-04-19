@@ -84,10 +84,13 @@ type GameScreen struct {
 
 	HelpMessage *HelpMessage
 
+	// menu stuff
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
 
 	QuitMenuItemId int64
+	ResumeMenuItemId int64
+	BotPlayMenuItemId int64
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -151,18 +154,23 @@ func NewGameScreen() *GameScreen {
 	// set up menu
 	gs.MenuDrawer = NewMenuDrawer()
 
+	resumeItem := MakeMenuItem()
+	resumeItem.Type = MenuItemTrigger
+	resumeItem.Name = "Resume"
+	gs.ResumeMenuItemId = resumeItem.Id
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, resumeItem)
+
+	botPlayItem := MakeMenuItem()
+	botPlayItem.Type = MenuItemToggle
+	botPlayItem.Name = "Bot Play"
+	gs.BotPlayMenuItemId = botPlayItem.Id
+	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, botPlayItem)
+
 	quitItem := MakeMenuItem()
 	quitItem.Type = MenuItemTrigger
 	quitItem.Name = "Return To Menu"
-
 	gs.QuitMenuItemId = quitItem.Id
-
-	dummyItem2 := MakeMenuItem()
-	dummyItem2.Type = MenuItemDeco
-	dummyItem2.Name = "dummy2"
-
 	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, quitItem)
-	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, dummyItem2)
 
 	return gs
 }
@@ -404,7 +412,16 @@ func (gs *GameScreen) Update() UpdateResult {
 	// menu stuff
 	// =============================================
 	if AreKeysPressed(rl.KeyEscape) {
+		wasDrawingMenu := gs.DrawMenu
+
 		gs.DrawMenu = !gs.DrawMenu
+		
+		// we popped up menu
+		if !wasDrawingMenu && gs.DrawMenu{
+			botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+			botPlayItem.Bvalue = gs.IsBotPlay()
+			gs.MenuDrawer.SetItem(botPlayItem)
+		}
 	}
 
 	if gs.DrawMenu {
@@ -414,19 +431,30 @@ func (gs *GameScreen) Update() UpdateResult {
 	gs.MenuDrawer.InputDisabled = !gs.DrawMenu
 
 	gs.MenuDrawer.Update()
-
-	// handle quit
-	quitItem, _ := gs.MenuDrawer.GetItemById(gs.QuitMenuItemId)
-	if quitItem.Bvalue {
-		if gs.IsSongLoaded {
-			gs.PauseAudio()
+	{
+		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId) 
+		if resumeItem.Bvalue {
+			gs.DrawMenu = false
 		}
-		gs.MenuDrawer.InputDisabled = true
 
-		ShowTransition(DirSelectScreen)
+		botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+		if botPlayItem.Bvalue != gs.IsBotPlay(){
+			gs.SetBotPlay(botPlayItem.Bvalue)
+		}
 
-		return GameUpdateResult{
-			Quit: true,
+		// handle quit
+		quitItem, _ := gs.MenuDrawer.GetItemById(gs.QuitMenuItemId)
+		if quitItem.Bvalue {
+			if gs.IsSongLoaded {
+				gs.PauseAudio()
+			}
+			gs.MenuDrawer.InputDisabled = true
+
+			ShowTransition(DirSelectScreen)
+
+			return GameUpdateResult{
+				Quit: true,
+			}
 		}
 	}
 
