@@ -61,8 +61,6 @@ type GameScreen struct {
 	Song         FnfSong
 	IsSongLoaded bool
 
-	Zoom float32
-
 	InstPlayer  *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
 
@@ -75,6 +73,9 @@ type GameScreen struct {
 	PopupQueue CircularQueue[NotePopup]
 
 	HelpMessage *HelpMessage
+
+	AudioSpeedSetAt time.Duration
+	ZoomSetAt       time.Duration
 
 	// menu stuff
 	MenuDrawer *MenuDrawer
@@ -106,6 +107,8 @@ type GameScreen struct {
 	audioPosition              time.Duration
 	audioPositionSafetyCounter int
 
+	zoom float32
+
 	// TODO : Does it really have to be a private member?
 	// Make this a public member later if you think it's more convinient
 	botPlay bool
@@ -114,7 +117,7 @@ type GameScreen struct {
 func NewGameScreen() *GameScreen {
 	// set default various variables
 	gs := new(GameScreen)
-	gs.Zoom = 1.0
+	gs.zoom = 1.0
 
 	// NOTE : these positions are calculated based on note center!! (I know it's bad...)
 	gs.NotesMarginLeft = 145
@@ -329,6 +332,17 @@ func (gs *GameScreen) SetAudioSpeed(speed float64) {
 	if gs.VoicePlayer.IsReady {
 		gs.VoicePlayer.SetSpeed(speed)
 	}
+
+	gs.AudioSpeedSetAt = GlobalTimerNow()
+}
+
+func (gs *GameScreen) SetZoom(zoom float32) {
+	gs.zoom = zoom
+	gs.ZoomSetAt = GlobalTimerNow()
+}
+
+func (gs *GameScreen) Zoom() float32 {
+	return gs.zoom
 }
 
 func (gs *GameScreen) IsBotPlay() bool {
@@ -367,7 +381,7 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
 	var pm float32
 
-	zoomInverse := 1.0 / gs.Zoom
+	zoomInverse := 1.0 / gs.Zoom()
 
 	if gs.Song.Speed == 0 {
 		pm = gs.PixelsPerMillis
@@ -381,7 +395,7 @@ func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
 func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 	var pm float32
 
-	zoomInverse := 1.0 / gs.Zoom
+	zoomInverse := 1.0 / gs.Zoom()
 
 	if gs.Song.Speed == 0 {
 		pm = gs.PixelsPerMillis
@@ -543,17 +557,27 @@ func (gs *GameScreen) Update() {
 			gs.SetAudioSpeed(audioSpeed)
 		}
 
-		// zoom in and out
-		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomInKey) {
-			gs.Zoom -= 0.01
-		}
+		{
+			zoom := gs.Zoom()
+			changedZoom := false
+			// zoom in and out
+			if HandleKeyRepeat(time.Millisecond*100, time.Millisecond*100, ZoomInKey) {
+				zoom += 0.05
+				changedZoom = true
+			}
 
-		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*50, ZoomOutKey) {
-			gs.Zoom += 0.01
-		}
+			if HandleKeyRepeat(time.Millisecond*100, time.Millisecond*100, ZoomOutKey) {
+				zoom -= 0.05
+				changedZoom = true
+			}
 
-		if gs.Zoom < 0.01 {
-			gs.Zoom = 0.01
+			if zoom <= 0.0001 {
+				zoom = 0.05
+			}
+
+			if changedZoom {
+				gs.SetZoom(zoom)
+			}
 		}
 
 		// changing time
@@ -1224,6 +1248,15 @@ func (gs *GameScreen) Draw() {
 	gs.DrawProgressBar()
 
 	// ============================================
+	// draw audio speed or zoom
+	// ============================================
+	if TimeSinceNow(gs.AudioSpeedSetAt) < TimeSinceNow(gs.ZoomSetAt) {
+		gs.DrawAudioSpeed()
+	} else {
+		gs.DrawZoom()
+	}
+
+	// ============================================
 	// draw help menu
 	// ============================================
 	gs.HelpMessage.Draw()
@@ -1235,27 +1268,6 @@ func (gs *GameScreen) Draw() {
 		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
 		gs.MenuDrawer.Draw()
 	}
-	// ============================================
-	// draw debug msg
-	// ============================================
-
-	/*
-		const format = "" +
-			"speed : %v\n" +
-			"zoom  : %v\n" +
-			"\n" +
-			"bot play : %v\n" +
-			"\n" +
-			"difficulty : %v\n"
-
-		msg := fmt.Sprintf(format,
-			gs.AudioSpeed(),
-			gs.Zoom,
-			gs.IsBotPlay(),
-			DifficultyStrs[gs.SelectedDifficulty])
-
-		rl.DrawText(fmt.Sprintf(msg), 10, 10, 20, rl.Color{0, 0, 0, 255})
-	*/
 }
 
 func (gs *GameScreen) DrawProgressBar() {
@@ -1340,8 +1352,71 @@ func (gs *GameScreen) DrawPauseIcon() {
 		fontSize, 0, rl.Color{0, 0, 0, 200})
 }
 
+func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
+	var delta time.Duration
+
+	if drawZoom {
+		delta = TimeSinceNow(gs.ZoomSetAt)
+	} else {
+		delta = TimeSinceNow(gs.AudioSpeedSetAt)
+	}
+
+	if delta < time.Millisecond*800 {
+		var t float32
+
+		if delta < time.Millisecond*500 {
+			t = 1
+		} else {
+			t = f32(delta-time.Millisecond*500) / f32(time.Millisecond*300)
+			t = Clamp(t, 0, 1)
+			t = 1 - t
+		}
+
+		var text string
+		var numberText string
+
+		if drawZoom {
+			text = "note spacing"
+			numberText = fmt.Sprintf("%.2f x", gs.Zoom())
+		} else {
+			text = "audio speed"
+			numberText = fmt.Sprintf("%.1f x", gs.AudioSpeed())
+		}
+
+		const fontSize = 65
+
+		textSize := rl.MeasureTextEx(FontRegular, text, fontSize, 0)
+
+		textX := SCREEN_WIDTH*0.5 - textSize.X*0.5
+		textY := f32(50)
+
+		rl.DrawTextEx(
+			FontRegular, text, rl.Vector2{textX, textY},
+			fontSize, 0, rl.Color{0, 0, 0, uint8(255 * t)})
+
+		numberTextSize := rl.MeasureTextEx(FontRegular, numberText, fontSize, 0)
+
+		numberTextX := SCREEN_WIDTH*0.5 - numberTextSize.X*0.5
+		numberTextY := f32(50 + 70)
+
+		rl.DrawTextEx(
+			FontRegular, numberText,
+			rl.Vector2{numberTextX, numberTextY},
+			fontSize, 0, rl.Color{0, 0, 0, uint8(255 * t)})
+
+	}
+}
+
+func (gs *GameScreen) DrawAudioSpeed() {
+	gs.drawAudioSpeedOrZoom(false)
+}
+
+func (gs *GameScreen) DrawZoom() {
+	gs.drawAudioSpeedOrZoom(true)
+}
+
 func (gs *GameScreen) BeforeScreenTransition() {
-	gs.Zoom = 1.0
+	gs.zoom = 1.0
 
 	gs.botPlay = false
 
