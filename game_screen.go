@@ -80,9 +80,9 @@ type GameScreen struct {
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
 
-	QuitMenuItemId int64
-	ResumeMenuItemId int64
-	BotPlayMenuItemId int64
+	QuitMenuItemId       int64
+	ResumeMenuItemId     int64
+	BotPlayMenuItemId    int64
 	DifficultyMenuItemId int64
 
 	// variables about note rendering
@@ -410,7 +410,7 @@ func (gs *GameScreen) Update() {
 		gs.DrawMenu = !gs.DrawMenu
 
 		// we popped up menu
-		if !wasDrawingMenu && gs.DrawMenu{
+		if !wasDrawingMenu && gs.DrawMenu {
 			botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
 			botPlayItem.Bvalue = gs.IsBotPlay()
 			gs.MenuDrawer.SetItem(botPlayItem)
@@ -418,10 +418,10 @@ func (gs *GameScreen) Update() {
 			difficultyItem, _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
 			difficultyItem.List = difficultyItem.List[:0]
 
-			for d := FnfDifficulty(0); d<DifficultySize; d++{
-				if gs.HasSong[d]{
+			for d := FnfDifficulty(0); d < DifficultySize; d++ {
+				if gs.HasSong[d] {
 					difficultyItem.List = append(difficultyItem.List, DifficultyStrs[d])
-					if d == gs.SelectedDifficulty{
+					if d == gs.SelectedDifficulty {
 						difficultyItem.ListSelected = len(difficultyItem.List) - 1
 					}
 				}
@@ -439,14 +439,14 @@ func (gs *GameScreen) Update() {
 
 	gs.MenuDrawer.Update()
 
-	if gs.DrawMenu{
+	if gs.DrawMenu {
 		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId)
 		if resumeItem.Bvalue {
 			gs.DrawMenu = false
 		}
 
 		botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
-		if botPlayItem.Bvalue != gs.IsBotPlay(){
+		if botPlayItem.Bvalue != gs.IsBotPlay() {
 			gs.SetBotPlay(botPlayItem.Bvalue)
 		}
 
@@ -465,13 +465,13 @@ func (gs *GameScreen) Update() {
 			return
 		}
 
-		dItem , _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+		dItem, _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
 		dStr := dItem.List[dItem.ListSelected]
 
-		for d, str := range DifficultyStrs{
+		for d, str := range DifficultyStrs {
 			difficulty := FnfDifficulty(d)
-			if dStr == str{
-				if difficulty != gs.SelectedDifficulty{
+			if dStr == str {
+				if difficulty != gs.SelectedDifficulty {
 					gs.SelectedDifficulty = difficulty
 
 					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()

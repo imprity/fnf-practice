@@ -33,7 +33,7 @@ type MenuItem struct {
 	Bvalue bool
 
 	ListSelected int
-	List []string
+	List         []string
 
 	ValueChangedAt time.Duration
 }
@@ -198,20 +198,20 @@ func (md *MenuDrawer) Update() {
 
 		item := md.Items[md.SelectedIndex]
 
-		if item.Type == MenuItemList && len(item.List) > 0{
+		if item.Type == MenuItemList && len(item.List) > 0 {
 			selectedNew := item.ListSelected
 
-			if AreKeysPressed(NoteKeysLeft...){
+			if AreKeysPressed(NoteKeysLeft...) {
 				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
 				selectedNew -= 1
 			}
 
-			if AreKeysPressed(NotekeysRight...){
+			if AreKeysPressed(NotekeysRight...) {
 				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
 				selectedNew += 1
 			}
 
-			selectedNew = Clamp(selectedNew, 0, len(item.List) - 1)
+			selectedNew = Clamp(selectedNew, 0, len(item.List)-1)
 			md.Items[md.SelectedIndex].ListSelected = selectedNew
 		}
 	}
@@ -304,7 +304,7 @@ func (md *MenuDrawer) Draw() {
 			} else {
 				textToDraw += " : No"
 			}
-		}else if item.Type == MenuItemList && len(item.List) > 0{
+		} else if item.Type == MenuItemList && len(item.List) > 0 {
 			textToDraw += " : "
 			textToDraw += item.List[item.ListSelected]
 		}
