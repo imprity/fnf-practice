@@ -1,7 +1,11 @@
 package main
 
+import (
+	"time"
+)
+
 type Screen interface {
-	Update()
+	Update(time.Duration)
 	Draw()
 	BeforeScreenTransition()
 }

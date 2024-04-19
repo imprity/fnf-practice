@@ -5,7 +5,7 @@ import (
 	"github.com/sqweek/dialog"
 	"log"
 	"os"
-	//"time"
+	"time"
 )
 
 type SelectScreen struct {
@@ -79,8 +79,8 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen) Update() {
-	ss.MenuDrawer.Update()
+func (ss *SelectScreen) Update(deltaTime time.Duration) {
+	ss.MenuDrawer.Update(deltaTime)
 
 	for _, item := range ss.MenuDrawer.Items {
 		if item.Type == MenuItemTrigger && item.Bvalue {

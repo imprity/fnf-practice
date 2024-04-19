@@ -409,7 +409,7 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 // returns true when it wants to quit
-func (gs *GameScreen) Update() {
+func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
 		return
@@ -451,7 +451,7 @@ func (gs *GameScreen) Update() {
 
 	gs.MenuDrawer.InputDisabled = !gs.DrawMenu
 
-	gs.MenuDrawer.Update()
+	gs.MenuDrawer.Update(deltaTime)
 
 	if gs.DrawMenu {
 		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId)
@@ -502,7 +502,7 @@ func (gs *GameScreen) Update() {
 	// update help message
 	// =============================================
 	gs.HelpMessage.InputDisabled = gs.DrawMenu
-	gs.HelpMessage.Update()
+	gs.HelpMessage.Update(deltaTime)
 
 	// =============================================
 	// handle user input
@@ -663,7 +663,7 @@ func (gs *GameScreen) Update() {
 		} else {
 			playerPos := gs.InstPlayer.Position()
 
-			frameDelta := time.Duration(rl.GetFrameTime() * float32(time.Second) * float32(gs.AudioSpeed()))
+			frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
 			limit := time.Duration(float64(time.Millisecond*5) * gs.AudioSpeed())
 
 			if playerPos-gs.audioPosition < limit && frameDelta < limit {
@@ -1737,7 +1737,7 @@ func (hm *HelpMessage) TotalRect() rl.Rectangle {
 	return RectUnion(boxRect, buttonRect)
 }
 
-func (hm *HelpMessage) Update() {
+func (hm *HelpMessage) Update(deltaTime time.Duration) {
 	buttonRect := hm.ButtonRect()
 
 	if rl.IsMouseButtonReleased(rl.MouseButtonLeft) && !hm.InputDisabled {
@@ -1746,7 +1746,8 @@ func (hm *HelpMessage) Update() {
 		}
 	}
 
-	delta := rl.GetFrameTime() * 1000
+	//delta := rl.GetFrameTime() * 1000
+	delta := float32(deltaTime.Seconds() * 1000)
 
 	if hm.DoShow {
 		hm.offsetY += delta

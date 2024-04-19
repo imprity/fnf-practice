@@ -11,6 +11,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	"time"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -139,7 +141,7 @@ func main() {
 				NextScreen = nil
 			}
 
-			screen.Update()
+			screen.Update(time.Duration(rl.GetFrameTime() * float32(time.Second)))
 		}
 
 		CallTransitionCallbackIfNeeded()
