@@ -12,14 +12,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type GameUpdateResult struct {
-	Quit bool
-}
-
-func (gr GameUpdateResult) DoQuit() bool {
-	return gr.Quit
-}
-
 type NotePopup struct {
 	Start  time.Duration
 	Rating FnfHitRating
@@ -214,10 +206,6 @@ func (gs *GameScreen) LoadSongs(
 		gs.VoicePlayer.SetSpeed(1)
 	}
 
-	gs.Zoom = 1.0
-
-	gs.botPlay = false
-
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
@@ -400,12 +388,10 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 // returns true when it wants to quit
-func (gs *GameScreen) Update() UpdateResult {
+func (gs *GameScreen) Update() {
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
-		return GameUpdateResult{
-			Quit: false,
-		}
+		return
 	}
 
 	// =============================================
@@ -415,7 +401,7 @@ func (gs *GameScreen) Update() UpdateResult {
 		wasDrawingMenu := gs.DrawMenu
 
 		gs.DrawMenu = !gs.DrawMenu
-		
+
 		// we popped up menu
 		if !wasDrawingMenu && gs.DrawMenu{
 			botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
@@ -432,7 +418,7 @@ func (gs *GameScreen) Update() UpdateResult {
 
 	gs.MenuDrawer.Update()
 	{
-		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId) 
+		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId)
 		if resumeItem.Bvalue {
 			gs.DrawMenu = false
 		}
@@ -450,11 +436,11 @@ func (gs *GameScreen) Update() UpdateResult {
 			}
 			gs.MenuDrawer.InputDisabled = true
 
-			ShowTransition(DirSelectScreen)
-
-			return GameUpdateResult{
-				Quit: true,
-			}
+			ShowTransition(DirSelectScreen, func() {
+				SetNextScreen(TheSelectScreen)
+				HideTransition()
+			})
+			return
 		}
 	}
 
@@ -741,10 +727,6 @@ func (gs *GameScreen) Update() UpdateResult {
 				gs.NoteEvents[e.Index] = append(events, e)
 			}
 		}
-	}
-
-	return GameUpdateResult{
-		Quit: false,
 	}
 }
 
@@ -1341,16 +1323,22 @@ func (gs *GameScreen) DrawPauseIcon() {
 }
 
 func (gs *GameScreen) BeforeScreenTransition() {
-	if IsTransitionOn() {
-		HideTransition()
-	}
+	gs.Zoom = 1.0
+
+	gs.botPlay = false
+
 	EnableInput()
 
 	gs.DrawMenu = false
 
+	gs.tempPauseUntil = -Years150
+	gs.wasPlayingWhenTempPause = false
+
 	gs.HelpMessage.BeforeScreenTransition()
 
 	gs.MenuDrawer.ResetAnimation()
+
+	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
 // =================================

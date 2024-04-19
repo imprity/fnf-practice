@@ -8,16 +8,6 @@ import (
 	//"time"
 )
 
-type SelectUpdateResult struct {
-	Quit       bool
-	PathGroup  FnfPathGroup
-	Difficulty FnfDifficulty
-}
-
-func (sr SelectUpdateResult) DoQuit() bool {
-	return sr.Quit
-}
-
 type SelectScreen struct {
 	MenuDrawer *MenuDrawer
 
@@ -27,10 +17,6 @@ type SelectScreen struct {
 	SongDecoItemId      int64
 
 	MenuToGroup map[int64]FnfPathGroup
-
-	IsGroupSelected    bool
-	SelectedGroup      FnfPathGroup
-	SelectedDifficulty FnfDifficulty
 }
 
 func NewSelectScreen() *SelectScreen {
@@ -93,30 +79,38 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen) Update() UpdateResult {
+func (ss *SelectScreen) Update() {
 	ss.MenuDrawer.Update()
-
-	if ss.IsGroupSelected && IsShowTransitionDone() {
-		ss.IsGroupSelected = false
-		return SelectUpdateResult{
-			Quit:       true,
-			PathGroup:  ss.SelectedGroup,
-			Difficulty: ss.SelectedDifficulty,
-		}
-	}
 
 	for _, item := range ss.MenuDrawer.Items {
 		if item.Type == MenuItemTrigger && item.Bvalue {
 			if group, ok := ss.MenuToGroup[item.Id]; ok {
 				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
-				ShowTransition(SongLoadingScreen)
+				ShowTransition(SongLoadingScreen, func() {
+					var instBytes []byte
+					var voiceBytes []byte
 
-				ss.IsGroupSelected = true
-				ss.SelectedGroup = group
-				ss.SelectedDifficulty = difficulty
+					var err error
 
-				DisableInput()
+					// TODO : dosomething with this error other than panicking
+					instBytes, err = LoadAudio(group.InstPath)
+					if err != nil {
+						ErrorLogger.Fatal(err)
+					}
+
+					if group.VoicePath != "" {
+						voiceBytes, err = LoadAudio(group.VoicePath)
+						if err != nil {
+							ErrorLogger.Fatal(err)
+						}
+					}
+
+					TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
+					SetNextScreen(TheGameScreen)
+
+					HideTransition()
+				})
 			}
 		}
 	}
@@ -127,19 +121,11 @@ func (ss *SelectScreen) Update() UpdateResult {
 
 	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok {
 		if directoryItem.Bvalue {
-			ShowTransition(DirSelectScreen)
-			DisableInput()
-
-			go func() {
+			ShowTransition(DirSelectScreen, func() {
 				directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
 				if err != nil && err != dialog.ErrCancelled {
 					ErrorLogger.Fatal(err)
 				}
-
-				// TODO : I thought it wouldn't happend but this sometimes cases crash
-				// because this go thread is trying to write to  ss's members
-				// whie ss is doing something else
-				// do mutex lock or some shit
 
 				if err != dialog.ErrCancelled {
 					groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
@@ -181,8 +167,9 @@ func (ss *SelectScreen) Update() UpdateResult {
 				}
 
 				HideTransition()
-				EnableInput()
-			}()
+			})
+
+			return
 		}
 	}
 
@@ -199,10 +186,6 @@ func (ss *SelectScreen) Update() UpdateResult {
 	}
 
 	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
-
-	return SelectUpdateResult{
-		Quit: false,
-	}
 }
 
 func (ss *SelectScreen) Draw() {
@@ -230,10 +213,6 @@ func (ss *SelectScreen) Draw() {
 }
 
 func (ss *SelectScreen) BeforeScreenTransition() {
-	if IsTransitionOn() {
-		HideTransition()
-	}
-	ss.IsGroupSelected = false
 	ss.MenuDrawer.ResetAnimation()
 	EnableInput()
 }

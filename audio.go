@@ -6,6 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+	"os"
+	"strings"
+
 	"github.com/ebitengine/oto/v3"
 )
 
@@ -261,4 +266,37 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 	t := time.Duration(byteLength) / BytesPerSample
 	return t * time.Second / time.Duration(sampleRate)
+}
+
+func LoadAudio(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	defer file.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	type audioStream interface {
+		io.ReadSeeker
+		Length() int64
+	}
+
+	var stream audioStream
+
+	if strings.HasSuffix(strings.ToLower(path), ".mp3") {
+		stream, err = mp3.DecodeWithSampleRate(SampleRate, file)
+	} else {
+		stream, err = vorbis.DecodeWithSampleRate(SampleRate, file)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	audioBytes, err := io.ReadAll(stream)
+	if err != nil {
+		return nil, err
+	}
+
+	return audioBytes, nil
 }
