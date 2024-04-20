@@ -124,6 +124,12 @@ func main() {
 		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
 	}
 
+	// From below, I stole many techniques from here :
+	// https://github.com/TylerGlaiel/FrameTimingControl
+	// You can read more about it here :
+	// https://medium.com/@tglaiel/how-to-make-your-game-run-at-60fps-24c61210fe75
+	// License is at below
+
 	desiredDelta := time.Duration(float64(time.Second) / float64(TargetFPS))
 
 	deltaHistory := CircularQueue[time.Duration]{
@@ -137,11 +143,12 @@ func main() {
 	previousTime := time.Now()
 	timeAccumulator := time.Duration(0)
 
-	fpsEstimateTimer := time.Now()
+	// variables for estimating fps and ups
+	estimateTimer := time.Now()
 	fpsEstimate := float64(0)
 	upsEstimate := float64(0)
-	fpsCounter := 0
-	upsCounter := 0
+	fpsEstimateCounter := 0
+	upsEstimateCounter := 0
 
 	for !rl.WindowShouldClose() {
 		currentTime := time.Now()
@@ -197,7 +204,7 @@ func main() {
 
 			CallTransitionCallbackIfNeeded()
 
-			upsCounter += 1
+			upsEstimateCounter += 1
 			UpdateTransitionTexture()
 
 			//draw screen
@@ -227,7 +234,7 @@ func main() {
 				0,
 				rl.Color{255, 255, 255, 255},
 			)
-			fpsCounter += 1
+			fpsEstimateCounter += 1
 
 			{
 				msg := fmt.Sprintf(
@@ -249,15 +256,39 @@ func main() {
 
 		{
 			now := time.Now()
-			delta := now.Sub(fpsEstimateTimer)
+			delta := now.Sub(estimateTimer)
 			if delta > time.Second {
-				fpsEstimate = float64(fpsCounter) / delta.Seconds()
-				upsEstimate = float64(upsCounter) / delta.Seconds()
-				fpsCounter = 0
-				upsCounter = 0
-				fpsEstimateTimer = now
+				fpsEstimate = float64(fpsEstimateCounter) / delta.Seconds()
+				upsEstimate = float64(upsEstimateCounter) / delta.Seconds()
+				fpsEstimateCounter = 0
+				upsEstimateCounter = 0
+				estimateTimer = now
 			}
 		}
 
 	}
 }
+
+/*
+MIT License
+
+Copyright (c) 2019 Tyler Glaiel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/

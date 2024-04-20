@@ -10,6 +10,7 @@ And I thought it would be easiser to clone and modify it locally rather than for
 Here's the changes I made:
 - removed unused modules (easings, physics, raygui), exmaples, and rres
 - removed .git, .github, and .gitignore
+- custom binding are at ./raylib/custom.go
 
 and probably other things that I forgot
 
