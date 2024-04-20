@@ -34,8 +34,6 @@ func SetNextScreen(screen Screen) {
 	NextScreen = screen
 }
 
-var GlobalDebugFlag bool
-
 var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile)
 
 var TheRenderTexture rl.RenderTexture2D
@@ -81,6 +79,8 @@ func main() {
 
 	rl.SetConfigFlags(rl.FlagWindowResizable)
 
+	var printDebugMsg bool = false
+
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
 
@@ -118,11 +118,6 @@ func main() {
 	defer UnloadAssets()
 
 	GlobalTimerStart()
-
-	debugPrintAt := func(msg string, x, y int32) {
-		rl.DrawText(msg, x+1, y+1, 17, Col(0.1, 0.1, 0.1, 1).ToRlColor())
-		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
-	}
 
 	// From below, I stole many techniques from here :
 	// https://github.com/TylerGlaiel/FrameTimingControl
@@ -184,7 +179,7 @@ func main() {
 			rl.PollInputEvents()
 
 			if rl.IsKeyPressed(ToggleDebugKey) {
-				GlobalDebugFlag = !GlobalDebugFlag
+				printDebugMsg = !printDebugMsg
 			}
 
 			if rl.IsKeyPressed(ReloadAssetsKey) {
@@ -234,14 +229,12 @@ func main() {
 				0,
 				rl.Color{255, 255, 255, 255},
 			)
-			fpsEstimateCounter += 1
 
-			{
-				msg := fmt.Sprintf(
-					"estimate fps : %.3f\n"+
-						"estimate ups : %.3f\n", fpsEstimate, upsEstimate)
-				debugPrintAt(msg, 100, 20)
+			if printDebugMsg {
+				DrawDebugMsgs()
 			}
+
+			fpsEstimateCounter += 1
 
 			rl.EndDrawing()
 
@@ -264,6 +257,9 @@ func main() {
 				upsEstimateCounter = 0
 				estimateTimer = now
 			}
+
+			DebugPrint("estimate fps", fmt.Sprintf("%.3f", fpsEstimate))
+			DebugPrint("estimate ups", fmt.Sprintf("%.3f", upsEstimate))
 		}
 
 	}
