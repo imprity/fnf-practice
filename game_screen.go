@@ -77,6 +77,8 @@ type GameScreen struct {
 	AudioSpeedSetAt time.Duration
 	ZoomSetAt       time.Duration
 
+	LogNoteEvent bool
+
 	// menu stuff
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
@@ -414,6 +416,11 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		return
 	}
 
+	// note logging toggle
+	if rl.IsKeyPressed(ToggleLogNoteEvent) {
+		gs.LogNoteEvent = !gs.LogNoteEvent
+	}
+
 	// =============================================
 	// menu stuff
 	// =============================================
@@ -688,20 +695,22 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.noteIndexStart,
 	)
 
-	reportEvent := func(e NoteEvent) {
-		i := e.Index
-		note := gs.Song.Notes[i]
-		p := note.Player
-		dir := note.Direction
+	logNoteEvent := func(e NoteEvent) {
+		if gs.LogNoteEvent {
+			i := e.Index
+			note := gs.Song.Notes[i]
+			p := note.Player
+			dir := note.Direction
 
-		if e.IsFirstHit() {
-			fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt-e.Time))
-		} else {
-			if e.IsRelease() {
-				fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
-			}
-			if e.IsMiss() {
-				fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
+			if e.IsFirstHit() {
+				fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt-e.Time))
+			} else {
+				if e.IsRelease() {
+					fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
+				}
+				if e.IsMiss() {
+					fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
+				}
 			}
 		}
 	}
@@ -739,7 +748,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		events := gs.NoteEvents[e.Index]
 
 		if len(events) <= 0 {
-			reportEvent(e)
+			logNoteEvent(e)
 			pushPopupIfHumanPlayerHit(e)
 			gs.NoteEvents[e.Index] = append(events, e)
 		} else {
@@ -749,12 +758,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				if last.IsMiss() {
 					t := e.Time - last.Time
 					if t > time.Millisecond*500 { // only report miss every 500 ms
-						reportEvent(e)
+						logNoteEvent(e)
 						gs.NoteEvents[e.Index] = append(events, e)
 					}
 				}
 			} else {
-				reportEvent(e)
+				logNoteEvent(e)
 				pushPopupIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
 			}

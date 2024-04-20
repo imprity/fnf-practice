@@ -88,8 +88,9 @@ var (
 var SongResetKey int32 = rl.KeyR
 
 var (
-	ToggleDebugKey  int32 = rl.KeyF1
-	ReloadAssetsKey int32 = rl.KeyF5
+	ToggleDebugKey     int32 = rl.KeyF1
+	ToggleLogNoteEvent int32 = rl.KeyF2
+	ReloadAssetsKey    int32 = rl.KeyF5
 )
 
 var (
