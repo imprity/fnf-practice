@@ -225,7 +225,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 	// but I have a strong feeling that this is not frame indipendent
 	// but it's just for menu so I don't think it matters too much...
-	blend := Clamp(float32(deltaTime.Seconds()*20), 0.01, 1.0)
+	blend := Clamp(float32(deltaTime.Seconds()*20), 0.00, 1.0)
 
 	seletionY := float32(SCREEN_HEIGHT * 0.5)
 	seletionY -= md.GetSelectedItem().SizeRegular * 0.5

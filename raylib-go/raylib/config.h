@@ -69,7 +69,7 @@
 // Support custom frame control, only for advance users
 // By default EndDrawing() does this job: draws everything + SwapScreenBuffer() + manage frame timing + PollInputEvents()
 // Enabling this flag allows manual control of the frame processes, use at your own risk
-//#define SUPPORT_CUSTOM_FRAME_CONTROL    1
+#define SUPPORT_CUSTOM_FRAME_CONTROL    1
 
 // rcore: Configuration values
 //------------------------------------------------------------------------------------

@@ -645,9 +645,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// currently audio player position's delta is 0 or 10ms
 	// so we are trying to calculate better audio position
 	if !changePositionFromUserInput {
+		/*
 		if !gs.IsPlayingAudio() {
 			gs.audioPosition = gs.InstPlayer.Position()
-		} else if gs.audioPositionSafetyCounter > 5 {
+		} else if gs.audioPositionSafetyCounter > 100 {
 			//every 5 update
 			// we just believe what audio player says without asking
 			// !!! IF AUDIO PLAYER REPORTS TIME THAT IS BIGGER THAN PREVIOU TIME !!!
@@ -664,15 +665,22 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			playerPos := gs.InstPlayer.Position()
 
 			frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
+			
 			limit := time.Duration(float64(time.Millisecond*5) * gs.AudioSpeed())
 
 			if playerPos-gs.audioPosition < limit && frameDelta < limit {
 				gs.audioPosition = gs.audioPosition + frameDelta
-			} else {
+			} else if playerPos > gs.audioPosition{
 				gs.audioPosition = playerPos
+				gs.audioPositionSafetyCounter = 0
 			}
-
 		}
+		*/
+		frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
+		if gs.audioPosition < gs.InstPlayer.Position(){
+			gs.audioPosition += frameDelta
+		}
+		//gs.audioPosition = gs.InstPlayer.Position()
 		gs.audioPositionSafetyCounter++
 	}
 

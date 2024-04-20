@@ -40,6 +40,8 @@ var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile
 
 var TheRenderTexture rl.RenderTexture2D
 
+var TargetFPS int32 = 120
+
 func FnfBeginTextureMode(renderTexture rl.RenderTexture2D) {
 	rl.EndTextureMode()
 	rl.BeginTextureMode(renderTexture)
@@ -124,13 +126,31 @@ func main() {
 		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
 	}
 
+	previousTime := time.Now()
+	timeAccumulator := time.Duration(0)
+
+	fpsEstimateTimer := time.Now()
+	fpsEstimate := float64(0)
+	upsEstimate := float64(0)
+	fpsCounter := 0
+	upsCounter := 0
+	deltaTime := time.Duration(float64(time.Second) / float64(TargetFPS))
+
 	for !rl.WindowShouldClose() {
+		fixedDelta := time.Duration(float64(time.Second) / float64(TargetFPS))
+
+		rl.PollInputEvents()
+
 		if rl.IsKeyPressed(ToggleDebugKey) {
 			GlobalDebugFlag = !GlobalDebugFlag
 		}
 
 		if rl.IsKeyPressed(ReloadAssetsKey) {
 			LoadAssets()
+		}
+
+		if rl.IsKeyPressed(rl.KeyG){
+			println("debug")
 		}
 
 		//update screen
@@ -141,45 +161,83 @@ func main() {
 				NextScreen = nil
 			}
 
-			screen.Update(time.Duration(rl.GetFrameTime() * float32(time.Second)))
+			screen.Update(deltaTime)
 		}
 
 		CallTransitionCallbackIfNeeded()
 
-		UpdateTransitionTexture()
+		upsCounter += 1
 
-		//draw screen
-		rl.BeginTextureMode(TheRenderTexture)
-		screen.Draw()
-		rl.EndTextureMode()
-
-		rl.BeginDrawing()
-		rl.ClearBackground(rl.Color{0, 0, 0, 255})
-
-		// draw render texture
-		rl.DrawTexturePro(
-			TheRenderTexture.Texture,
-			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-			GetScreenRect(),
-			rl.Vector2{},
-			0,
-			rl.Color{255, 255, 255, 255},
-		)
-
-		// draw transition texture
-		rl.DrawTexturePro(
-			TheTransitionManager.TransitionTexture.Texture,
-			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-			GetScreenRect(),
-			rl.Vector2{},
-			0,
-			rl.Color{255, 255, 255, 255},
-		)
-
-		if GlobalDebugFlag {
-			fps := fmt.Sprintf("FPS : %v", rl.GetFPS())
-			debugPrintAt(fps, 10, 10)
+		currentTime := time.Now()
+		deltaTime = currentTime.Sub(previousTime)
+		if deltaTime < 0{
+			deltaTime = 0
 		}
-		rl.EndDrawing()
+
+		previousTime = currentTime
+		timeAccumulator += deltaTime
+
+
+		for timeAccumulator > fixedDelta{
+			UpdateTransitionTexture()
+
+			//draw screen
+			rl.BeginTextureMode(TheRenderTexture)
+			screen.Draw()
+			rl.EndTextureMode()
+
+			rl.BeginDrawing()
+			rl.ClearBackground(rl.Color{0, 0, 0, 255})
+
+			// draw render texture
+			rl.DrawTexturePro(
+				TheRenderTexture.Texture,
+				rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+				GetScreenRect(),
+				rl.Vector2{},
+				0,
+				rl.Color{255, 255, 255, 255},
+			)
+
+			// draw transition texture
+			rl.DrawTexturePro(
+				TheTransitionManager.TransitionTexture.Texture,
+				rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+				GetScreenRect(),
+				rl.Vector2{},
+				0,
+				rl.Color{255, 255, 255, 255},
+			)
+			fpsCounter += 1
+
+			{
+				msg := fmt.Sprintf(
+					"estimate fps : %.3f\n"+
+					"estimate ups : %.3f\n", fpsEstimate, upsEstimate)
+					debugPrintAt(msg, 100,20)
+			}
+
+			rl.EndDrawing()
+
+			rl.SwapScreenBuffer()
+
+			timeAccumulator -= fixedDelta
+			if timeAccumulator < 0{
+				timeAccumulator = 0
+			}
+		}
+
+		{
+			now := time.Now()
+			delta := now.Sub(fpsEstimateTimer)
+			if delta > time.Second{
+				fpsEstimate = float64(fpsCounter) / delta.Seconds()
+				upsEstimate = float64(upsCounter) / delta.Seconds()
+				fpsCounter = 0
+				upsCounter = 0
+				fpsEstimateTimer = now
+			}
+		}
+
 	}
 }
