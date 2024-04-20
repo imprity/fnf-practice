@@ -40,7 +40,7 @@ var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile
 
 var TheRenderTexture rl.RenderTexture2D
 
-var TargetFPS int32 = 120
+var TargetFPS int32 = 60
 
 func FnfBeginTextureMode(renderTexture rl.RenderTexture2D) {
 	rl.EndTextureMode()
@@ -84,8 +84,6 @@ func main() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
 
-	//rl.SetTargetFPS(60)
-
 	rl.SetExitKey(rl.KeyNull)
 
 	// TODO : now that we are rendering to a texture
@@ -126,6 +124,16 @@ func main() {
 		rl.DrawText(msg, x, y, 17, Col(1, 1, 1, 1).ToRlColor())
 	}
 
+	desiredDelta := time.Duration(float64(time.Second) / float64(TargetFPS))
+
+	deltaHistory := CircularQueue[time.Duration]{
+		Data: make([]time.Duration, 4),
+	}
+
+	for i := 0; i < 4; i++ {
+		deltaHistory.Enqueue(desiredDelta)
+	}
+
 	previousTime := time.Now()
 	timeAccumulator := time.Duration(0)
 
@@ -134,51 +142,62 @@ func main() {
 	upsEstimate := float64(0)
 	fpsCounter := 0
 	upsCounter := 0
-	deltaTime := time.Duration(float64(time.Second) / float64(TargetFPS))
 
 	for !rl.WindowShouldClose() {
-		fixedDelta := time.Duration(float64(time.Second) / float64(TargetFPS))
-
-		rl.PollInputEvents()
-
-		if rl.IsKeyPressed(ToggleDebugKey) {
-			GlobalDebugFlag = !GlobalDebugFlag
-		}
-
-		if rl.IsKeyPressed(ReloadAssetsKey) {
-			LoadAssets()
-		}
-
-		if rl.IsKeyPressed(rl.KeyG){
-			println("debug")
-		}
-
-		//update screen
-		if !TheTransitionManager.ShowTransition {
-			if NextScreen != nil {
-				screen = NextScreen
-				screen.BeforeScreenTransition()
-				NextScreen = nil
-			}
-
-			screen.Update(deltaTime)
-		}
-
-		CallTransitionCallbackIfNeeded()
-
-		upsCounter += 1
-
 		currentTime := time.Now()
-		deltaTime = currentTime.Sub(previousTime)
-		if deltaTime < 0{
+		deltaTime := currentTime.Sub(previousTime)
+
+		previousTime = currentTime
+
+		if deltaTime > desiredDelta*8 {
+			deltaTime = desiredDelta
+		}
+
+		if deltaTime < 0 {
 			deltaTime = 0
 		}
 
-		previousTime = currentTime
+		deltaHistory.Enqueue(deltaTime)
+
+		sum := time.Duration(0)
+		for i := 0; i < 4; i++ {
+			sum += deltaHistory.At(i)
+		}
+
+		deltaTime = time.Duration(float64(sum) / 4.0)
+
 		timeAccumulator += deltaTime
 
+		if timeAccumulator > desiredDelta*8 {
+			timeAccumulator = 0
+			deltaTime = desiredDelta
+		}
 
-		for timeAccumulator > fixedDelta{
+		for timeAccumulator > time.Duration(float64(time.Second)/float64(TargetFPS+1)) {
+			rl.PollInputEvents()
+
+			if rl.IsKeyPressed(ToggleDebugKey) {
+				GlobalDebugFlag = !GlobalDebugFlag
+			}
+
+			if rl.IsKeyPressed(ReloadAssetsKey) {
+				LoadAssets()
+			}
+
+			//update screen
+			if !TheTransitionManager.ShowTransition {
+				if NextScreen != nil {
+					screen = NextScreen
+					screen.BeforeScreenTransition()
+					NextScreen = nil
+				}
+
+				screen.Update(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+			}
+
+			CallTransitionCallbackIfNeeded()
+
+			upsCounter += 1
 			UpdateTransitionTexture()
 
 			//draw screen
@@ -213,16 +232,17 @@ func main() {
 			{
 				msg := fmt.Sprintf(
 					"estimate fps : %.3f\n"+
-					"estimate ups : %.3f\n", fpsEstimate, upsEstimate)
-					debugPrintAt(msg, 100,20)
+						"estimate ups : %.3f\n", fpsEstimate, upsEstimate)
+				debugPrintAt(msg, 100, 20)
 			}
 
 			rl.EndDrawing()
 
 			rl.SwapScreenBuffer()
 
-			timeAccumulator -= fixedDelta
-			if timeAccumulator < 0{
+			timeAccumulator -= time.Duration(float64(time.Second) / float64(TargetFPS-1))
+
+			if timeAccumulator < 0 {
 				timeAccumulator = 0
 			}
 		}
@@ -230,7 +250,7 @@ func main() {
 		{
 			now := time.Now()
 			delta := now.Sub(fpsEstimateTimer)
-			if delta > time.Second{
+			if delta > time.Second {
 				fpsEstimate = float64(fpsCounter) / delta.Seconds()
 				upsEstimate = float64(upsCounter) / delta.Seconds()
 				fpsCounter = 0

@@ -105,6 +105,7 @@ type GameScreen struct {
 	wasPlayingWhenTempPause bool
 
 	audioPosition              time.Duration
+	prevPlayerPosition         time.Duration
 	audioPositionSafetyCounter int
 
 	zoom float32
@@ -284,6 +285,7 @@ func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 	}
 
 	gs.audioPosition = at
+	gs.prevPlayerPosition = at
 
 	if gs.InstPlayer.IsReady {
 		gs.InstPlayer.SetPosition(at)
@@ -646,42 +648,67 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// so we are trying to calculate better audio position
 	if !changePositionFromUserInput {
 		/*
-		if !gs.IsPlayingAudio() {
-			gs.audioPosition = gs.InstPlayer.Position()
-		} else if gs.audioPositionSafetyCounter > 100 {
-			//every 5 update
-			// we just believe what audio player says without asking
-			// !!! IF AUDIO PLAYER REPORTS TIME THAT IS BIGGER THAN PREVIOU TIME !!!
-			//
-			// else we just wait until audio player catches up
+			if !gs.IsPlayingAudio() {
+				gs.audioPosition = gs.InstPlayer.Position()
+			} else if gs.audioPositionSafetyCounter > 100 {
+				//every 5 update
+				// we just believe what audio player says without asking
+				// !!! IF AUDIO PLAYER REPORTS TIME THAT IS BIGGER THAN PREVIOU TIME !!!
+				//
+				// else we just wait until audio player catches up
 
-			playerPos := gs.InstPlayer.Position()
+				playerPos := gs.InstPlayer.Position()
 
-			if playerPos > gs.audioPosition {
-				gs.audioPosition = playerPos
-				gs.audioPositionSafetyCounter = 0
+				if playerPos > gs.audioPosition {
+					gs.audioPosition = playerPos
+					gs.audioPositionSafetyCounter = 0
+				}
+			} else {
+				playerPos := gs.InstPlayer.Position()
+
+				frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
+
+				limit := time.Duration(float64(time.Millisecond*5) * gs.AudioSpeed())
+
+				if playerPos-gs.audioPosition < limit && frameDelta < limit {
+					gs.audioPosition = gs.audioPosition + frameDelta
+				} else if playerPos > gs.audioPosition{
+					gs.audioPosition = playerPos
+					gs.audioPositionSafetyCounter = 0
+				}
 			}
-		} else {
-			playerPos := gs.InstPlayer.Position()
-
-			frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
-			
-			limit := time.Duration(float64(time.Millisecond*5) * gs.AudioSpeed())
-
-			if playerPos-gs.audioPosition < limit && frameDelta < limit {
-				gs.audioPosition = gs.audioPosition + frameDelta
-			} else if playerPos > gs.audioPosition{
-				gs.audioPosition = playerPos
-				gs.audioPositionSafetyCounter = 0
-			}
-		}
 		*/
-		frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
-		if gs.audioPosition < gs.InstPlayer.Position(){
-			gs.audioPosition += frameDelta
-		}
+		/*
+			frameDelta := time.Duration(float64(deltaTime) * float64(gs.AudioSpeed()))
+			if gs.audioPosition < gs.InstPlayer.Position(){
+				gs.audioPosition += frameDelta
+			}
+		*/
 		//gs.audioPosition = gs.InstPlayer.Position()
-		gs.audioPositionSafetyCounter++
+		//gs.audioPositionSafetyCounter++
+		{
+			currentPlayerPos := gs.InstPlayer.Position()
+
+			if !changePositionFromUserInput {
+				if !gs.IsPlayingAudio() {
+					gs.audioPosition = currentPlayerPos
+				} else {
+					delta := time.Duration((float64(deltaTime) * gs.AudioSpeed()))
+					if delta > 0 {
+						if gs.audioPosition < currentPlayerPos {
+							gs.audioPosition += delta
+							for gs.audioPosition < gs.prevPlayerPosition {
+								gs.audioPosition += delta
+							}
+						}
+					}
+
+					if gs.prevPlayerPosition < currentPlayerPos {
+						gs.prevPlayerPosition = currentPlayerPos
+					}
+				}
+			}
+		}
 	}
 
 	audioPos := gs.AudioPosition()
@@ -1432,6 +1459,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.DrawMenu = false
 	gs.MenuDrawer.SelectedIndex = 0
+	gs.prevPlayerPosition = 0
 
 	gs.tempPauseUntil = -Years150
 	gs.wasPlayingWhenTempPause = false

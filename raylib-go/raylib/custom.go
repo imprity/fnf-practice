@@ -6,17 +6,17 @@ package rl
 import "C"
 
 // SwapScreenBuffer - Swap back buffer with front buffer (screen drawing)
-func SwapScreenBuffer(){
+func SwapScreenBuffer() {
 	C.SwapScreenBuffer()
 }
 
 // PollInputEvents - Register all input events
-func PollInputEvents(){
+func PollInputEvents() {
 	C.PollInputEvents()
 }
 
 // WaitTime - Wait for some time (halt program execution)
-func WaitTime(seconds float64){
+func WaitTime(seconds float64) {
 	cseconds := (C.double)(seconds)
 	C.WaitTime(cseconds)
 }
