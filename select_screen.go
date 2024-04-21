@@ -9,7 +9,7 @@ import (
 )
 
 type SelectScreen struct {
-	MenuDrawer *MenuDrawer
+	MainMenu *MenuDrawer
 
 	PreferredDifficulty FnfDifficulty
 
@@ -26,27 +26,123 @@ func NewSelectScreen() *SelectScreen {
 
 	ss.MenuToGroup = make(map[int64]FnfPathGroup)
 
-	ss.MenuDrawer = NewMenuDrawer()
+	ss.MainMenu = NewMenuDrawer()
 
-	menuDeco := MakeMenuItem()
+	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
 	menuDeco.Type = MenuItemDeco
-
 	menuDeco.ColRegular = Color255(0x4A, 0x7F, 0xD7, 0xFF)
 	menuDeco.ColSelected = Color255(0x4A, 0x7F, 0xD7, 0xFF)
-
 	menuDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 	menuDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
+	ss.MainMenu.Items = append(ss.MainMenu.Items, menuDeco)
 
-	ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuDeco)
+	// =======================================
+	// creating directory open menu
+	// =======================================
 
-	directoryOpen := MakeMenuItem()
+	newSongMenuItem := func(group FnfPathGroup) *MenuItem {
+		menuItem := NewMenuItem()
+
+		menuItem.Type = MenuItemTrigger
+		menuItem.Name = group.SongName
+		ss.MenuToGroup[menuItem.Id] = group
+
+		menuItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+			if !bValue {
+				return
+			}
+			DisableInput()
+			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+
+			ShowTransition(SongLoadingScreen, func() {
+				var instBytes []byte
+				var voiceBytes []byte
+
+				var err error
+
+				// TODO : dosomething with this error other than panicking
+				instBytes, err = LoadAudio(group.InstPath)
+				if err != nil {
+					ErrorLogger.Fatal(err)
+				}
+
+				if group.VoicePath != "" {
+					voiceBytes, err = LoadAudio(group.VoicePath)
+					if err != nil {
+						ErrorLogger.Fatal(err)
+					}
+				}
+
+				TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
+				SetNextScreen(TheGameScreen)
+
+				EnableInput()
+				HideTransition()
+			})
+		}
+
+		return menuItem
+	}
+
+	directoryOpen := NewMenuItem()
 	directoryOpen.Name = "Search Directory"
 	directoryOpen.Type = MenuItemTrigger
+	directoryOpen.OnValueChange = func(bValue bool, _ float32, _ string) {
+		if !bValue {
+			return
+		}
+		DisableInput()
+		ShowTransition(DirSelectScreen, func() {
+			defer EnableInput()
+			defer HideTransition()
 
-	ss.DirectoryOpenItemId = directoryOpen.Id
+			directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
+			if err != nil && err != dialog.ErrCancelled {
+				ErrorLogger.Fatal(err)
+			}
 
-	ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, directoryOpen)
+			if err == dialog.ErrCancelled {
+				return
+			}
+
+			groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
+
+			if len(groups) > 0 {
+				for _, group := range groups {
+					menuItem := newSongMenuItem(group)
+					ss.MainMenu.Items = append(ss.MainMenu.Items, menuItem)
+				}
+
+				// =====================
+				// add song deco
+				// =====================
+				if deco := ss.MainMenu.GetItemById(ss.SongDecoItemId); deco == nil {
+					songDeco := NewMenuItem()
+
+					songDeco.Type = MenuItemDeco
+
+					songDeco.Name = "Songs"
+
+					songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+					songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+
+					songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
+					songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
+
+					ss.MainMenu.InsertAt(2, songDeco)
+
+					ss.SongDecoItemId = songDeco.Id
+				}
+				// =====================
+			}
+		})
+	}
+	ss.MainMenu.Items = append(ss.MainMenu.Items, directoryOpen)
+
+	// =======================================
+	// end of creating directory open menu
+	// =======================================
 
 	return ss
 }
@@ -80,108 +176,13 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 }
 
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
-	ss.MenuDrawer.Update(deltaTime)
-
-	for _, item := range ss.MenuDrawer.Items {
-		if item.Type == MenuItemTrigger && item.Bvalue {
-			if group, ok := ss.MenuToGroup[item.Id]; ok {
-				difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
-
-				ShowTransition(SongLoadingScreen, func() {
-					var instBytes []byte
-					var voiceBytes []byte
-
-					var err error
-
-					// TODO : dosomething with this error other than panicking
-					instBytes, err = LoadAudio(group.InstPath)
-					if err != nil {
-						ErrorLogger.Fatal(err)
-					}
-
-					if group.VoicePath != "" {
-						voiceBytes, err = LoadAudio(group.VoicePath)
-						if err != nil {
-							ErrorLogger.Fatal(err)
-						}
-					}
-
-					TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
-					SetNextScreen(TheGameScreen)
-
-					HideTransition()
-				})
-			}
-		}
-	}
-
-	// =============================
-	// load group
-	// =============================
-
-	if directoryItem, ok := ss.MenuDrawer.GetItemById(ss.DirectoryOpenItemId); ok {
-		if directoryItem.Bvalue {
-			ShowTransition(DirSelectScreen, func() {
-				directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
-				if err != nil && err != dialog.ErrCancelled {
-					ErrorLogger.Fatal(err)
-				}
-
-				if err != dialog.ErrCancelled {
-					groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
-
-					if len(groups) > 0 {
-						for _, group := range groups {
-							menuItem := MakeMenuItem()
-
-							menuItem.Type = MenuItemTrigger
-							menuItem.Name = group.SongName
-
-							ss.MenuToGroup[menuItem.Id] = group
-
-							ss.MenuDrawer.Items = append(ss.MenuDrawer.Items, menuItem)
-						}
-
-						// =====================
-						// add song deco
-						// =====================
-						if _, hasSongDeco := ss.MenuDrawer.GetItemById(ss.SongDecoItemId); !hasSongDeco {
-							songDeco := MakeMenuItem()
-
-							songDeco.Type = MenuItemDeco
-
-							songDeco.Name = "Songs"
-
-							songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-							songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-
-							songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-							songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
-
-							ss.MenuDrawer.InsertAt(2, songDeco)
-
-							ss.SongDecoItemId = songDeco.Id
-						}
-						// =====================
-					}
-				}
-
-				HideTransition()
-			})
-
-			return
-		}
-	}
-
-	// =============================
-	// end of loading group
-	// =============================
+	ss.MainMenu.Update(deltaTime)
 
 	if AreKeysPressed(NoteKeysLeft...) {
 		ss.PreferredDifficulty -= 1
 	}
 
-	if AreKeysPressed(NotekeysRight...) {
+	if AreKeysPressed(NoteKeysRight...) {
 		ss.PreferredDifficulty += 1
 	}
 
@@ -192,9 +193,9 @@ func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
-	ss.MenuDrawer.Draw()
+	ss.MainMenu.Draw()
 
-	group, ok := ss.MenuToGroup[ss.MenuDrawer.GetSeletedId()]
+	group, ok := ss.MenuToGroup[ss.MainMenu.GetSeletedId()]
 
 	if ok {
 		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
@@ -213,6 +214,6 @@ func (ss *SelectScreen) Draw() {
 }
 
 func (ss *SelectScreen) BeforeScreenTransition() {
-	ss.MenuDrawer.ResetAnimation()
+	ss.MainMenu.ResetAnimation()
 	EnableInput()
 }

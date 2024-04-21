@@ -2,6 +2,7 @@ package main
 
 import (
 	//"math"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,9 +14,21 @@ type MenuItemType int
 const (
 	MenuItemTrigger MenuItemType = iota
 	MenuItemToggle
+	MenuItemNumber
 	MenuItemList
 	MenuItemDeco
+	MenuItemTypeSize
 )
+
+var MenuItemTypeStrs [MenuItemTypeSize]string
+
+func init() {
+	MenuItemTypeStrs[MenuItemTrigger] = "Trigger"
+	MenuItemTypeStrs[MenuItemToggle] = "Toggle"
+	MenuItemTypeStrs[MenuItemNumber] = "Number"
+	MenuItemTypeStrs[MenuItemList] = "List"
+	MenuItemTypeStrs[MenuItemDeco] = "Deco"
+}
 
 type MenuItem struct {
 	Type MenuItemType
@@ -32,10 +45,20 @@ type MenuItem struct {
 
 	Bvalue bool
 
+	NValue float32
+
+	NValueMin      float32
+	NValueMax      float32
+	NValueInterval float32
+
+	NValueFmtString string
+
 	ListSelected int
 	List         []string
 
 	ValueChangedAt time.Duration
+
+	OnValueChange func(bValue bool, nValue float32, listSelection string)
 }
 
 var MenuItemMaxId int64
@@ -46,11 +69,11 @@ const (
 	MenuItemSizeSelectedDefault = 90
 )
 
-func MakeMenuItem() MenuItem {
+func NewMenuItem() *MenuItem {
 	MenuItemIdMutex.Lock()
 	defer MenuItemIdMutex.Unlock()
 
-	item := MenuItem{}
+	item := new(MenuItem)
 
 	MenuItemMaxId += 1
 
@@ -67,8 +90,16 @@ func MakeMenuItem() MenuItem {
 	return item
 }
 
+func (mi *MenuItem) CanDecrement() bool {
+	return mi.NValue-mi.NValueInterval >= mi.NValueMin-0.00001
+}
+
+func (mi *MenuItem) CanIncrement() bool {
+	return mi.NValue+mi.NValueInterval <= mi.NValueMax+0.00001
+}
+
 type MenuDrawer struct {
-	Items []MenuItem
+	Items []*MenuItem
 
 	SelectedIndex int
 
@@ -156,6 +187,16 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// handling input
 	// ==========================
 	if !md.InputDisabled {
+		callItemCallaback := func(item *MenuItem) {
+			listSelection := ""
+			if 0 <= item.ListSelected && item.ListSelected < len(item.List) {
+				listSelection = item.List[item.ListSelected]
+			}
+			if item.OnValueChange != nil {
+				item.OnValueChange(item.Bvalue, item.NValue, listSelection)
+			}
+		}
+
 		if AreKeysDown(NoteKeysUp...) {
 			tryingToMove = true
 			tryingToMoveUp = true
@@ -167,52 +208,73 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		}
 
 		// check if menu items are all deco
-		firstRate := time.Millisecond * 200
-		repeateRate := time.Millisecond * 110
+		const scrollFirstRate = time.Millisecond * 200
+		const scrollRepeatRate = time.Millisecond * 110
 
-		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysUp...) {
+		if HandleKeyRepeat(scrollFirstRate, scrollRepeatRate, NoteKeysUp...) {
 			if !allDeco {
 				scrollUntilNonDeco(false)
 			}
-
 		}
 
-		if HandleKeyRepeat(firstRate, repeateRate, NoteKeysDown...) {
+		if HandleKeyRepeat(scrollFirstRate, scrollRepeatRate, NoteKeysDown...) {
 			if !allDeco {
 				scrollUntilNonDeco(true)
 			}
 		}
 
-		if AreKeysPressed(SelectKey) {
-			item := md.Items[md.SelectedIndex]
+		selected := md.Items[md.SelectedIndex]
 
-			switch item.Type {
+		if AreKeysPressed(SelectKey) {
+			switch selected.Type {
 			case MenuItemTrigger:
-				md.Items[md.SelectedIndex].Bvalue = true
-				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+				selected.Bvalue = true
+				selected.ValueChangedAt = GlobalTimerNow()
+				callItemCallaback(selected)
 			case MenuItemToggle:
-				md.Items[md.SelectedIndex].Bvalue = !md.Items[md.SelectedIndex].Bvalue
-				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
+				selected.Bvalue = !selected.Bvalue
+				selected.ValueChangedAt = GlobalTimerNow()
+				callItemCallaback(selected)
 			}
 		}
 
-		item := md.Items[md.SelectedIndex]
-
-		if item.Type == MenuItemList && len(item.List) > 0 {
-			selectedNew := item.ListSelected
+		if selected.Type == MenuItemList && len(selected.List) > 0 {
+			listSelectedNew := selected.ListSelected
 
 			if AreKeysPressed(NoteKeysLeft...) {
 				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-				selectedNew -= 1
+				listSelectedNew -= 1
 			}
 
-			if AreKeysPressed(NotekeysRight...) {
+			if AreKeysPressed(NoteKeysRight...) {
 				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-				selectedNew += 1
+				listSelectedNew += 1
 			}
 
-			selectedNew = Clamp(selectedNew, 0, len(item.List)-1)
-			md.Items[md.SelectedIndex].ListSelected = selectedNew
+			listSelectedNew = Clamp(listSelectedNew, 0, len(selected.List)-1)
+			selected.ListSelected = listSelectedNew
+			callItemCallaback(selected)
+
+		} else if selected.Type == MenuItemNumber {
+
+			const firstRate = time.Millisecond * 200
+			const repeateRate = time.Millisecond * 110
+
+			if HandleKeyRepeat(firstRate, repeateRate, NoteKeysRight...) {
+				if selected.CanIncrement() {
+					selected.NValue += selected.NValueInterval
+					selected.ValueChangedAt = GlobalTimerNow()
+					callItemCallaback(selected)
+				}
+			}
+
+			if HandleKeyRepeat(firstRate, repeateRate, NoteKeysLeft...) {
+				if selected.CanDecrement() {
+					selected.NValue -= selected.NValueInterval
+					selected.ValueChangedAt = GlobalTimerNow()
+					callItemCallaback(selected)
+				}
+			}
 		}
 	}
 	// ==========================
@@ -307,6 +369,13 @@ func (md *MenuDrawer) Draw() {
 		} else if item.Type == MenuItemList && len(item.List) > 0 {
 			textToDraw += " : "
 			textToDraw += item.List[item.ListSelected]
+		} else if item.Type == MenuItemNumber {
+			textToDraw += " : "
+			if item.NValueFmtString != "" {
+				textToDraw += fmt.Sprintf(item.NValueFmtString, item.NValue)
+			} else {
+				textToDraw += fmt.Sprintf("%.5f", item.NValue)
+			}
 		}
 
 		rl.DrawTextEx(FontBold, textToDraw, rl.Vector2{x, y},
@@ -316,9 +385,9 @@ func (md *MenuDrawer) Draw() {
 	}
 }
 
-func (md *MenuDrawer) GetSelectedItem() MenuItem {
+func (md *MenuDrawer) GetSelectedItem() *MenuItem {
 	if len(md.Items) <= 0 {
-		return MenuItem{}
+		return nil
 	}
 	return md.Items[md.SelectedIndex]
 }
@@ -330,30 +399,20 @@ func (md *MenuDrawer) GetSeletedId() int64 {
 	return md.Items[md.SelectedIndex].Id
 }
 
-func (md *MenuDrawer) GetItemById(id int64) (MenuItem, bool) {
+func (md *MenuDrawer) GetItemById(id int64) *MenuItem {
 	for _, item := range md.Items {
 		if item.Id == id {
-			return item, true
+			return item
 		}
 	}
 
-	return MenuItem{}, false
+	return nil
 }
 
-func (md *MenuDrawer) SetItem(toSet MenuItem) bool {
-	for i, item := range md.Items {
-		if item.Id == toSet.Id {
-			md.Items[i] = toSet
-		}
-	}
-
-	return false
-}
-
-func (md *MenuDrawer) InsertAt(at int, items ...MenuItem) {
+func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
 	at = Clamp(at, 0, len(md.Items))
 
-	var newItems []MenuItem
+	var newItems []*MenuItem
 
 	newItems = append(newItems, md.Items[0:at]...)
 	newItems = append(newItems, items...)

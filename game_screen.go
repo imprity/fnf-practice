@@ -83,8 +83,6 @@ type GameScreen struct {
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
 
-	QuitMenuItemId       int64
-	ResumeMenuItemId     int64
 	BotPlayMenuItemId    int64
 	DifficultyMenuItemId int64
 
@@ -151,30 +149,47 @@ func NewGameScreen() *GameScreen {
 
 	// set up menu
 	gs.MenuDrawer = NewMenuDrawer()
+	{
+		resumeItem := NewMenuItem()
+		resumeItem.Type = MenuItemTrigger
+		resumeItem.Name = "Resume"
+		resumeItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+			if bValue {
+				gs.DrawMenu = false
+			}
+		}
+		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, resumeItem)
 
-	resumeItem := MakeMenuItem()
-	resumeItem.Type = MenuItemTrigger
-	resumeItem.Name = "Resume"
-	gs.ResumeMenuItemId = resumeItem.Id
-	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, resumeItem)
+		botPlayItem := NewMenuItem()
+		botPlayItem.Type = MenuItemToggle
+		botPlayItem.Name = "Bot Play"
+		gs.BotPlayMenuItemId = botPlayItem.Id
+		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, botPlayItem)
 
-	botPlayItem := MakeMenuItem()
-	botPlayItem.Type = MenuItemToggle
-	botPlayItem.Name = "Bot Play"
-	gs.BotPlayMenuItemId = botPlayItem.Id
-	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, botPlayItem)
+		difficultyItem := NewMenuItem()
+		difficultyItem.Type = MenuItemList
+		difficultyItem.Name = "Difficulty"
+		gs.DifficultyMenuItemId = difficultyItem.Id
+		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, difficultyItem)
 
-	difficultyItem := MakeMenuItem()
-	difficultyItem.Type = MenuItemList
-	difficultyItem.Name = "Difficulty"
-	gs.DifficultyMenuItemId = difficultyItem.Id
-	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, difficultyItem)
+		quitItem := NewMenuItem()
+		quitItem.Type = MenuItemTrigger
+		quitItem.Name = "Return To Menu"
+		quitItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+			if bValue {
+				if gs.IsSongLoaded {
+					gs.PauseAudio()
+				}
+				gs.MenuDrawer.InputDisabled = true
 
-	quitItem := MakeMenuItem()
-	quitItem.Type = MenuItemTrigger
-	quitItem.Name = "Return To Menu"
-	gs.QuitMenuItemId = quitItem.Id
-	gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, quitItem)
+				ShowTransition(BlackPixel, func() {
+					SetNextScreen(TheSelectScreen)
+					HideTransition()
+				})
+			}
+		}
+		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, quitItem)
+	}
 
 	return gs
 }
@@ -431,11 +446,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 		// we popped up menu
 		if !wasDrawingMenu && gs.DrawMenu {
-			botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+			botPlayItem := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
 			botPlayItem.Bvalue = gs.IsBotPlay()
-			gs.MenuDrawer.SetItem(botPlayItem)
 
-			difficultyItem, _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+			difficultyItem := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
 			difficultyItem.List = difficultyItem.List[:0]
 
 			for d := FnfDifficulty(0); d < DifficultySize; d++ {
@@ -446,8 +460,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					}
 				}
 			}
-
-			gs.MenuDrawer.SetItem(difficultyItem)
 		}
 	}
 
@@ -460,32 +472,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	gs.MenuDrawer.Update(deltaTime)
 
 	if gs.DrawMenu {
-		resumeItem, _ := gs.MenuDrawer.GetItemById(gs.ResumeMenuItemId)
-		if resumeItem.Bvalue {
-			gs.DrawMenu = false
-		}
-
-		botPlayItem, _ := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+		botPlayItem := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
 		if botPlayItem.Bvalue != gs.IsBotPlay() {
 			gs.SetBotPlay(botPlayItem.Bvalue)
 		}
 
-		// handle quit
-		quitItem, _ := gs.MenuDrawer.GetItemById(gs.QuitMenuItemId)
-		if quitItem.Bvalue {
-			if gs.IsSongLoaded {
-				gs.PauseAudio()
-			}
-			gs.MenuDrawer.InputDisabled = true
-
-			ShowTransition(BlackPixel, func() {
-				SetNextScreen(TheSelectScreen)
-				HideTransition()
-			})
-			return
-		}
-
-		dItem, _ := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+		dItem := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
 		dStr := dItem.List[dItem.ListSelected]
 
 		for d, str := range DifficultyStrs {

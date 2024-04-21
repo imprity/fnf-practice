@@ -61,14 +61,14 @@ var (
 	NoteKeysLeft  = []int32{rl.KeyA, rl.KeyLeft}
 	NoteKeysDown  = []int32{rl.KeyS, rl.KeyDown}
 	NoteKeysUp    = []int32{rl.KeySemicolon, rl.KeyUp}
-	NotekeysRight = []int32{rl.KeyApostrophe, rl.KeyRight}
+	NoteKeysRight = []int32{rl.KeyApostrophe, rl.KeyRight}
 )
 
 var NoteKeys = [NoteDirSize][]int32{
 	NoteKeysLeft,
 	NoteKeysDown,
 	NoteKeysUp,
-	NotekeysRight,
+	NoteKeysRight,
 }
 
 var SelectKey int32 = rl.KeyEnter
