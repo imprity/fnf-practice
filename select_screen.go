@@ -130,7 +130,7 @@ func NewSelectScreen() *SelectScreen {
 					songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 					songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 
-					ss.MainMenu.InsertAt(2, songDeco)
+					ss.MainMenu.InsertAt(3, songDeco)
 
 					ss.SongDecoItemId = songDeco.Id
 				}
@@ -143,6 +143,23 @@ func NewSelectScreen() *SelectScreen {
 	// =======================================
 	// end of creating directory open menu
 	// =======================================
+
+	optionsItem := NewMenuItem()
+	optionsItem.Name = "Options"
+	optionsItem.Type = MenuItemTrigger
+	optionsItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+		if !bValue {
+			return
+		}
+
+		ShowTransition(BlackPixel, func() {
+			DisableInput()
+			SetNextScreen(TheOptionsScreen)
+			EnableInput()
+			HideTransition()
+		})
+	}
+	ss.MainMenu.Items = append(ss.MainMenu.Items, optionsItem)
 
 	return ss
 }

@@ -24,8 +24,9 @@ const (
 )
 
 var (
-	TheSelectScreen *SelectScreen
-	TheGameScreen   *GameScreen
+	TheSelectScreen  *SelectScreen
+	TheOptionsScreen *OptionsScreen
+	TheGameScreen    *GameScreen
 
 	NextScreen Screen
 )
@@ -86,9 +87,6 @@ func main() {
 
 	rl.SetExitKey(rl.KeyNull)
 
-	// TODO : now that we are rendering to a texture
-	// mouse coordinates will be wrong, make a function
-	// that gets actual mouse position
 	TheRenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 	defer rl.UnloadRenderTexture(TheRenderTexture)
 
@@ -106,8 +104,10 @@ func main() {
 	InitTransition()
 	defer FreeTransition()
 
+	// create screens
 	TheGameScreen = NewGameScreen()
 	TheSelectScreen = NewSelectScreen()
+	TheOptionsScreen = NewOptionsScreen()
 
 	var screen Screen = TheSelectScreen
 
