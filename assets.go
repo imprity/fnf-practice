@@ -18,6 +18,20 @@ var (
 	ArrowsRects [NoteDirSize]rl.Rectangle
 )
 
+const (
+	UIarrowLeftOuter = iota
+	UIarrowRightOuter
+	UIarrowLeftInner
+	UIarrowRightInner
+
+	UIarrowRectsSize
+)
+
+var (
+	UIarrowsTex  rl.Texture2D
+	UIarrowRects [UIarrowRectsSize]rl.Rectangle
+)
+
 var (
 	ArrowsGlowTex   rl.Texture2D
 	ArrowsGlowRects [NoteDirSize]rl.Rectangle
@@ -183,6 +197,18 @@ func LoadAssets() {
 		x := float32(i) * width
 		ArrowsGlowRects[i] = rl.Rectangle{
 			x, 0, width, float32(ArrowsGlowTex.Height),
+		}
+	}
+
+	// NOTE : same also goes for ui arrows
+	UIarrowsTex = loadTexture("assets/ui_arrows.png", true, ".png")
+
+	width = float32(UIarrowsTex.Width) / 4.0
+
+	for i := 0; i < UIarrowRectsSize; i++ {
+		x := float32(i) * width
+		UIarrowRects[i] = rl.Rectangle{
+			x, 0, width, float32(UIarrowsTex.Height),
 		}
 	}
 

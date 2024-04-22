@@ -36,8 +36,8 @@ type MenuItem struct {
 	SizeRegular  float32
 	SizeSelected float32
 
-	ColSelected Color
-	ColRegular  Color
+	Color            Color
+	FadeIfUnselected bool
 
 	Id int64
 
@@ -56,7 +56,11 @@ type MenuItem struct {
 	ListSelected int
 	List         []string
 
-	ValueChangedAt time.Duration
+	// variables for animations
+	NameClickTimer       time.Duration
+	ValueClickTimer      time.Duration
+	LeftArrowClickTimer  time.Duration
+	RightArrowClickTimer time.Duration
 
 	OnValueChange func(bValue bool, nValue float32, listSelection string)
 }
@@ -82,10 +86,14 @@ func NewMenuItem() *MenuItem {
 	item.SizeRegular = MenuItemSizeRegularDefault
 	item.SizeSelected = MenuItemSizeSelectedDefault
 
-	item.ColSelected = Col(1, 1, 1, 1)
-	item.ColRegular = Col(1, 1, 1, 0.5)
+	item.NameClickTimer = -Years150
+	item.ValueClickTimer = -Years150
+	item.LeftArrowClickTimer = -Years150
+	item.RightArrowClickTimer = -Years150
 
-	item.ValueChangedAt = Years150
+	item.Color = Col(1, 1, 1, 1)
+
+	item.FadeIfUnselected = true
 
 	return item
 }
@@ -229,49 +237,78 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			switch selected.Type {
 			case MenuItemTrigger:
 				selected.Bvalue = true
-				selected.ValueChangedAt = GlobalTimerNow()
-				callItemCallaback(selected)
+				selected.NameClickTimer = GlobalTimerNow()
 			case MenuItemToggle:
 				selected.Bvalue = !selected.Bvalue
-				selected.ValueChangedAt = GlobalTimerNow()
-				callItemCallaback(selected)
+				selected.ValueClickTimer = GlobalTimerNow()
 			}
+
+			callItemCallaback(selected)
 		}
 
-		if selected.Type == MenuItemList && len(selected.List) > 0 {
-			listSelectedNew := selected.ListSelected
+		switch selected.Type {
+		case MenuItemList, MenuItemNumber, MenuItemToggle:
+			canGoLeft := true
+			canGoRight := true
 
-			if AreKeysPressed(NoteKeysLeft...) {
-				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-				listSelectedNew -= 1
+			if selected.Type == MenuItemNumber {
+				canGoLeft = selected.CanDecrement()
+				canGoRight = selected.CanIncrement()
+			} else if selected.Type == MenuItemList {
+				canGoLeft = len(selected.List) > 0
+				canGoRight = len(selected.List) > 0
 			}
 
-			if AreKeysPressed(NoteKeysRight...) {
-				md.Items[md.SelectedIndex].ValueChangedAt = GlobalTimerNow()
-				listSelectedNew += 1
+			if AreKeysDown(NoteKeysLeft...) && canGoLeft {
+				selected.LeftArrowClickTimer = GlobalTimerNow()
 			}
 
-			listSelectedNew = Clamp(listSelectedNew, 0, len(selected.List)-1)
-			selected.ListSelected = listSelectedNew
-			callItemCallaback(selected)
+			if AreKeysDown(NoteKeysRight...) && canGoRight {
+				selected.RightArrowClickTimer = GlobalTimerNow()
+			}
 
-		} else if selected.Type == MenuItemNumber {
+			goLeft := false
+			goRight := false
 
 			const firstRate = time.Millisecond * 200
 			const repeateRate = time.Millisecond * 110
 
-			if HandleKeyRepeat(firstRate, repeateRate, NoteKeysRight...) {
-				if selected.CanIncrement() {
-					selected.NValue += selected.NValueInterval
-					selected.ValueChangedAt = GlobalTimerNow()
+			goLeft = HandleKeyRepeat(firstRate, repeateRate, NoteKeysLeft...) && canGoLeft
+			goRight = HandleKeyRepeat(firstRate, repeateRate, NoteKeysRight...) && canGoRight
+
+			switch selected.Type {
+			case MenuItemToggle:
+				if goLeft || goRight {
+					selected.Bvalue = !selected.Bvalue
 					callItemCallaback(selected)
 				}
-			}
+			case MenuItemList:
+				if len(selected.List) > 0 {
+					listSelected := selected.ListSelected
 
-			if HandleKeyRepeat(firstRate, repeateRate, NoteKeysLeft...) {
-				if selected.CanDecrement() {
+					if goLeft && canGoLeft {
+						listSelected -= 1
+					} else if goRight && canGoRight {
+						listSelected += 1
+					}
+
+					if listSelected >= len(selected.List) {
+						listSelected = 0
+					} else if listSelected < 0 {
+						listSelected = len(selected.List) - 1
+					}
+
+					if selected.ListSelected != listSelected {
+						selected.ListSelected = listSelected
+						callItemCallaback(selected)
+					}
+				}
+			case MenuItemNumber:
+				if goLeft {
 					selected.NValue -= selected.NValueInterval
-					selected.ValueChangedAt = GlobalTimerNow()
+					callItemCallaback(selected)
+				} else if goRight {
+					selected.NValue += selected.NValueInterval
 					callItemCallaback(selected)
 				}
 			}
@@ -325,61 +362,171 @@ func (md *MenuDrawer) Draw() {
 		rl.Color{255, 0, 0, 255})
 	// DEBUG =======================================
 
+	calcClick := func(timer time.Duration) float32 {
+		clickT := float64(GlobalTimerNow()-timer) / float64(time.Millisecond*150)
+
+		if clickT > 0 {
+			if clickT > 1 {
+				clickT = 1
+			}
+			tt := -clickT * (clickT - 1)
+			return float32(1.0 - tt*0.4)
+		} else {
+			return 1
+		}
+	}
+
+	calcArrowClick := func(timer time.Duration) float32 {
+		clickT := float64(TimeSinceNow(timer)) / float64(time.Millisecond*70)
+		clickT = Clamp(clickT, 0, 1)
+
+		tt := clickT * clickT
+		return float32(tt*0.1 + 0.9)
+	}
+
 	yOffset := md.Yoffset
 	xOffset := float32(100)
 
+	xAdvance := xOffset
+	yCenter := float32(0)
+
+	drawText := func(text string, fontSize, scale float32, col Color) float32 {
+		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
+
+		pos := rl.Vector2{
+			X: xAdvance,
+			Y: yCenter - textSize.Y*scale*0.5,
+		}
+
+		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
+		return textSize.X
+	}
+
+	drawTextCentered := func(text string, fontSize, scale, width float32, col Color) float32 {
+		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
+
+		pos := rl.Vector2{
+			X: (width-textSize.X)*0.5 + xAdvance,
+			Y: yCenter - textSize.Y*scale*0.5,
+		}
+
+		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
+		return width
+	}
+
+	drawImage := func(
+		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col Color) float32 {
+
+		wScale := height / srcRect.Height
+
+		dstRect := rl.Rectangle{
+			X: xAdvance, Y: yCenter - height*0.5*scale,
+			Width: wScale * srcRect.Width * scale, Height: height * scale,
+		}
+
+		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col.ToImageRGBA())
+		return wScale * srcRect.Width
+	}
+
+	drawArrow := func(drawLeft bool, height, scale float32, fill, stroke Color) float32 {
+		var innerRect rl.Rectangle
+		var outerRect rl.Rectangle
+
+		if drawLeft {
+			innerRect = UIarrowRects[UIarrowLeftInner]
+			outerRect = UIarrowRects[UIarrowLeftOuter]
+		} else {
+			innerRect = UIarrowRects[UIarrowRightInner]
+			outerRect = UIarrowRects[UIarrowRightOuter]
+		}
+
+		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+		advance := drawImage(UIarrowsTex, innerRect, height, scale, fill)
+		drawImage(UIarrowsTex, outerRect, height, scale, stroke)
+		rl.EndBlendMode()
+
+		return advance
+	}
+
+	fadeC := func(col Color, fade float64) Color {
+		col.A *= fade
+		return col
+	}
+
 	for index, item := range md.Items {
-		y := yOffset
-		x := xOffset
+		yCenter = yOffset + item.SizeRegular*0.5
 
-		scale := float32(1.0)
+		xAdvance = xOffset
 
-		col := item.ColRegular
+		fade := float64(0.5)
 		size := item.SizeRegular
 
 		if index == md.SelectedIndex {
-			col = LerpRGBA(item.ColRegular, item.ColSelected, float64(md.ScrollAnimT))
+			fade = Lerp(0.5, 1.0, float64(md.ScrollAnimT))
 			size = Lerp(item.SizeRegular, item.SizeSelected, md.ScrollAnimT)
-			x += Lerp(0, 30, md.ScrollAnimT)
+			xAdvance += Lerp(0, 30, md.ScrollAnimT)
 		}
 
-		if item.Type == MenuItemTrigger || item.Type == MenuItemToggle {
-			clickT := float32(GlobalTimerNow()-item.ValueChangedAt) / float32(md.TriggerAnimDuraiton)
+		if !item.FadeIfUnselected {
+			fade = 1.0
+		}
 
-			if clickT > 0 {
-				if clickT > 1 {
-					clickT = 1
+		nameScale := calcClick(item.NameClickTimer)
+		valueScale := calcClick(item.ValueClickTimer)
+		leftArrowScale := calcArrowClick(item.LeftArrowClickTimer)
+		rightArrowScale := calcArrowClick(item.RightArrowClickTimer)
+
+		xAdvance += drawText(item.Name, size, nameScale, fadeC(item.Color, fade))
+		xAdvance += 40
+
+		switch item.Type {
+		case MenuItemToggle, MenuItemList, MenuItemNumber:
+			arrowFill := fadeC(Col(1, 1, 1, 1), fade)
+			arrowStroke := Col(0, 0, 0, 1)
+
+			if index != md.SelectedIndex {
+				arrowStroke = Color{}
+			}
+
+			xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke)
+
+			xAdvance += 10 // <- 10 value 10 ->
+
+			valueWidthMax := float32(0)
+
+			switch item.Type {
+			case MenuItemToggle:
+				valueWidthMax = rl.MeasureTextEx(FontBold, "yes", size, 0).X
+			case MenuItemList:
+				for _, entry := range item.List {
+					valueWidthMax = max(rl.MeasureTextEx(FontBold, entry, size, 0).X, valueWidthMax)
 				}
-				tt := -clickT * (clickT - 1)
-
-				scale *= (1 - tt*0.4)
+			case MenuItemNumber:
+				minText := fmt.Sprintf(item.NValueFmtString, item.NValueMin)
+				maxText := fmt.Sprintf(item.NValueFmtString, item.NValueMax)
+				valueWidthMax = max(rl.MeasureTextEx(FontBold, minText, size, 0).X, valueWidthMax)
+				valueWidthMax = max(rl.MeasureTextEx(FontBold, maxText, size, 0).X, valueWidthMax)
 			}
+
+			switch item.Type {
+			case MenuItemToggle:
+				if item.Bvalue {
+					drawTextCentered("Yes", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+				} else {
+					drawTextCentered("No", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+				}
+			case MenuItemList:
+				drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+			case MenuItemNumber:
+				toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
+				drawTextCentered(toDraw, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+			}
+
+			xAdvance += valueWidthMax
+			xAdvance += 10 // <- 10 value 10 ->
+
+			drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke)
 		}
-
-		y += item.SizeRegular*0.5 - size*0.5*scale
-
-		textToDraw := item.Name
-
-		if item.Type == MenuItemToggle {
-			if item.Bvalue {
-				textToDraw += " : Yes"
-			} else {
-				textToDraw += " : No"
-			}
-		} else if item.Type == MenuItemList && len(item.List) > 0 {
-			textToDraw += " : "
-			textToDraw += item.List[item.ListSelected]
-		} else if item.Type == MenuItemNumber {
-			textToDraw += " : "
-			if item.NValueFmtString != "" {
-				textToDraw += fmt.Sprintf(item.NValueFmtString, item.NValue)
-			} else {
-				textToDraw += fmt.Sprintf("%.5f", item.NValue)
-			}
-		}
-
-		rl.DrawTextEx(FontBold, textToDraw, rl.Vector2{x, y},
-			size*scale, 0, col.ToRlColor())
 
 		yOffset += item.SizeRegular + md.ListInterval
 	}

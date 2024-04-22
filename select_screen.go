@@ -31,8 +31,8 @@ func NewSelectScreen() *SelectScreen {
 	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
 	menuDeco.Type = MenuItemDeco
-	menuDeco.ColRegular = Color255(0x4A, 0x7F, 0xD7, 0xFF)
-	menuDeco.ColSelected = Color255(0x4A, 0x7F, 0xD7, 0xFF)
+	menuDeco.Color = Color255(0x4A, 0x7F, 0xD7, 0xFF)
+	menuDeco.FadeIfUnselected = false
 	menuDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 	menuDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 	ss.MainMenu.Items = append(ss.MainMenu.Items, menuDeco)
@@ -124,8 +124,8 @@ func NewSelectScreen() *SelectScreen {
 
 					songDeco.Name = "Songs"
 
-					songDeco.ColRegular = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-					songDeco.ColSelected = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+					songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+					songDeco.FadeIfUnselected = false
 
 					songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 					songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7

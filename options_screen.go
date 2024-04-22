@@ -18,8 +18,8 @@ func NewOptionsScreen() *OptionsScreen {
 	optionsDeco := NewMenuItem()
 	optionsDeco.Name = "Options"
 	optionsDeco.Type = MenuItemDeco
-	optionsDeco.ColRegular = Color255(0xE3, 0x9C, 0x02, 0xFF)
-	optionsDeco.ColSelected = Color255(0xE3, 0x9C, 0x02, 0xFF)
+	optionsDeco.Color = Color255(0xE3, 0x9C, 0x02, 0xFF)
+	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 	optionsDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 	op.Menu.Items = append(op.Menu.Items, optionsDeco)
