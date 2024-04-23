@@ -87,6 +87,9 @@ var (
 
 var SongResetKey int32 = rl.KeyR
 
+var SetBookMarkKey int32 = rl.KeyB
+var JumpToBookMarkKey int32 = rl.KeyBackspace
+
 var (
 	ToggleDebugKey     int32 = rl.KeyF1
 	ToggleLogNoteEvent int32 = rl.KeyF2

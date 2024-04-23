@@ -77,6 +77,9 @@ type GameScreen struct {
 	AudioSpeedSetAt time.Duration
 	ZoomSetAt       time.Duration
 
+	BookMark    time.Duration
+	BookMarkSet bool
+
 	LogNoteEvent bool
 
 	// menu stuff
@@ -519,17 +522,29 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		}
 
 		//changing difficulty
-		prevDifficulty := gs.SelectedDifficulty
+		// Is this even necessary?
+		// TODO : delete this if it really is not doing anything
+		/*
+			prevDifficulty := gs.SelectedDifficulty
 
-		if prevDifficulty != gs.SelectedDifficulty {
-			if gs.HasSong[gs.SelectedDifficulty] {
-				gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+			if prevDifficulty != gs.SelectedDifficulty {
+				if gs.HasSong[gs.SelectedDifficulty] {
+					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-				gs.PauseAudio()
+					gs.PauseAudio()
 
-				gs.ResetStatesThatTracksGamePlayChanges()
-			} else {
-				gs.SelectedDifficulty = prevDifficulty
+					gs.ResetStatesThatTracksGamePlayChanges()
+				} else {
+					gs.SelectedDifficulty = prevDifficulty
+				}
+			}
+		*/
+
+		// book marking
+		if AreKeysPressed(SetBookMarkKey) {
+			gs.BookMarkSet = !gs.BookMarkSet
+			if gs.BookMarkSet {
+				gs.BookMark = gs.AudioPosition()
 			}
 		}
 
@@ -537,12 +552,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		changedSpeed := false
 		audioSpeed := gs.AudioSpeed()
 
-		if rl.IsKeyPressed(AudioSpeedDownKey) {
+		if AreKeysPressed(AudioSpeedDownKey) {
 			changedSpeed = true
 			audioSpeed -= 0.1
 		}
 
-		if rl.IsKeyPressed(AudioSpeedUpKey) {
+		if AreKeysPressed(AudioSpeedUpKey) {
 			changedSpeed = true
 			audioSpeed += 0.1
 		}
@@ -578,7 +593,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
+		// ===================
 		// changing time
+		// ===================
 
 		pos := gs.AudioPosition()
 		keyT := gs.PixelsToTime(50)
@@ -616,6 +633,14 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			changePositionFromUserInput = true
 			gs.ResetStatesThatTracksGamePlayChanges()
 			gs.SetAudioPosition(0)
+		}
+
+		if AreKeysPressed(JumpToBookMarkKey) {
+			if gs.BookMarkSet {
+				changePositionFromUserInput = true
+				gs.ResetStatesThatTracksGamePlayChanges()
+				gs.SetAudioPosition(gs.BookMark)
+			}
 		}
 	}
 
@@ -1284,6 +1309,26 @@ func (gs *GameScreen) DrawProgressBar() {
 
 	rl.DrawRectangleRec(outRect, rl.Color{0, 0, 0, 100})
 	rl.DrawRectangleRec(inRect, rl.Color{255, 255, 255, 255})
+
+	// draw bookmark
+
+	if gs.BookMarkSet {
+		const bookMarkW = 15
+		const bookMarkH = 15
+
+		// center, not top left corner
+		bookMarkX := inRect.X + barW*f32(gs.BookMark)/f32(gs.AudioDuration())
+		bookMarkY := inRect.Y + inRect.Height*0.5
+
+		bookMarkRect := rl.Rectangle{}
+		bookMarkRect.Width = bookMarkW
+		bookMarkRect.Height = bookMarkH
+
+		bookMarkRect.X = bookMarkX - bookMarkRect.Width*0.5
+		bookMarkRect.Y = bookMarkY - bookMarkRect.Height*0.5
+
+		rl.DrawRectangleRec(bookMarkRect, rl.Color{255, 0, 0, 100})
+	}
 }
 
 func (gs *GameScreen) DrawBotPlayIcon() {
@@ -1422,6 +1467,8 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.wasPlayingWhenTempPause = false
 
 	gs.HelpMessage.BeforeScreenTransition()
+
+	gs.BookMarkSet = false
 
 	gs.MenuDrawer.ResetAnimation()
 
