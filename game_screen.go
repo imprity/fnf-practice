@@ -87,7 +87,7 @@ type GameScreen struct {
 
 	LogNoteEvent bool
 
-	RewindToBookMarkOnMistake bool
+	RewindOnMistake bool
 
 	RewindQueue    CircularQueue[AnimatedRewind]
 	RewindT        float64
@@ -184,7 +184,7 @@ func NewGameScreen() *GameScreen {
 		rewindItem.Type = MenuItemToggle
 		rewindItem.Name = "Rewind On Mistake"
 		rewindItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-			gs.RewindToBookMarkOnMistake = bValue
+			gs.RewindOnMistake = bValue
 		}
 		gs.RewindOnMistakeMenuItemId = rewindItem.Id
 		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, rewindItem)
@@ -489,7 +489,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			botPlayItem.Bvalue = gs.IsBotPlay()
 
 			rewindItem := gs.MenuDrawer.GetItemById(gs.RewindOnMistakeMenuItemId)
-			rewindItem.Bvalue = gs.RewindToBookMarkOnMistake
+			rewindItem.Bvalue = gs.RewindOnMistake
 
 			difficultyItem := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
 			difficultyItem.List = difficultyItem.List[:0]
@@ -856,7 +856,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// ===========================
 		// rewind on miss
 		// ===========================
-		if gs.RewindToBookMarkOnMistake {
+		if gs.RewindOnMistake {
 			// TODO : rewind on mispress
 			eventNote := gs.Song.Notes[e.Index]
 
@@ -922,53 +922,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	}
 }
 
-func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
-	rl.BeginBlendMode(rl.BlendAddColors)
-
-	arrowH := ArrowsRects[0].Height
-
-	glowW := ArrowsGlowRects[0].Width
-	glowH := ArrowsGlowRects[0].Height
-
-	// we calculate scale using arrow texture since arrowHeight means height of the arrow texture
-	scale := arrowHeight / arrowH
-
-	mat := rl.MatrixScale(scale, scale, scale)
-
-	mat = rl.MatrixMultiply(mat,
-		rl.MatrixTranslate(
-			x-glowW*scale*0.5,
-			y-glowH*scale*0.5,
-			0),
-	)
-
-	DrawTextureTransfromed(ArrowsGlowTex, ArrowsGlowRects[dir], mat, c.ToImageRGBA())
-
-	rl.EndBlendMode()
-}
-
-func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-
-	texW := ArrowsRects[0].Width
-	texH := ArrowsRects[0].Height
-
-	scale := arrowHeight / texH
-	mat := rl.MatrixScale(scale, scale, scale)
-
-	mat = rl.MatrixMultiply(mat,
-		rl.MatrixTranslate(
-			x-texW*scale*0.5,
-			y-texH*scale*0.5,
-			0),
-	)
-
-	DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill.ToImageRGBA())
-	DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke.ToImageRGBA())
-
-	rl.EndBlendMode()
-}
-
 func (gs *GameScreen) Draw() {
 	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
 
@@ -996,6 +949,11 @@ func (gs *GameScreen) Draw() {
 
 		return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
 	}
+
+	// ===================
+	// draw big bookmark
+	// ===================
+	gs.DrawBigBookMark()
 
 	// ============================
 	// calculate note colors
@@ -1421,6 +1379,87 @@ func (gs *GameScreen) Draw() {
 	}
 }
 
+func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
+	rl.BeginBlendMode(rl.BlendAddColors)
+
+	arrowH := ArrowsRects[0].Height
+
+	glowW := ArrowsGlowRects[0].Width
+	glowH := ArrowsGlowRects[0].Height
+
+	// we calculate scale using arrow texture since arrowHeight means height of the arrow texture
+	scale := arrowHeight / arrowH
+
+	mat := rl.MatrixScale(scale, scale, scale)
+
+	mat = rl.MatrixMultiply(mat,
+		rl.MatrixTranslate(
+			x-glowW*scale*0.5,
+			y-glowH*scale*0.5,
+			0),
+	)
+
+	DrawTextureTransfromed(ArrowsGlowTex, ArrowsGlowRects[dir], mat, c.ToImageRGBA())
+
+	rl.EndBlendMode()
+}
+
+func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	texW := ArrowsRects[0].Width
+	texH := ArrowsRects[0].Height
+
+	scale := arrowHeight / texH
+	mat := rl.MatrixScale(scale, scale, scale)
+
+	mat = rl.MatrixMultiply(mat,
+		rl.MatrixTranslate(
+			x-texW*scale*0.5,
+			y-texH*scale*0.5,
+			0),
+	)
+
+	DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill.ToImageRGBA())
+	DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke.ToImageRGBA())
+
+	rl.EndBlendMode()
+}
+
+func (gs *GameScreen) DrawBigBookMark() {
+	if gs.BookMarkSet {
+		relativeTime := gs.BookMark - gs.AudioPosition()
+		bookMarkY := SCREEN_HEIGHT*0.5 - gs.TimeToPixels(relativeTime)
+
+		srcRect := rl.Rectangle{
+			X: 0, Y: 0,
+			Width: f32(BookMarkBigTex.Width), Height: f32(BookMarkBigTex.Height),
+		}
+
+		dstRect := rl.Rectangle{
+			Width: srcRect.Width, Height: srcRect.Height,
+		}
+
+		dstRect.X = (SCREEN_WIDTH * 0.5) - dstRect.Width*0.5 + 50
+
+		dstRect.Y = bookMarkY - dstRect.Height*0.5
+
+		screenRect := rl.Rectangle{
+			X: 0, Y: 0, Width: SCREEN_WIDTH, Height: SCREEN_HEIGHT,
+		}
+
+		if rl.CheckCollisionRecs(dstRect, screenRect) {
+			rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+			rl.DrawTexturePro(
+				BookMarkBigTex,
+				srcRect, dstRect,
+				rl.Vector2{}, 0, rl.Color{255, 255, 255, 255},
+			)
+			rl.EndBlendMode()
+		}
+	}
+}
+
 func (gs *GameScreen) DrawProgressBar() {
 	const centerX = SCREEN_WIDTH / 2
 
@@ -1447,21 +1486,29 @@ func (gs *GameScreen) DrawProgressBar() {
 	// draw bookmark
 
 	if gs.BookMarkSet {
-		const bookMarkW = 15
-		const bookMarkH = 15
-
 		// center, not top left corner
 		bookMarkX := inRect.X + barW*f32(gs.BookMark)/f32(gs.AudioDuration())
 		bookMarkY := inRect.Y + inRect.Height*0.5
 
-		bookMarkRect := rl.Rectangle{}
-		bookMarkRect.Width = bookMarkW
-		bookMarkRect.Height = bookMarkH
+		srcRect := rl.Rectangle{
+			X: 0, Y: 0,
+			Width: f32(BookMarkSmallTex.Width), Height: f32(BookMarkSmallTex.Height),
+		}
 
-		bookMarkRect.X = bookMarkX - bookMarkRect.Width*0.5
-		bookMarkRect.Y = bookMarkY - bookMarkRect.Height*0.5
+		dstRect := rl.Rectangle{
+			Width: srcRect.Width, Height: srcRect.Height,
+		}
 
-		rl.DrawRectangleRec(bookMarkRect, rl.Color{255, 0, 0, 100})
+		dstRect.X = bookMarkX - dstRect.Width*0.5
+		dstRect.Y = bookMarkY - dstRect.Height*0.5
+
+		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+		rl.DrawTexturePro(
+			BookMarkSmallTex,
+			srcRect, dstRect,
+			rl.Vector2{}, 0, rl.Color{255, 255, 255, 255},
+		)
+		rl.EndBlendMode()
 	}
 }
 
@@ -1746,18 +1793,15 @@ func (hm *HelpMessage) InitTextImage() {
 	}
 
 	// bookmarking
-	// TODO : properly implement this after implementing book mark feature
-	/*
-		{
-			rect = drawManyMsgAndKeys(
-				[]string{"set bookmark", "jump to bookmark"},
-				[]int32{BookMarkKey, JumpToBookMarkKey},
-				offsetX, offsetY)
-			txtTotalRect = RectUnion(txtTotalRect, rect)
+	{
+		rect := drawManyMsgAndKeys(
+			[]string{"set bookmark", "jump to bookmark"},
+			[]int32{SetBookMarkKey, JumpToBookMarkKey},
+			offsetX, offsetY)
+		txtTotalRect = RectUnion(txtTotalRect, rect)
 
-			offsetY += rect.Height + marginY
-		}
-	*/
+		offsetY += rect.Height + marginY
+	}
 
 	hm.TextImage = rl.LoadRenderTexture(i32(txtTotalRect.Width), i32(txtTotalRect.Height))
 

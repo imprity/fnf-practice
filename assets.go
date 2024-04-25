@@ -46,6 +46,9 @@ var (
 
 var HitRatingTexs [HitRatingSize]rl.Texture2D
 
+var BookMarkBigTex rl.Texture2D
+var BookMarkSmallTex rl.Texture2D
+
 var (
 	FontRegular rl.Font
 	FontBold    rl.Font
@@ -211,6 +214,9 @@ func LoadAssets() {
 			x, 0, width, float32(UIarrowsTex.Height),
 		}
 	}
+
+	BookMarkBigTex = loadTexture("assets/bookmark_big.png", true, ".png")
+	BookMarkSmallTex = loadTexture("assets/bookmark_small.png", true, ".png")
 
 	GameScreenBg = loadTexture("assets/background 1.png", true, ".png")
 	SongLoadingScreen = loadTexture("assets/song loading screen.png", true, ".png")
