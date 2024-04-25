@@ -52,6 +52,11 @@ func NewHelpMessage() *HelpMessage {
 	return hm
 }
 
+type AnimatedRewind struct {
+	Target   time.Duration
+	Duration time.Duration
+}
+
 type GameScreen struct {
 	Songs   [DifficultySize]FnfSong
 	HasSong [DifficultySize]bool
@@ -82,12 +87,20 @@ type GameScreen struct {
 
 	LogNoteEvent bool
 
+	RewindToBookMarkOnMistake bool
+
+	RewindQueue    CircularQueue[AnimatedRewind]
+	RewindT        float64
+	RewindStarted  bool
+	RewindStartPos time.Duration //audio position
+
 	// menu stuff
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
 
-	BotPlayMenuItemId    int64
-	DifficultyMenuItemId int64
+	BotPlayMenuItemId         int64
+	DifficultyMenuItemId      int64
+	RewindOnMistakeMenuItemId int64
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -143,6 +156,10 @@ func NewGameScreen() *GameScreen {
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
 	}
 
+	gs.RewindQueue = CircularQueue[AnimatedRewind]{
+		Data: make([]AnimatedRewind, 8),
+	}
+
 	gs.tempPauseUntil = -Years150
 
 	gs.HelpMessage = NewHelpMessage()
@@ -162,6 +179,15 @@ func NewGameScreen() *GameScreen {
 			}
 		}
 		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, resumeItem)
+
+		rewindItem := NewMenuItem()
+		rewindItem.Type = MenuItemToggle
+		rewindItem.Name = "Rewind On Mistake"
+		rewindItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+			gs.RewindToBookMarkOnMistake = bValue
+		}
+		gs.RewindOnMistakeMenuItemId = rewindItem.Id
+		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, rewindItem)
 
 		botPlayItem := NewMenuItem()
 		botPlayItem.Type = MenuItemToggle
@@ -236,6 +262,7 @@ func (gs *GameScreen) LoadSongs(
 		gs.VoicePlayer.SetSpeed(1)
 	}
 
+	gs.SetAudioPosition(0)
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
@@ -289,12 +316,20 @@ func (gs *GameScreen) TempPause(howLong time.Duration) {
 
 	gs.PauseAudio()
 
-	gs.tempPauseUntil = GlobalTimerNow() + howLong
+	until := GlobalTimerNow() + howLong
+	if until > gs.tempPauseUntil {
+		gs.tempPauseUntil = until
+	}
 }
 
 func (gs *GameScreen) OnlyTemporarilyPaused() bool {
 	return gs.tempPauseUntil > GlobalTimerNow() &&
 		gs.wasPlayingWhenTempPause && !gs.IsPlayingAudio()
+}
+
+func (gs *GameScreen) ClearTempPause() {
+	gs.wasPlayingWhenTempPause = false
+	gs.tempPauseUntil = -Years150
 }
 
 func (gs *GameScreen) SetAudioPosition(at time.Duration) {
@@ -388,7 +423,6 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 	gs.Pstates = [2]PlayerState{}
 
 	gs.noteIndexStart = 0
-	gs.audioPosition = 0
 
 	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
 
@@ -447,10 +481,15 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 		gs.DrawMenu = !gs.DrawMenu
 
-		// we popped up menu
+		// =============================================
+		// before menu popup
+		// =============================================
 		if !wasDrawingMenu && gs.DrawMenu {
 			botPlayItem := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
 			botPlayItem.Bvalue = gs.IsBotPlay()
+
+			rewindItem := gs.MenuDrawer.GetItemById(gs.RewindOnMistakeMenuItemId)
+			rewindItem.Bvalue = gs.RewindToBookMarkOnMistake
 
 			difficultyItem := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
 			difficultyItem.List = difficultyItem.List[:0]
@@ -506,19 +545,64 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	gs.HelpMessage.Update(deltaTime)
 
 	// =============================================
+	positionArbitraryChange := false
+	// =============================================
+
+	// =============================================
+	// rewind stuff
+	// =============================================
+
+	if !gs.RewindQueue.IsEmpty() && !gs.DrawMenu {
+		gs.TempPause(time.Millisecond * 5)
+
+		if !gs.RewindStarted {
+			gs.RewindStarted = true
+			gs.RewindStartPos = gs.AudioPosition()
+			gs.RewindT = 0
+		}
+
+		rewind := gs.RewindQueue.PeekFirst()
+
+		gs.RewindT += f64(deltaTime) / f64(rewind.Duration)
+
+		var newPos time.Duration
+
+		if gs.RewindT > 1 {
+			newPos = rewind.Target
+		} else {
+			t := Clamp(gs.RewindT, 0, 1)
+
+			t = EaseInOutCubic(t)
+
+			newPos = time.Duration(Lerp(f64(gs.RewindStartPos), f64(rewind.Target), t))
+		}
+
+		gs.SetAudioPosition(newPos)
+
+		if gs.RewindT > 1 {
+			gs.RewindQueue.Dequeue()
+			gs.RewindStarted = false
+		}
+
+		positionArbitraryChange = true
+	}
+
+	// =============================================
 	// handle user input
 	// =============================================
-	changePositionFromUserInput := false
-
 	if !gs.DrawMenu {
 		// pause unpause
 		if AreKeysPressed(PauseKey) {
 			if gs.IsPlayingAudio() {
 				gs.PauseAudio()
 			} else {
-				gs.PlayAudio()
+				if gs.OnlyTemporarilyPaused() {
+					gs.ClearTempPause()
+				} else {
+					gs.PlayAudio()
+				}
 			}
-
+			gs.RewindQueue.Clear()
 		}
 
 		//changing difficulty
@@ -596,49 +680,49 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// ===================
 		// changing time
 		// ===================
+		{
+			changedFromScroll := false
 
-		pos := gs.AudioPosition()
-		keyT := gs.PixelsToTime(50)
+			pos := gs.AudioPosition()
+			keyT := gs.PixelsToTime(50)
 
-		// NOTE : If we ever implement note up scroll
-		// this keybindings have to reversed
-		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
-			changePositionFromUserInput = true
-			pos -= keyT
-		}
+			// NOTE : If we ever implement note up scroll
+			// this keybindings have to reversed
+			if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
+				changedFromScroll = true
+				pos -= keyT
+			}
 
-		if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
-			changePositionFromUserInput = true
-			pos += keyT
-		}
+			if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
+				changedFromScroll = true
+				pos += keyT
+			}
 
-		wheelT := gs.PixelsToTime(40)
-		wheelmove := rl.GetMouseWheelMove()
+			wheelT := gs.PixelsToTime(40)
+			wheelmove := rl.GetMouseWheelMove()
 
-		if math.Abs(float64(wheelmove)) > 0.001 {
-			changePositionFromUserInput = true
-			pos += time.Duration(wheelmove * float32(-wheelT))
-		}
+			if math.Abs(float64(wheelmove)) > 0.001 {
+				changedFromScroll = true
+				pos += time.Duration(wheelmove * float32(-wheelT))
+			}
 
-		pos = Clamp(pos, 0, gs.AudioDuration())
+			pos = Clamp(pos, 0, gs.AudioDuration())
 
-		if changePositionFromUserInput {
-			gs.TempPause(time.Millisecond * 60)
-
-			gs.ResetStatesThatTracksGamePlayChanges()
-			gs.SetAudioPosition(pos)
+			if changedFromScroll {
+				gs.TempPause(time.Millisecond * 60)
+				positionArbitraryChange = true
+				gs.SetAudioPosition(pos)
+			}
 		}
 
 		if AreKeysPressed(SongResetKey) {
-			changePositionFromUserInput = true
-			gs.ResetStatesThatTracksGamePlayChanges()
+			positionArbitraryChange = true
 			gs.SetAudioPosition(0)
 		}
 
 		if AreKeysPressed(JumpToBookMarkKey) {
 			if gs.BookMarkSet {
-				changePositionFromUserInput = true
-				gs.ResetStatesThatTracksGamePlayChanges()
+				positionArbitraryChange = true
 				gs.SetAudioPosition(gs.BookMark)
 			}
 		}
@@ -647,6 +731,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// end of handling user input
 	// =============================================
+
+	if positionArbitraryChange {
+		gs.ResetStatesThatTracksGamePlayChanges()
+	}
 
 	// =============================================
 	// temporary pause and unpause
@@ -667,10 +755,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	// currently audio player position's delta is 0 or 10ms
 	// so we are trying to calculate better audio position
-	if !changePositionFromUserInput {
+	if !positionArbitraryChange {
 		currentPlayerPos := gs.InstPlayer.Position()
 
-		if !changePositionFromUserInput {
+		if !positionArbitraryChange {
 			if !gs.IsPlayingAudio() {
 				gs.audioPosition = currentPlayerPos
 			} else {
@@ -761,7 +849,53 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		}
 	}
 
+	queuedRewind := false
+
 	for _, e := range noteEvents {
+
+		// ===========================
+		// rewind on miss
+		// ===========================
+		if gs.RewindToBookMarkOnMistake {
+			// TODO : rewind on mispress
+			eventNote := gs.Song.Notes[e.Index]
+
+			rewind := !gs.IsBotPlay()
+			rewind = rewind && !queuedRewind
+			rewind = rewind && gs.BookMarkSet
+			rewind = rewind && e.IsMiss()
+			rewind = rewind && eventNote.Player == 0            //note is player0's note
+			rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
+			// ignore miss if note is overlapped with bookmark
+			rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, gs.HitWindow)
+
+			// prevent rewind from happening when user released on sustain note too early
+			// TODO : make this an options
+			// I think it would be annoying if game rewinds even after user pressed 90% of the sustain note
+			// so there should be an tolerance option for that
+			rewind = rewind && !eventNote.IsHit
+
+			if rewind {
+				queuedRewind = true
+				gs.RewindQueue.Clear()
+
+				gs.RewindQueue.Enqueue(AnimatedRewind{
+					Target:   eventNote.StartsAt,
+					Duration: time.Millisecond * 300,
+				})
+
+				gs.RewindQueue.Enqueue(AnimatedRewind{
+					Target:   eventNote.StartsAt,
+					Duration: time.Millisecond * 300,
+				})
+
+				gs.RewindQueue.Enqueue(AnimatedRewind{
+					Target:   gs.BookMark,
+					Duration: time.Millisecond * 700,
+				})
+			}
+		}
+
 		events := gs.NoteEvents[e.Index]
 
 		if len(events) <= 0 {
@@ -1469,9 +1603,11 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.HelpMessage.BeforeScreenTransition()
 
 	gs.BookMarkSet = false
+	gs.RewindStarted = false
 
 	gs.MenuDrawer.ResetAnimation()
 
+	gs.SetAudioPosition(0)
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 

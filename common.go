@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math"
+
 	"golang.org/x/exp/constraints"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -108,6 +110,14 @@ func (q *CircularQueue[T]) Dequeue() T {
 
 func (q *CircularQueue[T]) At(index int) T {
 	return q.Data[(q.Start+index)%len(q.Data)]
+}
+
+func (q *CircularQueue[T]) PeekFirst() T {
+	return q.Data[q.Start%len(q.Data)]
+}
+
+func (q *CircularQueue[T]) PeekLast() T {
+	return q.Data[(q.End-1)%len(q.Data)]
 }
 
 func (q *CircularQueue[T]) Clear() {
@@ -465,4 +475,18 @@ func DrawRectangleRoundedCornersLines(
 		rec, roundness, segements,
 		col, false, lineThick,
 	)
+}
+
+// ==================
+// easing funcitons
+// ==================
+
+// copy pasted from https://easings.net/
+
+func EaseInOutCubic(x float64) float64 {
+	if x < 0.5 {
+		return 4 * x * x * x
+	} else {
+		return 1 - math.Pow(-2*x+2, 3)/2
+	}
 }
