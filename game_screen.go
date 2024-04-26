@@ -414,6 +414,31 @@ func (gs *GameScreen) SetBotPlay(bot bool) {
 	gs.botPlay = bot
 }
 
+func (gs *GameScreen) ResetNoteEvents() {
+	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
+
+	for i := range len(gs.NoteEvents) {
+		gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
+	}
+}
+
+func (gs *GameScreen) DeleteFutureNoteEvents() {
+	for i, events := range gs.NoteEvents {
+		if len(events) > 0 {
+			cut := 0
+			for j := len(events) - 1; j > 0; j-- {
+				e := events[j]
+				if e.Time < gs.AudioPosition() {
+					cut = j + 1
+					break
+				}
+			}
+
+			gs.NoteEvents[i] = gs.NoteEvents[i][:cut]
+		}
+	}
+}
+
 func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 	for player := 0; player <= 1; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
@@ -428,12 +453,6 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 	gs.Pstates = [2]PlayerState{}
 
 	gs.noteIndexStart = 0
-
-	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
-
-	for i := range len(gs.NoteEvents) {
-		gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
-	}
 }
 
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
@@ -537,6 +556,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 					gs.PauseAudio()
 
+					gs.ResetNoteEvents()
 					gs.ResetStatesThatTracksGamePlayChanges()
 				}
 			}
@@ -604,6 +624,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				if gs.OnlyTemporarilyPaused() {
 					gs.ClearTempPause()
 				} else {
+					gs.DeleteFutureNoteEvents()
 					gs.PlayAudio()
 				}
 			}
@@ -743,6 +764,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	if positionArbitraryChange {
 		gs.ResetStatesThatTracksGamePlayChanges()
+		if gs.IsPlayingAudio() || gs.OnlyTemporarilyPaused() {
+			gs.DeleteFutureNoteEvents()
+		}
 	}
 
 	// =============================================
@@ -931,6 +955,182 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	}
 }
 
+type SustainMiss struct {
+	StartsAt time.Duration
+	Duration time.Duration
+}
+
+func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
+	var misses []SustainMiss
+
+	if len(events) <= 0 {
+		misses = append(misses, SustainMiss{
+			StartsAt: note.StartsAt,
+			Duration: note.Duration,
+		})
+		return misses
+	}
+
+	noteEnd := note.StartsAt + note.Duration
+
+	type Hold struct {
+		StartsAt time.Duration
+		Duration time.Duration
+	}
+
+	var holds []Hold
+
+	eventIndex := 0
+
+	for eventIndex < len(events) {
+		//first find hit
+		hit := NoteEvent{}
+
+		for i := eventIndex; i < len(events); i++ {
+			if events[i].IsHit() {
+				hit = events[i]
+				eventIndex = i + 1
+				break
+			}
+		}
+
+		if hit.IsNone() {
+			break
+		}
+
+		hold := Hold{}
+
+		hold.StartsAt = hit.Time
+
+		// then find release
+		release := NoteEvent{}
+
+		for i := eventIndex; i < len(events); i++ {
+			if events[i].IsRelease() {
+				release = events[i]
+				eventIndex = i + 1
+				break
+			}
+		}
+
+		if !release.IsNone() {
+			hold.Duration = release.Time - hit.Time
+			holds = append(holds, hold)
+		} else {
+			if noteEnd > hit.Time {
+				hold.Duration = noteEnd - hit.Time
+				holds = append(holds, hold)
+			}
+			break
+		}
+	}
+
+	if len(holds) <= 0 {
+		misses = append(misses, SustainMiss{
+			StartsAt: note.StartsAt,
+			Duration: note.Duration,
+		})
+		return misses
+	}
+
+	// mark inbetween holds as misses
+	// |hold|--miss--|hold|--miss--|hold|
+	for i := 0; i+1 < len(holds); i++ {
+		hold0 := holds[i]
+		hold1 := holds[i+1]
+
+		missStart := hold0.StartsAt + hold0.Duration
+		missEnd := hold1.StartsAt
+
+		miss := SustainMiss{
+			StartsAt: missStart,
+			Duration: missEnd - missStart,
+		}
+
+		misses = append(misses, miss)
+	}
+
+	// case for
+	// |----------note----------|
+	//         |--hold--| ...
+	// |-miss--|
+
+	firstHold := holds[0]
+
+	if firstHold.StartsAt > note.StartsAt {
+		miss := SustainMiss{
+			StartsAt: note.StartsAt,
+			Duration: firstHold.StartsAt - note.StartsAt,
+		}
+
+		newMisses := append(misses, miss)
+		newMisses = append(newMisses, misses...)
+
+		misses = newMisses
+	}
+
+	// case for
+	// |----------note----------|
+	//       ...|--hold--|
+	//                   |-miss--|
+
+	lastHold := holds[len(holds)-1]
+
+	{
+		lastHoldEnd := lastHold.StartsAt + lastHold.Duration
+
+		if lastHoldEnd < noteEnd {
+			miss := SustainMiss{
+				StartsAt: lastHoldEnd,
+				Duration: noteEnd - lastHoldEnd,
+			}
+
+			misses = append(misses, miss)
+		}
+	}
+
+	// cut misses out of boundary
+	{
+		startCut := 0
+		for i := len(misses) - 1; i >= 0; i-- {
+			miss := misses[i]
+			if miss.StartsAt+miss.Duration <= note.StartsAt {
+				startCut = i + 1
+				break
+			}
+		}
+
+		misses = misses[startCut:]
+	}
+
+	{
+		endCut := len(misses)
+		for i, miss := range misses {
+			if miss.StartsAt >= noteEnd {
+				endCut = i
+				break
+			}
+		}
+		misses = misses[:endCut]
+	}
+
+	//clamp miss
+	if len(misses) > 0 {
+		if misses[0].StartsAt < note.StartsAt {
+			misses[0].StartsAt = note.StartsAt
+		}
+
+		lastMiss := misses[len(misses)-1]
+		lastMissEnd := lastMiss.StartsAt + lastMiss.Duration
+
+		if lastMissEnd > noteEnd {
+			misses[len(misses)-1].Duration = noteEnd - lastMiss.StartsAt
+		}
+	}
+
+	return misses
+}
+
 func (gs *GameScreen) Draw() {
 	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
 
@@ -959,6 +1159,20 @@ func (gs *GameScreen) Draw() {
 		return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
 	}
 
+	susNoteBarW := gs.NotesSize * 0.2
+
+	var getBarRect = func(player int, dir NoteDir, from, to time.Duration) rl.Rectangle {
+		fromY := timeToY(from)
+		toY := timeToY(to)
+
+		return rl.Rectangle{
+			X:      noteX(player, dir) - susNoteBarW*0.5,
+			Y:      toY,
+			Width:  susNoteBarW,
+			Height: fromY - toY,
+		}
+	}
+
 	// ===================
 	// draw big bookmark
 	// ===================
@@ -978,7 +1192,6 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteStroke := [4]Color{}
-
 	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[2] *= 0.1
@@ -988,7 +1201,6 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteFillLight := [4]Color{}
-
 	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.3
@@ -1002,7 +1214,6 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteStrokeLight := [4]Color{}
-
 	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[2] *= 0.5
@@ -1011,7 +1222,6 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteFlash := [4]Color{}
-
 	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.1
@@ -1025,7 +1235,6 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteFillGrey := [4]Color{}
-
 	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.3
@@ -1035,13 +1244,28 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteStrokeGrey := [4]Color{}
-
 	for i, c := range noteFill {
 		hsv := ToHSV(c)
 		hsv[1] *= 0.2
 		hsv[2] *= 0.3
 
 		noteStrokeGrey[i] = FromHSV(hsv)
+	}
+
+	noteFillMistake := [4]Color{}
+	for i, c := range noteFill {
+		hsv := ToHSV(c)
+		hsv[1] *= 0.7
+		hsv[2] *= 0.3
+
+		noteFillMistake[i] = FromHSV(hsv)
+	}
+
+	noteStrokeMistake := [4]Color{
+		Color255(0, 0, 0, 255),
+		Color255(0, 0, 0, 255),
+		Color255(0, 0, 0, 255),
+		Color255(0, 0, 0, 255),
 	}
 
 	// ============================================
@@ -1182,12 +1406,12 @@ func (gs *GameScreen) Draw() {
 	}
 
 	// ============================================
-	// draw notes
+	// find the first note to draw
 	// ============================================
+	firstNote := FnfNote{}
 
 	if len(gs.Song.Notes) > 0 {
-		// find the first note to draw
-		firstNote := gs.Song.Notes[0]
+		firstNote = gs.Song.Notes[0]
 
 		for i := 0; i < len(gs.Song.Notes); i++ {
 			note := gs.Song.Notes[i]
@@ -1201,7 +1425,12 @@ func (gs *GameScreen) Draw() {
 				break
 			}
 		}
+	}
 
+	// ============================================
+	// draw notes
+	// ============================================
+	if len(gs.Song.Notes) > 0 {
 		for i := firstNote.Index; i < len(gs.Song.Notes); i++ {
 			note := gs.Song.Notes[i]
 
@@ -1226,7 +1455,7 @@ func (gs *GameScreen) Draw() {
 						sustainBeginY = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[note.Player][note.Direction]
 					}
 
-					holdRectW := gs.NotesSize * 0.2
+					holdRectW := susNoteBarW
 
 					holdRect := rl.Rectangle{
 						x - holdRectW*0.5, sustaniEndY,
@@ -1234,7 +1463,7 @@ func (gs *GameScreen) Draw() {
 
 					if holdRect.Height > 0 { // draw sustain line
 						//rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, black.ToImageRGBA())
-						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, normalFill.ToImageRGBA())
+						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, normalFill.ToRlColor())
 					}
 
 					fill := normalFill
@@ -1260,6 +1489,47 @@ func (gs *GameScreen) Draw() {
 			// if note is out of screen, we stop
 			if timeToY(note.StartsAt) < -gs.NotesSize*2 {
 				break
+			}
+		}
+	}
+
+	// ============================================
+	// draw note events
+	// ============================================
+
+	// TODO : I would like to draw events not on top of the note
+	// but to draw note events only if needed
+
+	if len(gs.Song.Notes) > 0 && !gs.IsPlayingAudio() && !gs.OnlyTemporarilyPaused() {
+		for index := firstNote.Index; index < len(gs.Song.Notes); index++ {
+
+			note := gs.Song.Notes[index]
+
+			if len(gs.NoteEvents[index]) <= 0 {
+				continue
+			}
+
+			if !note.IsSustain() {
+				if gs.NoteEvents[index][0].IsMiss() {
+					x := noteX(note.Player, note.Direction)
+					y := timeToY(note.StartsAt)
+					DrawNoteArrow(x, y, gs.NotesSize, note.Direction,
+						noteFillMistake[note.Direction], noteStrokeMistake[note.Direction])
+				}
+			} else {
+				events := gs.NoteEvents[index]
+
+				misses := CalculateSustainMisses(note, events)
+
+				for _, miss := range misses {
+					holdRect := getBarRect(
+						note.Player, note.Direction,
+						miss.StartsAt, miss.StartsAt+miss.Duration,
+					)
+
+					rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5,
+						noteFillMistake[note.Direction].ToRlColor())
+				}
 			}
 		}
 	}
@@ -1664,6 +1934,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.MenuDrawer.ResetAnimation()
 
 	gs.SetAudioPosition(0)
+	gs.ResetNoteEvents()
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
