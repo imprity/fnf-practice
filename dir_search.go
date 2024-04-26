@@ -308,6 +308,11 @@ func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 		printGroup(group)
 	}
 
+	// sort group to song name
+	slices.SortFunc(pathGroups, func(a, b FnfPathGroup) int {
+		return strings.Compare(a.SongName, b.SongName)
+	})
+
 	return pathGroups
 }
 
