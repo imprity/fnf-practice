@@ -422,23 +422,6 @@ func (gs *GameScreen) ResetNoteEvents() {
 	}
 }
 
-func (gs *GameScreen) DeleteFutureNoteEvents() {
-	for i, events := range gs.NoteEvents {
-		if len(events) > 0 {
-			cut := 0
-			for j := len(events) - 1; j > 0; j-- {
-				e := events[j]
-				if e.Time < gs.AudioPosition() {
-					cut = j + 1
-					break
-				}
-			}
-
-			gs.NoteEvents[i] = gs.NoteEvents[i][:cut]
-		}
-	}
-}
-
 func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 	for player := 0; player <= 1; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
@@ -624,7 +607,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				if gs.OnlyTemporarilyPaused() {
 					gs.ClearTempPause()
 				} else {
-					gs.DeleteFutureNoteEvents()
+					gs.ResetNoteEvents()
 					gs.PlayAudio()
 				}
 			}
@@ -765,7 +748,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	if positionArbitraryChange {
 		gs.ResetStatesThatTracksGamePlayChanges()
 		if gs.IsPlayingAudio() || gs.OnlyTemporarilyPaused() {
-			gs.DeleteFutureNoteEvents()
+			gs.ResetNoteEvents()
 		}
 	}
 
@@ -956,8 +939,8 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 }
 
 type SustainMiss struct {
-	StartsAt time.Duration
-	Duration time.Duration
+	Begin time.Duration
+	End   time.Duration
 }
 
 func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
@@ -965,8 +948,8 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 
 	if len(events) <= 0 {
 		misses = append(misses, SustainMiss{
-			StartsAt: note.StartsAt,
-			Duration: note.Duration,
+			Begin: note.StartsAt,
+			End:   note.StartsAt + note.Duration,
 		})
 		return misses
 	}
@@ -974,8 +957,8 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 	noteEnd := note.StartsAt + note.Duration
 
 	type Hold struct {
-		StartsAt time.Duration
-		Duration time.Duration
+		Begin time.Duration
+		End   time.Duration
 	}
 
 	var holds []Hold
@@ -1000,7 +983,7 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 
 		hold := Hold{}
 
-		hold.StartsAt = hit.Time
+		hold.Begin = hit.Time
 
 		// then find release
 		release := NoteEvent{}
@@ -1014,11 +997,11 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 		}
 
 		if !release.IsNone() {
-			hold.Duration = release.Time - hit.Time
+			hold.End = release.Time
 			holds = append(holds, hold)
 		} else {
 			if noteEnd > hit.Time {
-				hold.Duration = noteEnd - hit.Time
+				hold.End = noteEnd
 				holds = append(holds, hold)
 			}
 			break
@@ -1027,8 +1010,8 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 
 	if len(holds) <= 0 {
 		misses = append(misses, SustainMiss{
-			StartsAt: note.StartsAt,
-			Duration: note.Duration,
+			Begin: note.StartsAt,
+			End:   note.StartsAt + note.Duration,
 		})
 		return misses
 	}
@@ -1039,28 +1022,28 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 		hold0 := holds[i]
 		hold1 := holds[i+1]
 
-		missStart := hold0.StartsAt + hold0.Duration
-		missEnd := hold1.StartsAt
+		missStart := hold0.End
+		missEnd := hold1.Begin
 
 		miss := SustainMiss{
-			StartsAt: missStart,
-			Duration: missEnd - missStart,
+			Begin: missStart,
+			End:   missEnd,
 		}
 
 		misses = append(misses, miss)
 	}
 
-	// case for
+	// add front miss
 	// |----------note----------|
 	//         |--hold--| ...
 	// |-miss--|
 
 	firstHold := holds[0]
 
-	if firstHold.StartsAt > note.StartsAt {
+	if firstHold.Begin > note.StartsAt {
 		miss := SustainMiss{
-			StartsAt: note.StartsAt,
-			Duration: firstHold.StartsAt - note.StartsAt,
+			Begin: note.StartsAt,
+			End:   firstHold.Begin,
 		}
 
 		newMisses := append(misses, miss)
@@ -1069,7 +1052,7 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 		misses = newMisses
 	}
 
-	// case for
+	// add back miss
 	// |----------note----------|
 	//       ...|--hold--|
 	//                   |-miss--|
@@ -1077,55 +1060,32 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 	lastHold := holds[len(holds)-1]
 
 	{
-		lastHoldEnd := lastHold.StartsAt + lastHold.Duration
-
-		if lastHoldEnd < noteEnd {
+		if lastHold.End < noteEnd {
 			miss := SustainMiss{
-				StartsAt: lastHoldEnd,
-				Duration: noteEnd - lastHoldEnd,
+				Begin: lastHold.End,
+				End:   noteEnd,
 			}
 
 			misses = append(misses, miss)
 		}
 	}
 
-	// cut misses out of boundary
+	// clamp miss
+	for i := range misses {
+		misses[i].Begin = Clamp(misses[i].Begin, note.StartsAt, noteEnd)
+		misses[i].End = Clamp(misses[i].End, note.StartsAt, noteEnd)
+	}
+
+	// remove invalid misses
 	{
-		startCut := 0
-		for i := len(misses) - 1; i >= 0; i-- {
-			miss := misses[i]
-			if miss.StartsAt+miss.Duration <= note.StartsAt {
-				startCut = i + 1
-				break
+		var validMisses []SustainMiss
+		for _, m := range misses {
+			if m.Begin < m.End {
+				validMisses = append(validMisses, m)
 			}
 		}
 
-		misses = misses[startCut:]
-	}
-
-	{
-		endCut := len(misses)
-		for i, miss := range misses {
-			if miss.StartsAt >= noteEnd {
-				endCut = i
-				break
-			}
-		}
-		misses = misses[:endCut]
-	}
-
-	//clamp miss
-	if len(misses) > 0 {
-		if misses[0].StartsAt < note.StartsAt {
-			misses[0].StartsAt = note.StartsAt
-		}
-
-		lastMiss := misses[len(misses)-1]
-		lastMissEnd := lastMiss.StartsAt + lastMiss.Duration
-
-		if lastMissEnd > noteEnd {
-			misses[len(misses)-1].Duration = noteEnd - lastMiss.StartsAt
-		}
+		misses = validMisses
 	}
 
 	return misses
@@ -1524,7 +1484,7 @@ func (gs *GameScreen) Draw() {
 				for _, miss := range misses {
 					holdRect := getBarRect(
 						note.Player, note.Direction,
-						miss.StartsAt, miss.StartsAt+miss.Duration,
+						miss.Begin, miss.End,
 					)
 
 					rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5,
