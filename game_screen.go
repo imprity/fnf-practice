@@ -332,6 +332,11 @@ func (gs *GameScreen) ClearTempPause() {
 	gs.tempPauseUntil = -Years150
 }
 
+func (gs *GameScreen) ClearRewind() {
+	gs.RewindStarted = false
+	gs.RewindQueue.Clear()
+}
+
 func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
@@ -602,7 +607,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					gs.PlayAudio()
 				}
 			}
-			gs.RewindQueue.Clear()
+			gs.ClearRewind()
 		}
 
 		//changing difficulty
@@ -630,6 +635,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if gs.BookMarkSet {
 				gs.BookMark = gs.AudioPosition()
 			}
+			gs.ClearRewind()
 		}
 
 		// speed change
@@ -691,11 +697,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
 				changedFromScroll = true
 				pos -= keyT
+				gs.ClearRewind()
 			}
 
 			if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
 				changedFromScroll = true
 				pos += keyT
+				gs.ClearRewind()
 			}
 
 			wheelT := gs.PixelsToTime(40)
@@ -718,6 +726,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		if AreKeysPressed(SongResetKey) {
 			positionArbitraryChange = true
 			gs.SetAudioPosition(0)
+			gs.ClearRewind()
 		}
 
 		if AreKeysPressed(JumpToBookMarkKey) {
