@@ -1478,17 +1478,57 @@ func (gs *GameScreen) Draw() {
 				}
 			} else {
 				events := gs.NoteEvents[index]
+				if len(events) > 0{
+					firstEvent := events[0]
 
-				misses := CalculateSustainMisses(note, events)
+					misses := CalculateSustainMisses(note, events)
 
-				for _, miss := range misses {
-					holdRect := getBarRect(
-						note.Player, note.Direction,
-						miss.Begin, miss.End,
-					)
+					// delete misses that are too small
+					{
+						newMisses := make([]SustainMiss, 0, len(misses))
+						for _, m := range misses{
+							duration := m.End - m.Begin
+							if duration > time.Millisecond * 10{
+								newMisses = append(newMisses, m)
+							}
+						}
 
-					rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5,
+						misses = newMisses
+					}
+
+					// remove first miss if it's happened before first hit
+					if firstEvent.IsHit() && len(misses) > 0{
+						firstMiss := misses[0]
+
+						if firstMiss.End - time.Millisecond <= firstEvent.Time {
+							misses = misses[1:]
+						}
+					}
+
+					// draw sustain bar for misses
+					for _, miss := range misses {
+						holdRect := getBarRect(
+							note.Player, note.Direction,
+							miss.Begin, miss.End,
+						)
+
+						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5,
 						noteFillMistake[note.Direction].ToRlColor())
+					}
+
+					if firstEvent.IsMiss(){
+						DrawNoteArrow(
+							noteX(note.Player, note.Direction),
+							timeToY(note.StartsAt),
+							gs.NotesSize, note.Direction,
+							noteFillMistake[note.Direction], noteStrokeMistake[note.Direction])
+					}else{
+						DrawNoteArrow(
+							noteX(note.Player, note.Direction),
+							timeToY(note.StartsAt),
+							gs.NotesSize, note.Direction,
+							noteFill[note.Direction], noteStroke[note.Direction])
+					}
 				}
 			}
 		}
