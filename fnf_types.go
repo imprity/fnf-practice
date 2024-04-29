@@ -42,6 +42,10 @@ func (n FnfNote) Equals(otherN FnfNote) bool {
 	return n.Index == otherN.Index
 }
 
+func (n FnfNote) End() time.Duration {
+	return n.StartsAt + n.Duration
+}
+
 func (n FnfNote) IsOverlapped(otherN FnfNote) bool {
 	if n.Player != otherN.Player {
 		return false

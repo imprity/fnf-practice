@@ -111,6 +111,8 @@ type GameScreen struct {
 
 	NotesSize float32
 
+	SustainBarWidth float32
+
 	PixelsPerMillis float32
 
 	// private members
@@ -144,6 +146,8 @@ func NewGameScreen() *GameScreen {
 	gs.NotesInterval = 113
 
 	gs.NotesSize = 112
+
+	gs.SustainBarWidth = gs.NotesSize * 0.2
 
 	gs.HitWindow = time.Millisecond * 135 * 2
 
@@ -1098,40 +1102,18 @@ func (gs *GameScreen) Draw() {
 		return
 	}
 
-	player1NoteStartLeft := gs.NotesMarginLeft
-	player0NoteStartRight := SCREEN_WIDTH - gs.NotesMarginRight
-
-	var noteX = func(player int, dir NoteDir) float32 {
-		var noteX float32 = 0
-
-		if player == 1 {
-			noteX = player1NoteStartLeft + gs.NotesInterval*float32(dir)
-		} else {
-			noteX = player0NoteStartRight - (gs.NotesInterval)*(3-float32(dir))
-		}
-
-		return noteX
-	}
-
-	var timeToY = func(t time.Duration) float32 {
-		relativeTime := t - gs.AudioPosition()
-
-		return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
-	}
-
-	susNoteBarW := gs.NotesSize * 0.2
-
 	var getBarRect = func(player int, dir NoteDir, from, to time.Duration) rl.Rectangle {
-		fromY := timeToY(from)
-		toY := timeToY(to)
+		fromY := gs.TimeToY(from)
+		toY := gs.TimeToY(to)
 
 		return rl.Rectangle{
-			X:      noteX(player, dir) - susNoteBarW*0.5,
+			X:      gs.NoteX(player, dir) - gs.SustainBarWidth*0.5,
 			Y:      toY,
-			Width:  susNoteBarW,
+			Width:  gs.SustainBarWidth,
 			Height: fromY - toY,
 		}
 	}
+	_ = getBarRect
 
 	// ===================
 	// draw big bookmark
@@ -1281,7 +1263,7 @@ func (gs *GameScreen) Draw() {
 	// we want to draw it below note if it's just a regular note
 	// but we want to draw on top of holding note
 	drawHitOverlay := func(player int, dir NoteDir) {
-		x := noteX(player, dir) + statusOffsetX[player][dir]
+		x := gs.NoteX(player, dir) + statusOffsetX[player][dir]
 		y := SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
 		scale := gs.NotesSize * statusScaleOffset[player][dir]
 
@@ -1345,7 +1327,7 @@ func (gs *GameScreen) Draw() {
 				color = Col(1, 0, 0, 1)
 			}
 
-			x := noteX(player, dir) + statusOffsetX[player][dir]
+			x := gs.NoteX(player, dir) + statusOffsetX[player][dir]
 			y := SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
 			scale := gs.NotesSize * statusScaleOffset[player][dir]
 
@@ -1377,7 +1359,7 @@ func (gs *GameScreen) Draw() {
 			note := gs.Song.Notes[i]
 
 			time := note.StartsAt + note.Duration
-			y := timeToY(time)
+			y := gs.TimeToY(time)
 
 			firstNote = note
 
@@ -1393,143 +1375,104 @@ func (gs *GameScreen) Draw() {
 	if len(gs.Song.Notes) > 0 {
 		for i := firstNote.Index; i < len(gs.Song.Notes); i++ {
 			note := gs.Song.Notes[i]
+			noteEvents := gs.NoteEvents[note.Index]
 
-			x := noteX(note.Player, note.Direction)
-			y := timeToY(note.StartsAt)
+			drawEvent := (!gs.IsPlayingAudio() &&
+				!gs.OnlyTemporarilyPaused() && len(noteEvents) > 0)
 
-			normalFill := noteFill[note.Direction]
-			normalStroke := noteStroke[note.Direction]
-
-			badFill := noteFillGrey[note.Direction]
-			badStroke := noteStrokeGrey[note.Direction]
+			x := gs.NoteX(note.Player, note.Direction)
+			y := gs.TimeToY(note.StartsAt)
 
 			if note.IsSustain() { // draw hold note
-				if note.HoldReleaseAt < note.Duration+note.StartsAt {
+				if note.HoldReleaseAt < note.End() {
 					isHoldingNote := gs.Pstates[note.Player].IsHoldingNote[note.Direction]
 					isHoldingNote = isHoldingNote && gs.Pstates[note.Player].HoldingNote[note.Direction].Equals(note)
 
-					sustaniEndY := timeToY(note.StartsAt + note.Duration)
-					sustainBeginY := timeToY(max(note.StartsAt, note.HoldReleaseAt))
+					susBegin := max(note.StartsAt, note.HoldReleaseAt)
 
 					if isHoldingNote {
-						sustainBeginY = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[note.Player][note.Direction]
+						susBegin = max(susBegin, gs.AudioPosition())
 					}
 
-					holdRectW := susNoteBarW
+					susBeginOffset := float32(0)
 
-					holdRect := rl.Rectangle{
-						x - holdRectW*0.5, sustaniEndY,
-						holdRectW, sustainBeginY - sustaniEndY}
-
-					if holdRect.Height > 0 { // draw sustain line
-						//rl.DrawRectangleRoundedLines(holdRect, holdRect.Width*0.5, 5, 5, black.ToImageRGBA())
-						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5, normalFill.ToRlColor())
+					if isHoldingNote {
+						susBeginOffset = statusOffsetY[note.Player][note.Direction]
 					}
 
-					fill := normalFill
-					stroke := normalStroke
+					var susColors []SustainColor
 
-					if !isHoldingNote && note.StartsAt < gs.AudioPosition()-gs.HitWindow/2 {
-						fill = badFill
-						stroke = badStroke
+					//add miss colors if you have to
+					if drawEvent {
+						firstEvent := noteEvents[0]
+
+						misses := CalculateSustainMisses(note, noteEvents)
+
+						for i, m := range misses {
+							// skip first miss if it's happened before first hit
+							if firstEvent.IsHit() && i == 0 &&
+								m.End-time.Millisecond <= firstEvent.Time {
+								continue
+							}
+							// skip misses that are too small
+							if m.End-m.Begin < time.Millisecond*10 {
+								continue
+							}
+
+							susColors = append(susColors, SustainColor{
+								Begin: m.Begin, End: m.End,
+								Color: noteFillMistake[note.Direction],
+							})
+						}
+					}
+
+					gs.DrawSustainBar(
+						note.Player, note.Direction,
+						susBegin, note.End(),
+						noteFill[note.Direction], susColors,
+						susBeginOffset, 0,
+					)
+
+					arrowFill := noteFill[note.Direction]
+					arrowStroke := noteStroke[note.Direction]
+
+					// if we are not holding note and it passed the hit window, grey it out
+					if !isHoldingNote && note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow) {
+						arrowFill = noteFillGrey[note.Direction]
+						arrowStroke = noteStrokeGrey[note.Direction]
+					}
+
+					if drawEvent && noteEvents[0].IsMiss() {
+						arrowFill = noteFillMistake[note.Direction]
+						arrowStroke = noteStrokeMistake[note.Direction]
 					}
 
 					if !isHoldingNote { // draw note if we are not holding it
-						DrawNoteArrow(x, sustainBeginY, gs.NotesSize, note.Direction, fill, stroke)
+						DrawNoteArrow(x, gs.TimeToY(susBegin)+susBeginOffset,
+							gs.NotesSize, note.Direction, arrowFill, arrowStroke)
 					}
 				}
 			} else if !note.IsHit { // draw regular note
+
+				arrowFill := noteFill[note.Direction]
+				arrowStroke := noteStroke[note.Direction]
+
 				if note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow) {
-					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, badFill, badStroke)
-				} else {
-					DrawNoteArrow(x, y, gs.NotesSize, note.Direction, normalFill, normalStroke)
+					arrowFill = noteFillGrey[note.Direction]
+					arrowStroke = noteStrokeGrey[note.Direction]
 				}
+
+				if drawEvent && noteEvents[0].IsMiss() {
+					arrowFill = noteFillMistake[note.Direction]
+					arrowStroke = noteStrokeMistake[note.Direction]
+				}
+
+				DrawNoteArrow(x, y, gs.NotesSize, note.Direction, arrowFill, arrowStroke)
 			}
 
 			// if note is out of screen, we stop
-			if timeToY(note.StartsAt) < -gs.NotesSize*2 {
+			if gs.TimeToY(note.StartsAt) < -gs.NotesSize*2 {
 				break
-			}
-		}
-	}
-
-	// ============================================
-	// draw note events
-	// ============================================
-
-	// TODO : I would like to draw events not on top of the note
-	// but to draw note events only if needed
-
-	if len(gs.Song.Notes) > 0 && !gs.IsPlayingAudio() && !gs.OnlyTemporarilyPaused() {
-		for index := firstNote.Index; index < len(gs.Song.Notes); index++ {
-
-			note := gs.Song.Notes[index]
-
-			if len(gs.NoteEvents[index]) <= 0 {
-				continue
-			}
-
-			if !note.IsSustain() {
-				if gs.NoteEvents[index][0].IsMiss() {
-					x := noteX(note.Player, note.Direction)
-					y := timeToY(note.StartsAt)
-					DrawNoteArrow(x, y, gs.NotesSize, note.Direction,
-						noteFillMistake[note.Direction], noteStrokeMistake[note.Direction])
-				}
-			} else {
-				events := gs.NoteEvents[index]
-				if len(events) > 0{
-					firstEvent := events[0]
-
-					misses := CalculateSustainMisses(note, events)
-
-					// delete misses that are too small
-					{
-						newMisses := make([]SustainMiss, 0, len(misses))
-						for _, m := range misses{
-							duration := m.End - m.Begin
-							if duration > time.Millisecond * 10{
-								newMisses = append(newMisses, m)
-							}
-						}
-
-						misses = newMisses
-					}
-
-					// remove first miss if it's happened before first hit
-					if firstEvent.IsHit() && len(misses) > 0{
-						firstMiss := misses[0]
-
-						if firstMiss.End - time.Millisecond <= firstEvent.Time {
-							misses = misses[1:]
-						}
-					}
-
-					// draw sustain bar for misses
-					for _, miss := range misses {
-						holdRect := getBarRect(
-							note.Player, note.Direction,
-							miss.Begin, miss.End,
-						)
-
-						rl.DrawRectangleRounded(holdRect, holdRect.Width*0.5, 5,
-						noteFillMistake[note.Direction].ToRlColor())
-					}
-
-					if firstEvent.IsMiss(){
-						DrawNoteArrow(
-							noteX(note.Player, note.Direction),
-							timeToY(note.StartsAt),
-							gs.NotesSize, note.Direction,
-							noteFillMistake[note.Direction], noteStrokeMistake[note.Direction])
-					}else{
-						DrawNoteArrow(
-							noteX(note.Player, note.Direction),
-							timeToY(note.StartsAt),
-							gs.NotesSize, note.Direction,
-							noteFill[note.Direction], noteStroke[note.Direction])
-					}
-				}
 			}
 		}
 	}
@@ -1655,6 +1598,87 @@ func (gs *GameScreen) Draw() {
 	if gs.DrawMenu {
 		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
 		gs.MenuDrawer.Draw()
+	}
+}
+
+func (gs *GameScreen) NoteX(player int, dir NoteDir) float32 {
+	player1NoteStartLeft := gs.NotesMarginLeft
+	player0NoteStartRight := SCREEN_WIDTH - gs.NotesMarginRight
+
+	var noteX float32 = 0
+
+	if player == 1 {
+		noteX = player1NoteStartLeft + gs.NotesInterval*float32(dir)
+	} else {
+		noteX = player0NoteStartRight - (gs.NotesInterval)*(3-float32(dir))
+	}
+
+	return noteX
+}
+
+func (gs *GameScreen) TimeToY(t time.Duration) float32 {
+	relativeTime := t - gs.AudioPosition()
+
+	return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
+}
+
+type SustainColor struct {
+	Begin time.Duration
+	End   time.Duration
+
+	Color Color
+}
+
+func (gs *GameScreen) DrawSustainBar(
+	player int, dir NoteDir,
+	from, to time.Duration,
+	baseColor Color,
+	otherColors []SustainColor,
+	fromOffset float32, toOffset float32,
+) {
+	duration := to - from
+
+	if duration <= 0 {
+		return
+	}
+
+	baseX := gs.NoteX(player, dir)
+
+	fromV := rl.Vector2{
+		X: baseX,
+		Y: gs.TimeToY(from) + fromOffset,
+	}
+
+	toV := rl.Vector2{
+		X: baseX,
+		Y: gs.TimeToY(to) + toOffset,
+	}
+
+	// TODO : this check will be wrong if we ever implement upscroll
+	if toV.Y > fromV.Y {
+		return
+	}
+
+	rl.DrawLineEx(fromV, toV, gs.SustainBarWidth, baseColor.ToRlColor())
+
+	durationF := float32(duration)
+
+	for _, c := range otherColors {
+		if c.End <= from {
+			continue
+		}
+
+		if c.Begin >= to {
+			continue
+		}
+
+		b := Clamp(c.Begin, from, to)
+		e := Clamp(c.End, from, to)
+
+		bv := rl.Vector2Lerp(fromV, toV, float32(b-from)/durationF)
+		ev := rl.Vector2Lerp(fromV, toV, float32(e-from)/durationF)
+
+		rl.DrawLineEx(bv, ev, gs.SustainBarWidth, c.Color.ToRlColor())
 	}
 }
 
