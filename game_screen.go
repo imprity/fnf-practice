@@ -1102,19 +1102,6 @@ func (gs *GameScreen) Draw() {
 		return
 	}
 
-	var getBarRect = func(player int, dir NoteDir, from, to time.Duration) rl.Rectangle {
-		fromY := gs.TimeToY(from)
-		toY := gs.TimeToY(to)
-
-		return rl.Rectangle{
-			X:      gs.NoteX(player, dir) - gs.SustainBarWidth*0.5,
-			Y:      toY,
-			Width:  gs.SustainBarWidth,
-			Height: fromY - toY,
-		}
-	}
-	_ = getBarRect
-
 	// ===================
 	// draw big bookmark
 	// ===================
@@ -1636,6 +1623,22 @@ func (gs *GameScreen) DrawSustainBar(
 	otherColors []SustainColor,
 	fromOffset float32, toOffset float32,
 ) {
+	// TODO : This function does not handle transparent colors
+	// also I would like this function to draw line with crayon like texture
+
+	drawRoundLine := func(
+		from, to rl.Vector2,
+		thick float32,
+		col Color,
+	) {
+		rlColor := col.ToRlColor()
+		rl.DrawLineEx(from, to, thick, rlColor)
+
+		// draw tip
+		rl.DrawCircle(i32(from.X), i32(from.Y), thick*0.5, rlColor)
+		rl.DrawCircle(i32(to.X), i32(to.Y), thick*0.5, rlColor)
+	}
+
 	duration := to - from
 
 	if duration <= 0 {
@@ -1659,7 +1662,8 @@ func (gs *GameScreen) DrawSustainBar(
 		return
 	}
 
-	rl.DrawLineEx(fromV, toV, gs.SustainBarWidth, baseColor.ToRlColor())
+	//rl.DrawLineEx(fromV, toV, gs.SustainBarWidth, baseColor.ToRlColor())
+	drawRoundLine(fromV, toV, gs.SustainBarWidth, baseColor)
 
 	durationF := float32(duration)
 
@@ -1678,7 +1682,7 @@ func (gs *GameScreen) DrawSustainBar(
 		bv := rl.Vector2Lerp(fromV, toV, float32(b-from)/durationF)
 		ev := rl.Vector2Lerp(fromV, toV, float32(e-from)/durationF)
 
-		rl.DrawLineEx(bv, ev, gs.SustainBarWidth, c.Color.ToRlColor())
+		drawRoundLine(bv, ev, gs.SustainBarWidth, c.Color)
 	}
 }
 
