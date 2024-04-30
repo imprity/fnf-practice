@@ -9,9 +9,13 @@ type PlayerState struct {
 	HoldingNote   [NoteDirSize]FnfNote
 	IsHoldingNote [NoteDirSize]bool
 
-	// animation infos
 	IsHoldingKey    [NoteDirSize]bool
 	IsHoldingBadKey [NoteDirSize]bool
+
+	IsKeyJustPressed  [NoteDirSize]bool
+	IsKeyJustReleased [NoteDirSize]bool
+
+	// animation infos
 
 	// since these are for animations and stuff,
 	// time is in real time (i.e. time since app started)
@@ -136,24 +140,28 @@ func UpdateNotesAndStates(
 
 	var noteEvents []NoteEvent
 
-	if isPlayingAudio {
-		avgPos := (audioPos + prevAudioPos) / 2
+	var isKeyJustPressed [2][NoteDirSize]bool
+	var isKeyJustReleased [2][NoteDirSize]bool
 
-		var isKeyJustPressed [2][NoteDirSize]bool
-		var isKeyJustReleased [2][NoteDirSize]bool
+	for player := 0; player <= 1; player++ {
+		for dir := range NoteDirSize {
+			if !wasKeyPressed[player][dir] && isKeyPressed[player][dir] {
+				isKeyJustPressed[player][dir] = true
+			}
 
-		for player := 0; player <= 1; player++ {
-			for dir := range NoteDirSize {
-				if !wasKeyPressed[player][dir] && isKeyPressed[player][dir] {
-					isKeyJustPressed[player][dir] = true
-				}
-
-				if wasKeyPressed[player][dir] && !isKeyPressed[player][dir] {
-					isKeyJustReleased[player][dir] = true
-				}
-
+			if wasKeyPressed[player][dir] && !isKeyPressed[player][dir] {
+				isKeyJustReleased[player][dir] = true
 			}
 		}
+	}
+
+	for player := 0; player <= 1; player++ {
+		pStates[player].IsKeyJustPressed = isKeyJustPressed[player]
+		pStates[player].IsKeyJustReleased = isKeyJustReleased[player]
+	}
+
+	if isPlayingAudio {
+		avgPos := (audioPos + prevAudioPos) / 2
 
 		//clear note miss state
 		for player := 0; player <= 1; player++ {
@@ -336,6 +344,7 @@ func UpdateNotesAndStates(
 func GetKeyPressState(
 	notes []FnfNote,
 	noteIndexStart int,
+	isPlayingAudio bool,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	isBotPlay bool,
@@ -343,7 +352,7 @@ func GetKeyPressState(
 ) [2][NoteDirSize]bool {
 
 	keyPressState := GetBotKeyPresseState(
-		notes, noteIndexStart, prevAudioPos, audioPos, isBotPlay, hitWindow)
+		notes, noteIndexStart, isPlayingAudio, prevAudioPos, audioPos, isBotPlay, hitWindow)
 
 	if !isBotPlay {
 		for dir, keys := range NoteKeys {
@@ -367,6 +376,7 @@ func isNoteForBot(note FnfNote, isBotPlay bool) bool {
 func GetBotKeyPresseState(
 	notes []FnfNote,
 	noteIndexStart int,
+	isPlayingAudio bool,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	isBotPlay bool,
@@ -374,6 +384,10 @@ func GetBotKeyPresseState(
 ) [2][NoteDirSize]bool {
 
 	var keyPressed [2][NoteDirSize]bool
+
+	if !isPlayingAudio {
+		return keyPressed
+	}
 
 	const tinyWindow = time.Millisecond * 10
 

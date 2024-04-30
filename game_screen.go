@@ -52,6 +52,13 @@ func NewHelpMessage() *HelpMessage {
 	return hm
 }
 
+type Mispress struct {
+	Player    int
+	Direction NoteDir
+
+	Time time.Duration
+}
+
 type AnimatedRewind struct {
 	Target   time.Duration
 	Duration time.Duration
@@ -72,6 +79,8 @@ type GameScreen struct {
 	HitWindow time.Duration
 
 	Pstates [2]PlayerState
+
+	Mispresses []Mispress
 
 	NoteEvents [][]NoteEvent
 
@@ -484,6 +493,14 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.LogNoteEvent = !gs.LogNoteEvent
 	}
 
+	{
+		tf := "false"
+		if gs.LogNoteEvent {
+			tf = "true"
+		}
+		DebugPrint("Log Note Event", tf)
+	}
+
 	// =============================================
 	// menu stuff
 	// =============================================
@@ -544,6 +561,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					gs.PauseAudio()
 
 					gs.ResetNoteEvents()
+					gs.Mispresses = gs.Mispresses[:0]
 					gs.ResetStatesThatTracksGamePlayChanges()
 				}
 			}
@@ -612,6 +630,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					gs.ClearTempPause()
 				} else {
 					gs.ResetNoteEvents()
+					gs.Mispresses = gs.Mispresses[:0]
 					gs.PlayAudio()
 				}
 			}
@@ -753,6 +772,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.ResetStatesThatTracksGamePlayChanges()
 		if gs.IsPlayingAudio() || gs.OnlyTemporarilyPaused() {
 			gs.ResetNoteEvents()
+			gs.Mispresses = gs.Mispresses[:0]
 		}
 	}
 
@@ -803,7 +823,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	wasKeyPressed := gs.isKeyPressed
 
-	gs.isKeyPressed = GetKeyPressState(gs.Song.Notes, gs.noteIndexStart, prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
+	gs.isKeyPressed = GetKeyPressState(
+		gs.Song.Notes, gs.noteIndexStart,
+		gs.IsPlayingAudio(), prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
 
 	var noteEvents []NoteEvent
 
@@ -871,13 +893,58 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	queuedRewind := false
 
+	// ===================
+	// handle mispresses
+	// ===================
+	for player := 0; player <= 1; player++ {
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			mispressed := (gs.Pstates[player].IsHoldingBadKey[dir] &&
+				gs.Pstates[player].IsKeyJustPressed[dir])
+
+			rewind := mispressed
+
+			rewind = rewind && !queuedRewind
+
+			rewind = rewind && player == 0
+			rewind = rewind && !gs.IsBotPlay()
+
+			rewind = rewind && gs.RewindOnMistake
+			rewind = rewind && gs.BookMarkSet
+
+			rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
+
+			// rewind on mispress
+			// TODO : add option to disable this behaviour
+			if rewind {
+				queuedRewind = true
+				gs.RewindQueue.Clear()
+
+				// pause a bit at mispress
+				gs.RewindQueue.Enqueue(AnimatedRewind{
+					Target:   gs.AudioPosition(),
+					Duration: time.Millisecond * 300,
+				})
+
+				gs.RewindQueue.Enqueue(AnimatedRewind{
+					Target:   gs.BookMark,
+					Duration: time.Millisecond * 700,
+				})
+			}
+
+			if mispressed {
+				gs.Mispresses = append(gs.Mispresses, Mispress{
+					Player: player, Direction: dir, Time: gs.AudioPosition(),
+				})
+			}
+		}
+	}
+
 	for _, e := range noteEvents {
 
 		// ===========================
 		// rewind on miss
 		// ===========================
 		if gs.RewindOnMistake {
-			// TODO : rewind on mispress
 			eventNote := gs.Song.Notes[e.Index]
 
 			rewind := !gs.IsBotPlay()
@@ -1337,6 +1404,8 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// find the first note to draw
 	// ============================================
+
+	// TODO : this will be broken in upscroll
 	firstNote := FnfNote{}
 
 	if len(gs.Song.Notes) > 0 {
@@ -1364,7 +1433,7 @@ func (gs *GameScreen) Draw() {
 			note := gs.Song.Notes[i]
 			noteEvents := gs.NoteEvents[note.Index]
 
-			drawEvent := (!gs.IsPlayingAudio() &&
+			drawEvent := (note.Player == 0 && !gs.IsBotPlay() && !gs.IsPlayingAudio() &&
 				!gs.OnlyTemporarilyPaused() && len(noteEvents) > 0)
 
 			x := gs.NoteX(note.Player, note.Direction)
@@ -1472,6 +1541,46 @@ func (gs *GameScreen) Draw() {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir] {
 				drawHitOverlay(player, dir)
+			}
+		}
+	}
+
+	// ============================================
+	// draw mispresses
+	// ============================================
+	{
+		if !gs.IsPlayingAudio() &&
+			!gs.OnlyTemporarilyPaused() &&
+			len(gs.Mispresses) > 0 &&
+			!gs.IsBotPlay() {
+
+			missStart := 0
+
+			// TODO : this will be broken in upscroll
+			for i, miss := range gs.Mispresses {
+				missStart = i
+
+				y := gs.TimeToY(miss.Time)
+
+				if y < SCREEN_HEIGHT+gs.NotesSize*2 {
+					break
+				}
+			}
+
+			for i := missStart; i < len(gs.Mispresses); i++ {
+				miss := gs.Mispresses[i]
+
+				if miss.Player == 0 {
+					DrawNoteArrow(
+						gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
+						gs.NotesSize, miss.Direction,
+						Col(0, 0, 0, 0), Col(1, 0, 0, 1),
+					)
+				}
+
+				if gs.TimeToY(miss.Time) < -gs.NotesSize*2 {
+					break
+				}
 			}
 		}
 	}
@@ -1963,6 +2072,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.SetAudioPosition(0)
 	gs.ResetNoteEvents()
+	gs.Mispresses = gs.Mispresses[:0]
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
