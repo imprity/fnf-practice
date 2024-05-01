@@ -770,10 +770,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	if positionArbitraryChange {
 		gs.ResetStatesThatTracksGamePlayChanges()
-		if gs.IsPlayingAudio() || gs.OnlyTemporarilyPaused() {
-			gs.ResetNoteEvents()
-			gs.Mispresses = gs.Mispresses[:0]
-		}
 	}
 
 	// =============================================
@@ -782,6 +778,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	if gs.tempPauseUntil < GlobalTimerNow() {
 		if gs.wasPlayingWhenTempPause {
+			gs.ResetNoteEvents()
+			gs.Mispresses = gs.Mispresses[:0]
+
 			gs.PlayAudio()
 			gs.wasPlayingWhenTempPause = false
 		}
@@ -1433,8 +1432,7 @@ func (gs *GameScreen) Draw() {
 			note := gs.Song.Notes[i]
 			noteEvents := gs.NoteEvents[note.Index]
 
-			drawEvent := (note.Player == 0 && !gs.IsBotPlay() && !gs.IsPlayingAudio() &&
-				!gs.OnlyTemporarilyPaused() && len(noteEvents) > 0)
+			drawEvent := (note.Player == 0 && !gs.IsBotPlay() && !gs.IsPlayingAudio() && len(noteEvents) > 0)
 
 			x := gs.NoteX(note.Player, note.Direction)
 			y := gs.TimeToY(note.StartsAt)
@@ -1548,39 +1546,34 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw mispresses
 	// ============================================
-	{
-		if !gs.IsPlayingAudio() &&
-			!gs.OnlyTemporarilyPaused() &&
-			len(gs.Mispresses) > 0 &&
-			!gs.IsBotPlay() {
+	if !gs.IsPlayingAudio() && len(gs.Mispresses) > 0 && !gs.IsBotPlay() {
 
-			missStart := 0
+		missStart := 0
 
-			// TODO : this will be broken in upscroll
-			for i, miss := range gs.Mispresses {
-				missStart = i
+		// TODO : this will be broken in upscroll
+		for i, miss := range gs.Mispresses {
+			missStart = i
 
-				y := gs.TimeToY(miss.Time)
+			y := gs.TimeToY(miss.Time)
 
-				if y < SCREEN_HEIGHT+gs.NotesSize*2 {
-					break
-				}
+			if y < SCREEN_HEIGHT+gs.NotesSize*2 {
+				break
+			}
+		}
+
+		for i := missStart; i < len(gs.Mispresses); i++ {
+			miss := gs.Mispresses[i]
+
+			if miss.Player == 0 {
+				DrawNoteArrow(
+					gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
+					gs.NotesSize, miss.Direction,
+					Col(0, 0, 0, 0), Col(1, 0, 0, 1),
+				)
 			}
 
-			for i := missStart; i < len(gs.Mispresses); i++ {
-				miss := gs.Mispresses[i]
-
-				if miss.Player == 0 {
-					DrawNoteArrow(
-						gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
-						gs.NotesSize, miss.Direction,
-						Col(0, 0, 0, 0), Col(1, 0, 0, 1),
-					)
-				}
-
-				if gs.TimeToY(miss.Time) < -gs.NotesSize*2 {
-					break
-				}
+			if gs.TimeToY(miss.Time) < -gs.NotesSize*2 {
+				break
 			}
 		}
 	}
@@ -2058,21 +2051,25 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.DrawMenu = false
 	gs.MenuDrawer.SelectedIndex = 0
+
 	gs.prevPlayerPosition = 0
 
-	gs.tempPauseUntil = -Years150
-	gs.wasPlayingWhenTempPause = false
+	gs.ClearTempPause()
+
+	gs.ClearRewind()
 
 	gs.HelpMessage.BeforeScreenTransition()
 
 	gs.BookMarkSet = false
-	gs.RewindStarted = false
 
 	gs.MenuDrawer.ResetAnimation()
 
 	gs.SetAudioPosition(0)
+
 	gs.ResetNoteEvents()
+
 	gs.Mispresses = gs.Mispresses[:0]
+
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
