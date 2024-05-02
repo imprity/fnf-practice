@@ -84,7 +84,6 @@ func main() {
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
-
 	rl.SetExitKey(rl.KeyNull)
 
 	TheRenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -108,6 +107,17 @@ func main() {
 	TheGameScreen = NewGameScreen()
 	TheSelectScreen = NewSelectScreen()
 	TheOptionsScreen = NewOptionsScreen()
+
+	//load settings
+	err = LoadSettingsAndData()
+
+	if err != nil{ // TODO : This is a terrible. Don't just fucking crash
+		ErrorLogger.Fatal(err)
+	}
+
+	for _, collection := range SavedCollections(){
+		TheSelectScreen.AddCollection(collection)
+	}
 
 	var screen Screen = TheSelectScreen
 

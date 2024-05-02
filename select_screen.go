@@ -17,6 +17,8 @@ type SelectScreen struct {
 	SongDecoItemId      int64
 
 	MenuToGroup map[int64]FnfPathGroup
+
+	Collections []PathGroupCollection
 }
 
 func NewSelectScreen() *SelectScreen {
@@ -41,50 +43,6 @@ func NewSelectScreen() *SelectScreen {
 	// creating directory open menu
 	// =======================================
 
-	newSongMenuItem := func(group FnfPathGroup) *MenuItem {
-		menuItem := NewMenuItem()
-
-		menuItem.Type = MenuItemTrigger
-		menuItem.Name = group.SongName
-		ss.MenuToGroup[menuItem.Id] = group
-
-		menuItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-			if !bValue {
-				return
-			}
-			DisableInput()
-			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
-
-			ShowTransition(SongLoadingScreen, func() {
-				var instBytes []byte
-				var voiceBytes []byte
-
-				var err error
-
-				// TODO : dosomething with this error other than panicking
-				instBytes, err = LoadAudio(group.InstPath)
-				if err != nil {
-					ErrorLogger.Fatal(err)
-				}
-
-				if group.VoicePath != "" {
-					voiceBytes, err = LoadAudio(group.VoicePath)
-					if err != nil {
-						ErrorLogger.Fatal(err)
-					}
-				}
-
-				TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
-				SetNextScreen(TheGameScreen)
-
-				EnableInput()
-				HideTransition()
-			})
-		}
-
-		return menuItem
-	}
-
 	directoryOpen := NewMenuItem()
 	directoryOpen.Name = "Search Directory"
 	directoryOpen.Type = MenuItemTrigger
@@ -106,36 +64,12 @@ func NewSelectScreen() *SelectScreen {
 				return
 			}
 
-			groups := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
+			collection := TryToFindSongs(directory, log.New(os.Stdout, "SEARCH : ", 0))
 
-			if len(groups) > 0 {
-				for _, group := range groups {
-					menuItem := newSongMenuItem(group)
-					ss.MainMenu.Items = append(ss.MainMenu.Items, menuItem)
-				}
+			ss.AddCollection(collection)
 
-				// =====================
-				// add song deco
-				// =====================
-				if deco := ss.MainMenu.GetItemById(ss.SongDecoItemId); deco == nil {
-					songDeco := NewMenuItem()
-
-					songDeco.Type = MenuItemDeco
-
-					songDeco.Name = "Songs"
-
-					songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-					songDeco.FadeIfUnselected = false
-
-					songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-					songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
-
-					ss.MainMenu.InsertAt(3, songDeco)
-
-					ss.SongDecoItemId = songDeco.Id
-				}
-				// =====================
-			}
+			SetCollectionsToSave(ss.Collections)
+			SaveSettingsAndData()
 		})
 	}
 	ss.MainMenu.Items = append(ss.MainMenu.Items, directoryOpen)
@@ -190,6 +124,104 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	ErrorLogger.Fatal("Unreachable")
 
 	return 0
+}
+
+func (ss *SelectScreen) AddCollection(collection PathGroupCollection){
+	newSongMenuItem := func(group FnfPathGroup) *MenuItem {
+		menuItem := NewMenuItem()
+
+		menuItem.Type = MenuItemTrigger
+		menuItem.Name = group.SongName
+		ss.MenuToGroup[menuItem.Id] = group
+
+		menuItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+			if !bValue {
+				return
+			}
+			DisableInput()
+			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+
+			ShowTransition(SongLoadingScreen, func() {
+				var instBytes []byte
+				var voiceBytes []byte
+
+				var err error
+
+				// TODO : dosomething with this error other than panicking
+				instBytes, err = LoadAudio(group.InstPath)
+				if err != nil {
+					ErrorLogger.Fatal(err)
+				}
+
+				if group.VoicePath != "" {
+					voiceBytes, err = LoadAudio(group.VoicePath)
+					if err != nil {
+						ErrorLogger.Fatal(err)
+					}
+				}
+
+				TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
+				SetNextScreen(TheGameScreen)
+
+				EnableInput()
+				HideTransition()
+			})
+		}
+
+		return menuItem
+	}
+
+	// TODO : Font we use is not cut for display path
+	// since it doesn't support many unicode characters
+	// And I have a feeling it'll be more complicated then just slapping
+	// another font.
+	// this TODO shouldn't even be here but I wasn't sure where to put it
+	newBasePathDecoItem := func(collection PathGroupCollection) *MenuItem{
+		pathDeco := NewMenuItem()
+
+		pathDeco.Type = MenuItemDeco
+
+		pathDeco.Name = collection.BasePath
+
+		pathDeco.FadeIfUnselected = false
+
+		return pathDeco
+	}
+
+	groups := collection.PathGroups
+
+	if len(groups) > 0 {
+		ss.Collections = append(ss.Collections, collection)
+
+		ss.MainMenu.Items = append(ss.MainMenu.Items, newBasePathDecoItem(collection))
+
+		for _, group := range groups {
+			menuItem := newSongMenuItem(group)
+			ss.MainMenu.Items = append(ss.MainMenu.Items, menuItem)
+		}
+
+		// =====================
+		// add song deco
+		// =====================
+		if deco := ss.MainMenu.GetItemById(ss.SongDecoItemId); deco == nil {
+			songDeco := NewMenuItem()
+
+			songDeco.Type = MenuItemDeco
+
+			songDeco.Name = "Songs"
+
+			songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+			songDeco.FadeIfUnselected = false
+
+			songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
+			songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
+
+			ss.MainMenu.InsertAt(3, songDeco)
+
+			ss.SongDecoItemId = songDeco.Id
+		}
+		// =====================
+	}
 }
 
 func (ss *SelectScreen) Update(deltaTime time.Duration) {

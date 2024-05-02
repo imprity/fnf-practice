@@ -760,6 +760,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if gs.BookMarkSet {
 				positionArbitraryChange = true
 				gs.SetAudioPosition(gs.BookMark)
+				gs.ClearRewind()
 			}
 		}
 	}
@@ -770,6 +771,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	if positionArbitraryChange {
 		gs.ResetStatesThatTracksGamePlayChanges()
+		if gs.IsPlayingAudio(){
+			gs.ResetNoteEvents()
+			gs.Mispresses = gs.Mispresses[:0]
+		}
 	}
 
 	// =============================================

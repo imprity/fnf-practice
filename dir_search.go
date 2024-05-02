@@ -55,7 +55,7 @@ func StringDistance(str1, str2 []byte) int {
 // TODO : rather than dumping a log,
 // I think this should really return grouped path
 // like I walked these paths and parsed these paths and so on and so forth...
-func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
+func TryToFindSongs(root string, logger *log.Logger) PathGroupCollection {
 
 	// ===============================================
 	// collect song json file and audio candidates
@@ -313,7 +313,12 @@ func TryToFindSongs(root string, logger *log.Logger) []FnfPathGroup {
 		return strings.Compare(a.SongName, b.SongName)
 	})
 
-	return pathGroups
+	collection := PathGroupCollection{
+		BasePath : root,
+		PathGroups : pathGroups,
+	}
+
+	return collection
 }
 
 func isPathGroupGood(group FnfPathGroup) error {
