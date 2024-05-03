@@ -771,7 +771,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	if positionArbitraryChange {
 		gs.ResetStatesThatTracksGamePlayChanges()
-		if gs.IsPlayingAudio(){
+		if gs.IsPlayingAudio() {
 			gs.ResetNoteEvents()
 			gs.Mispresses = gs.Mispresses[:0]
 		}

@@ -314,8 +314,8 @@ func TryToFindSongs(root string, logger *log.Logger) PathGroupCollection {
 	})
 
 	collection := PathGroupCollection{
-		BasePath : root,
-		PathGroups : pathGroups,
+		BasePath:   root,
+		PathGroups: pathGroups,
 	}
 
 	return collection

@@ -199,9 +199,9 @@ type FnfPathGroup struct {
 	VoicePath string
 }
 
-type PathGroupCollection struct{
+type PathGroupCollection struct {
 	PathGroups []FnfPathGroup
-	BasePath string
+	BasePath   string
 }
 
 type FnfHitRating int

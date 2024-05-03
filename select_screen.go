@@ -125,7 +125,7 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen) AddCollection(collection PathGroupCollection){
+func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 	newSongMenuItem := func(group FnfPathGroup) *MenuItem {
 		menuItem := NewMenuItem()
 
@@ -175,7 +175,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection){
 	// And I have a feeling it'll be more complicated then just slapping
 	// another font.
 	// this TODO shouldn't even be here but I wasn't sure where to put it
-	newBasePathDecoItem := func(collection PathGroupCollection) *MenuItem{
+	newBasePathDecoItem := func(collection PathGroupCollection) *MenuItem {
 		pathDeco := NewMenuItem()
 
 		pathDeco.Type = MenuItemDeco

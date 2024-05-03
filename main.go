@@ -110,16 +110,16 @@ func main() {
 
 	//load settings
 	err = LoadSettings()
-	if err != nil{ // TODO : This is a terrible. Don't just fucking crash
+	if err != nil { // TODO : This is a terrible. Don't just fucking crash
 		ErrorLogger.Fatal(err)
 	}
 
 	var savedCollections []PathGroupCollection
 	savedCollections, err = LoadCollections()
-	if err != nil{ // TODO : This is a terrible. Don't just fucking crash
+	if err != nil { // TODO : This is a terrible. Don't just fucking crash
 		ErrorLogger.Fatal(err)
 	}
-	for _, collection := range savedCollections{
+	for _, collection := range savedCollections {
 		TheSelectScreen.AddCollection(collection)
 	}
 

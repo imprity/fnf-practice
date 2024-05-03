@@ -34,6 +34,7 @@ func NewOptionsScreen() *OptionsScreen {
 
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
+		// TODO : do not ignore error
 		SaveSettings()
 		ShowTransition(BlackPixel, func() {
 			DisableInput()
@@ -67,6 +68,7 @@ func (op *OptionsScreen) Update(deltaTime time.Duration) {
 	if AreKeysPressed(EscapeKey) {
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
+		// TODO : do not ignore error
 		SaveSettings()
 		ShowTransition(BlackPixel, func() {
 			DisableInput()
