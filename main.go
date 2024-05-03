@@ -109,13 +109,17 @@ func main() {
 	TheOptionsScreen = NewOptionsScreen()
 
 	//load settings
-	err = LoadSettingsAndData()
-
+	err = LoadSettings()
 	if err != nil{ // TODO : This is a terrible. Don't just fucking crash
 		ErrorLogger.Fatal(err)
 	}
 
-	for _, collection := range SavedCollections(){
+	var savedCollections []PathGroupCollection
+	savedCollections, err = LoadCollections()
+	if err != nil{ // TODO : This is a terrible. Don't just fucking crash
+		ErrorLogger.Fatal(err)
+	}
+	for _, collection := range savedCollections{
 		TheSelectScreen.AddCollection(collection)
 	}
 

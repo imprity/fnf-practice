@@ -68,8 +68,7 @@ func NewSelectScreen() *SelectScreen {
 
 			ss.AddCollection(collection)
 
-			SetCollectionsToSave(ss.Collections)
-			SaveSettingsAndData()
+			SaveCollections(ss.Collections)
 		})
 	}
 	ss.MainMenu.Items = append(ss.MainMenu.Items, directoryOpen)
