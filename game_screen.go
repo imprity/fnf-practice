@@ -838,8 +838,8 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	gs.isKeyPressed = GetKeyPressState(
 		gs.InputId,
 		gs.Song.Notes, gs.noteIndexStart,
-		gs.IsPlayingAudio(), prevAudioPos, audioPos, 
-		gs.botPlay, 
+		gs.IsPlayingAudio(), prevAudioPos, audioPos,
+		gs.botPlay,
 		gs.HitWindow)
 
 	var noteEvents []NoteEvent
@@ -2062,8 +2062,6 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.zoom = 1.0
 
 	gs.botPlay = false
-
-	EnableInput(gs.InputId)
 
 	gs.DrawMenu = false
 	gs.MenuDrawer.SelectedIndex = 0

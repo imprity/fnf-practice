@@ -261,5 +261,4 @@ func (ss *SelectScreen) Draw() {
 
 func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.MainMenu.ResetAnimation()
-	ClearGlobalInputDisable()
 }
