@@ -136,19 +136,19 @@ func NewMenuDrawer() *MenuDrawer {
 	return md
 }
 
-func (md *MenuDrawer) IsInputEnabled() bool{
+func (md *MenuDrawer) IsInputEnabled() bool {
 	return IsInputEnabled(md.InputId)
 }
 
-func (md *MenuDrawer) IsInputDisabled() bool{
+func (md *MenuDrawer) IsInputDisabled() bool {
 	return IsInputDisabled(md.InputId)
 }
 
-func (md *MenuDrawer) DisableInput(){
+func (md *MenuDrawer) DisableInput() {
 	DisableInput(md.InputId)
 }
 
-func (md *MenuDrawer) EnableInput(){
+func (md *MenuDrawer) EnableInput() {
 	EnableInput(md.InputId)
 }
 

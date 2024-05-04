@@ -5,11 +5,11 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var _= fmt.Sprintf
+var _ = fmt.Sprintf
 
 type PopupDialogCallback = func(selected string, isCanceled bool)
 
-type PopupDialog struct{
+type PopupDialog struct {
 	Message string
 
 	Options []string
@@ -17,8 +17,8 @@ type PopupDialog struct{
 	Callback PopupDialogCallback
 }
 
-type PopupDialogManager struct{
-	PopupRect rl.Rectangle
+type PopupDialogManager struct {
+	PopupRect   rl.Rectangle
 	TextBoxRect rl.Rectangle
 	OptionsRect rl.Rectangle
 
@@ -34,14 +34,14 @@ type PopupDialogManager struct{
 
 var ThePopupDialogManager PopupDialogManager
 
-func InitPopupDialog(){
+func InitPopupDialog() {
 	pdm := &ThePopupDialogManager
 
 	pdm.InputId = MakeInputGroupId()
 
 	pdm.PopupRect = rl.Rectangle{
-		Width : 870, Height : 540,
-		X : 205, Y : 90,
+		Width: 870, Height: 540,
+		X: 205, Y: 90,
 	}
 
 	const textBoxMarginTop = 60
@@ -49,7 +49,7 @@ func InitPopupDialog(){
 	const textBoxMarginSide = 75
 
 	pdm.TextBoxRect.Height = pdm.PopupRect.Height - (textBoxMarginTop + textBoxMarginBottom)
-	pdm.TextBoxRect.Width = pdm.PopupRect.Width - textBoxMarginSide * 2
+	pdm.TextBoxRect.Width = pdm.PopupRect.Width - textBoxMarginSide*2
 	pdm.TextBoxRect.X = pdm.PopupRect.X + textBoxMarginSide
 	pdm.TextBoxRect.Y = pdm.PopupRect.Y + textBoxMarginTop
 
@@ -59,25 +59,25 @@ func InitPopupDialog(){
 
 	pdm.OptionsRect.X = pdm.PopupRect.X + optionsMarginSide
 	pdm.OptionsRect.Y = pdm.TextBoxRect.Y + pdm.TextBoxRect.Height + optionsMarginTop
-	pdm.OptionsRect.Width = pdm.PopupRect.Width - optionsMarginSide * 2
+	pdm.OptionsRect.Width = pdm.PopupRect.Width - optionsMarginSide*2
 	pdm.OptionsRect.Height = RectEnd(pdm.PopupRect).Y - pdm.OptionsRect.Y - optionsMarginBottom
 }
 
-func FreePopupDialog(){
+func FreePopupDialog() {
 	// pass
 }
 
 func DisplayPopup(
 	msg string,
-	options[]string,
+	options []string,
 	callback PopupDialogCallback,
-){
+) {
 	pdm := &ThePopupDialogManager
 
 	dialog := PopupDialog{
-		Message : msg,
-		Options : options,
-		Callback : callback,
+		Message:  msg,
+		Options:  options,
+		Callback: callback,
 	}
 
 	pdm.PopupDialogQueue = append(pdm.PopupDialogQueue, dialog)
@@ -85,18 +85,18 @@ func DisplayPopup(
 	pdm.SelectedOption = 0
 }
 
-func UpdatePopup(){
+func UpdatePopup() {
 	pdm := &ThePopupDialogManager
 
-	if len(pdm.PopupDialogQueue) <= 0{
+	if len(pdm.PopupDialogQueue) <= 0 {
 		return
 	}
 
 	current := pdm.PopupDialogQueue[0]
 
-	afterResolve := func(){
+	afterResolve := func() {
 		queueLen := len(pdm.PopupDialogQueue)
-		for i:=0; i+1<queueLen; i++{
+		for i := 0; i+1 < queueLen; i++ {
 			pdm.PopupDialogQueue[i] = pdm.PopupDialogQueue[i+1]
 		}
 
@@ -104,33 +104,33 @@ func UpdatePopup(){
 		pdm.SelectedOption = 0
 	}
 
-	if len(current.Options) > 0{
-		if AreKeysPressed(pdm.InputId, NoteKeysLeft...){
+	if len(current.Options) > 0 {
+		if AreKeysPressed(pdm.InputId, NoteKeysLeft...) {
 			pdm.SelectedOption -= 1
 		}
 
-		if AreKeysPressed(pdm.InputId, NoteKeysRight...){
+		if AreKeysPressed(pdm.InputId, NoteKeysRight...) {
 			pdm.SelectedOption += 1
 		}
 
 		pdm.SelectedOption = Clamp(pdm.SelectedOption, 0, len(current.Options))
 
-		if AreKeysPressed(pdm.InputId, SelectKey){
-			if current.Callback != nil{
+		if AreKeysPressed(pdm.InputId, SelectKey) {
+			if current.Callback != nil {
 				current.Callback(pdm.Options[pdm.SelectedOption], false)
 			}
 
 			afterResolve()
-		}else if AreKeysPressed(pdm.InputId, EscapeKey){
-			if current.Callback != nil{
+		} else if AreKeysPressed(pdm.InputId, EscapeKey) {
+			if current.Callback != nil {
 				current.Callback("", true)
 			}
 
 			afterResolve()
 		}
-	}else{
-		if AreKeysPressed(pdm.InputId, SelectKey, EscapeKey){
-			if current.Callback != nil{
+	} else {
+		if AreKeysPressed(pdm.InputId, SelectKey, EscapeKey) {
+			if current.Callback != nil {
 				current.Callback("", true)
 			}
 
@@ -139,17 +139,17 @@ func UpdatePopup(){
 	}
 }
 
-func DrawPopup(){
+func DrawPopup() {
 	pdm := &ThePopupDialogManager
 
-	if len(pdm.PopupDialogQueue) <= 0{
+	if len(pdm.PopupDialogQueue) <= 0 {
 		return
 	}
 
-	rl.DrawRectangle(0,0,SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0,0,0,100})
+	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
 
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-	rl.DrawTexture(PopupBg, 0, 0, rl.Color{255,255,255,255})
+	rl.DrawTexture(PopupBg, 0, 0, rl.Color{255, 255, 255, 255})
 	rl.EndBlendMode()
 
 	current := pdm.PopupDialogQueue[0]
@@ -169,15 +169,15 @@ func DrawPopup(){
 
 	scale := float32(1.0)
 
-	if overFlowX || overFlowY{
-		if !overFlowX{
-			scale =  pdm.TextBoxRect.Width / msgSize.X
-		}else if !overFlowY{
-			scale =  pdm.TextBoxRect.Height / msgSize.Y
-		}else{
-			scale =  min(
-				pdm.TextBoxRect.Height / msgSize.Y,
-				pdm.TextBoxRect.Width / msgSize.X)
+	if overFlowX || overFlowY {
+		if !overFlowX {
+			scale = pdm.TextBoxRect.Width / msgSize.X
+		} else if !overFlowY {
+			scale = pdm.TextBoxRect.Height / msgSize.Y
+		} else {
+			scale = min(
+				pdm.TextBoxRect.Height/msgSize.Y,
+				pdm.TextBoxRect.Width/msgSize.X)
 		}
 	}
 
@@ -186,13 +186,13 @@ func DrawPopup(){
 	msgSize.Y *= scale
 
 	textPos := rl.Vector2{
-		X : pdm.TextBoxRect.X + (pdm.TextBoxRect.Width - msgSize.X) * 0.5,
-		Y : pdm.TextBoxRect.Y + (pdm.TextBoxRect.Height - msgSize.Y) * 0.5,
+		X: pdm.TextBoxRect.X + (pdm.TextBoxRect.Width-msgSize.X)*0.5,
+		Y: pdm.TextBoxRect.Y + (pdm.TextBoxRect.Height-msgSize.Y)*0.5,
 	}
 
 	rl.DrawTextEx(FontRegular, current.Message,
 		textPos, msgFontSize, 0,
-		rl.Color{0,0,0,255})
+		rl.Color{0, 0, 0, 255})
 
 	// draw options
 	/*rl.DrawRectangleRec(
@@ -200,32 +200,32 @@ func DrawPopup(){
 		rl.Color{255,0,0,100},
 	)*/
 
-	if len(current.Options) > 0{
+	if len(current.Options) > 0 {
 		opMargin := float32(50)
 		opFontSize := float32(100)
 
 		opWidth := float32(0)
 
 		//calculate options width
-		for i, op := range current.Options{
+		for i, op := range current.Options {
 			opWidth += rl.MeasureTextEx(FontBold, op, opFontSize, 0).X
-			if i != len(current.Options) -1{
+			if i != len(current.Options)-1 {
 				opWidth += opMargin
 			}
 		}
 
-		if opWidth > pdm.OptionsRect.Width{
+		if opWidth > pdm.OptionsRect.Width {
 			opFontSize *= pdm.OptionsRect.Width / opWidth
 			opMargin *= pdm.OptionsRect.Width / opWidth
 		}
 
-		offsetX := pdm.OptionsRect.X + (pdm.OptionsRect.Width - opWidth) * 0.5
-		offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height - opFontSize) * 0.5
+		offsetX := pdm.OptionsRect.X + (pdm.OptionsRect.Width-opWidth)*0.5
+		offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height-opFontSize)*0.5
 
-		for i, op := range current.Options{
-			col := rl.Color{100,100,100,255}
-			if i == pdm.SelectedOption{
-				col = rl.Color{0,0,0,255}
+		for i, op := range current.Options {
+			col := rl.Color{100, 100, 100, 255}
+			if i == pdm.SelectedOption {
+				col = rl.Color{0, 0, 0, 255}
 			}
 
 			w := rl.MeasureTextEx(FontBold, op, opFontSize, 0).X
@@ -237,4 +237,3 @@ func DrawPopup(){
 		}
 	}
 }
-

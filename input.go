@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-
 func MouseX() float32 {
 	screenRect := GetScreenRect()
 
@@ -99,27 +98,27 @@ var inputGroupIdMutex sync.Mutex
 
 var InputGroupIdMax InputGroupId
 
-func MakeInputGroupId() InputGroupId{
+func MakeInputGroupId() InputGroupId {
 	inputGroupIdMutex.Lock()
 	defer inputGroupIdMutex.Unlock()
 
 	InputGroupIdMax += 1
 
 	isInputGroupEnabled[InputGroupIdMax] = true
-	
+
 	return InputGroupIdMax
 }
 
 func IsInputDisabled(id InputGroupId) bool {
-	if inputAllDisabled{
-		return true 
+	if inputAllDisabled {
+		return true
 	}
 
-	if inputGroupSoloEnabled <= 0{
+	if inputGroupSoloEnabled <= 0 {
 		// we don't have to check if id is in map
 		// because map returns false when there's no key
-		return !isInputGroupEnabled[id] 
-	}else{
+		return !isInputGroupEnabled[id]
+	} else {
 		return inputGroupSoloEnabled != id
 	}
 }
@@ -133,37 +132,23 @@ func DisableInput(id InputGroupId) {
 }
 
 func EnableInput(id InputGroupId) {
-	isInputGroupEnabled[id] = true 
+	isInputGroupEnabled[id] = true
 }
 
-func DisableInputGlobal(){
+func DisableInputGlobal() {
 	inputAllDisabled = true
 }
 
-func ClearGlobalInputDisable(){
+func ClearGlobalInputDisable() {
 	inputAllDisabled = false
 }
 
-func SetSoloInput(id InputGroupId){
+func SetSoloInput(id InputGroupId) {
 	inputGroupSoloEnabled = id
 }
 
-func ClearSoloInput(){
+func ClearSoloInput() {
 	inputGroupSoloEnabled = 0
-}
-
-func AreKeysPressed(id InputGroupId, keys ...int32) bool {
-	if IsInputDisabled(id) {
-		return false
-	}
-
-	for _, key := range keys {
-		if rl.IsKeyPressed(key) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func AreKeysDown(id InputGroupId, keys ...int32) bool {
@@ -173,6 +158,20 @@ func AreKeysDown(id InputGroupId, keys ...int32) bool {
 
 	for _, key := range keys {
 		if rl.IsKeyDown(key) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func AreKeysPressed(id InputGroupId, keys ...int32) bool {
+	if IsInputDisabled(id) {
+		return false
+	}
+
+	for _, key := range keys {
+		if rl.IsKeyPressed(key) {
 			return true
 		}
 	}
@@ -207,8 +206,8 @@ func AreKeysReleased(id InputGroupId, keys ...int32) bool {
 var keyRepeatMap = make(map[int32]time.Duration)
 
 func HandleKeyRepeat(
-	id InputGroupId, 
-	firstRate, repeatRate time.Duration, 
+	id InputGroupId,
+	firstRate, repeatRate time.Duration,
 	keys ...int32) bool {
 
 	minKey := int32(math.MaxInt32)
@@ -241,4 +240,38 @@ func HandleKeyRepeat(
 	}
 
 	return false
+}
+
+func IsMouseButtonDown(id InputGroupId, button int32) bool {
+	if IsInputDisabled(id) {
+		return false
+	}
+
+	return rl.IsMouseButtonDown(button)
+}
+
+func IsMouseButtonPressed(id InputGroupId, button int32) bool {
+	if IsInputDisabled(id) {
+		return false
+	}
+
+	return rl.IsMouseButtonPressed(button)
+}
+
+func IsMouseButtonUp(id InputGroupId, button int32) bool {
+	if IsInputDisabled(id) {
+		return true
+	}
+
+	return rl.IsMouseButtonUp(button)
+}
+
+func IsMouseButtonReleased(id InputGroupId, button int32) bool {
+	if IsInputDisabled(id) {
+		// NOTE : retruning false because I think button being released
+		// feels like something that would only happen if input is enabled
+		return false
+	}
+
+	return rl.IsMouseButtonReleased(button)
 }

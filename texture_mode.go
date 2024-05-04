@@ -7,7 +7,7 @@ import (
 var renderTextureStack []rl.RenderTexture2D
 
 func FnfBeginTextureMode(renderTexture rl.RenderTexture2D) {
-	if len(renderTextureStack) > 0{
+	if len(renderTextureStack) > 0 {
 		rl.EndTextureMode()
 	}
 	rl.BeginTextureMode(renderTexture)
@@ -18,7 +18,7 @@ func FnfEndTextureMode() {
 	rl.EndTextureMode()
 
 	// pop the render stack
-	renderTextureStack = renderTextureStack[:len(renderTextureStack) -1]
+	renderTextureStack = renderTextureStack[:len(renderTextureStack)-1]
 
 	// if there is some thing left on render stack
 	// begin texture mode

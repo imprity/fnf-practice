@@ -31,14 +31,14 @@ type HelpMessage struct {
 	PosX float32
 	PosY float32
 
-	InputDisabled bool
-
 	offsetY float32
+
+	InputId InputGroupId
 
 	DoShow bool
 }
 
-func NewHelpMessage() *HelpMessage {
+func NewHelpMessage(inputId InputGroupId) *HelpMessage {
 	hm := new(HelpMessage)
 
 	hm.TextBoxMarginLeft = 20
@@ -48,6 +48,8 @@ func NewHelpMessage() *HelpMessage {
 
 	hm.ButtonWidth = 180
 	hm.ButtonHeight = 75
+
+	hm.InputId = inputId
 
 	return hm
 }
@@ -177,12 +179,12 @@ func NewGameScreen() *GameScreen {
 
 	gs.tempPauseUntil = -Years150
 
-	gs.HelpMessage = NewHelpMessage()
+	gs.InputId = MakeInputGroupId()
+
+	gs.HelpMessage = NewHelpMessage(gs.InputId)
 
 	gs.HelpMessage.PosX = -5
 	gs.HelpMessage.PosY = -4
-
-	gs.InputId = MakeInputGroupId()
 
 	// set up menu
 	gs.MenuDrawer = NewMenuDrawer()
@@ -506,7 +508,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// menu stuff
 	// =============================================
-	if AreKeysPressed(gs.InputId, EscapeKey) || AreKeysPressed(gs.MenuDrawer.InputId, EscapeKey){
+	if AreKeysPressed(gs.InputId, EscapeKey) || AreKeysPressed(gs.MenuDrawer.InputId, EscapeKey) {
 		wasDrawingMenu := gs.DrawMenu
 
 		gs.DrawMenu = !gs.DrawMenu
@@ -539,10 +541,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.TempPause(time.Millisecond * 5)
 	}
 
-	if gs.DrawMenu{
+	if gs.DrawMenu {
 		gs.MenuDrawer.EnableInput()
 		DisableInput(gs.InputId)
-	}else{
+	} else {
 		gs.MenuDrawer.DisableInput()
 		EnableInput(gs.InputId)
 	}
@@ -579,7 +581,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// update help message
 	// =============================================
-	gs.HelpMessage.InputDisabled = gs.DrawMenu
 	gs.HelpMessage.Update(deltaTime)
 
 	// =============================================
@@ -2327,8 +2328,8 @@ func (hm *HelpMessage) Draw() {
 		Y: MouseY(),
 	}
 
-	if !hm.InputDisabled && rl.CheckCollisionPointRec(mouseV, buttonRect) {
-		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
+	if IsInputEnabled(hm.InputId) && rl.CheckCollisionPointRec(mouseV, buttonRect) {
+		if IsMouseButtonDown(hm.InputId, rl.MouseButtonLeft) {
 			buttonColor = rl.Color{100, 100, 100, 255}
 		} else {
 			buttonColor = rl.Color{0xF6, 0x08, 0x08, 0xFF}
@@ -2389,7 +2390,7 @@ func (hm *HelpMessage) TotalRect() rl.Rectangle {
 func (hm *HelpMessage) Update(deltaTime time.Duration) {
 	buttonRect := hm.ButtonRect()
 
-	if rl.IsMouseButtonReleased(rl.MouseButtonLeft) && !hm.InputDisabled {
+	if IsMouseButtonReleased(hm.InputId, rl.MouseButtonLeft) {
 		if rl.CheckCollisionPointRec(MouseV(), buttonRect) {
 			hm.DoShow = !hm.DoShow
 		}
@@ -2417,8 +2418,6 @@ func (hm *HelpMessage) BeforeScreenTransition() {
 
 	hm.offsetY = -totalRect.Height + buttonRect.Height
 	hm.DoShow = false
-
-	hm.InputDisabled = false
 }
 
 // ====================================

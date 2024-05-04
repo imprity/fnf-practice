@@ -128,7 +128,7 @@ func main() {
 	DisplayPopup(
 		"Hello World!",
 		[]string{"yes", "no"},
-		func(selected string, isCanceled bool){
+		func(selected string, isCanceled bool) {
 			fmt.Printf("selected    : %v\n", selected)
 			fmt.Printf("is canceled : %v\n", isCanceled)
 		},
@@ -222,7 +222,7 @@ func main() {
 			//rl.BeginTextureMode(TheRenderTexture)
 			FnfBeginTextureMode(TheRenderTexture)
 			screen.Draw() //draw screen
-			DrawPopup() // draw popup
+			DrawPopup()   // draw popup
 			//rl.EndTextureMode()
 			FnfEndTextureMode()
 
