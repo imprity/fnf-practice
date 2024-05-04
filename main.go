@@ -41,16 +41,6 @@ var TheRenderTexture rl.RenderTexture2D
 
 var TargetFPS int32 = 60
 
-func FnfBeginTextureMode(renderTexture rl.RenderTexture2D) {
-	rl.EndTextureMode()
-	rl.BeginTextureMode(renderTexture)
-}
-
-func FnfEndTextureMode() {
-	rl.EndTextureMode()
-	rl.BeginTextureMode(TheRenderTexture)
-}
-
 func GetScreenRect() rl.Rectangle {
 	screenW := float32(rl.GetScreenWidth())
 	screenH := float32(rl.GetScreenHeight())
@@ -102,6 +92,8 @@ func main() {
 
 	InitTransition()
 	defer FreeTransition()
+	InitPopupDialog()
+	defer FreePopupDialog()
 
 	// create screens
 	TheGameScreen = NewGameScreen()
@@ -132,6 +124,15 @@ func main() {
 	defer UnloadAssets()
 
 	GlobalTimerStart()
+
+	DisplayPopup(
+		"Hello World!",
+		[]string{"yes", "no"},
+		func(selected string, isCanceled bool){
+			fmt.Printf("selected    : %v\n", selected)
+			fmt.Printf("is canceled : %v\n", isCanceled)
+		},
+	)
 
 	// From below, I stole many techniques from here :
 	// https://github.com/TylerGlaiel/FrameTimingControl
@@ -216,10 +217,14 @@ func main() {
 			upsEstimateCounter += 1
 			UpdateTransitionTexture()
 
-			//draw screen
-			rl.BeginTextureMode(TheRenderTexture)
-			screen.Draw()
-			rl.EndTextureMode()
+			UpdatePopup()
+
+			//rl.BeginTextureMode(TheRenderTexture)
+			FnfBeginTextureMode(TheRenderTexture)
+			screen.Draw() //draw screen
+			DrawPopup() // draw popup
+			//rl.EndTextureMode()
+			FnfEndTextureMode()
 
 			rl.BeginDrawing()
 			rl.ClearBackground(rl.Color{0, 0, 0, 255})

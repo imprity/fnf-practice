@@ -174,6 +174,13 @@ func RectUnion(r1, r2 rl.Rectangle) rl.Rectangle {
 	}
 }
 
+func RectEnd(rect rl.Rectangle) rl.Vector2{
+	return rl.Vector2{
+		X : rect.X + rect.Width,
+		Y : rect.Y + rect.Height,
+	}
+}
+
 // TODO : support rotation and scaling
 func DrawPatternBackground(
 	texture rl.Texture2D,

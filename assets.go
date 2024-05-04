@@ -56,6 +56,8 @@ var (
 	HelpMsgFont rl.Font
 )
 
+var PopupBg rl.Texture2D
+
 var BlackPixel rl.Texture2D
 
 var (
@@ -231,6 +233,8 @@ func LoadAssets() {
 	for r := FnfHitRating(0); r < HitRatingSize; r++ {
 		HitRatingTexs[r] = loadTexture(ratingImgPaths[r], true, ".png")
 	}
+
+	PopupBg = loadTexture("assets/popup_bg.png", true, ".png")
 
 	regularPath := "assets/UhBeeSe_hyun/UhBee Se_hyun.ttf"
 	boldPath := "assets/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"

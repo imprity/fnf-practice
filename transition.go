@@ -135,7 +135,7 @@ func UpdateTransitionTexture() {
 
 	index := 0
 
-	rl.BeginTextureMode(manager.MaskTexture)
+	FnfBeginTextureMode(manager.MaskTexture)
 	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 
 	for yi := 0; yi < diaNy; yi++ {
@@ -174,9 +174,9 @@ func UpdateTransitionTexture() {
 		}
 	}
 
-	rl.EndTextureMode()
+	FnfEndTextureMode()
 
-	rl.BeginTextureMode(manager.TransitionTexture)
+	FnfBeginTextureMode(manager.TransitionTexture)
 	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 	rl.BeginShaderMode(manager.MaskShader)
 
@@ -201,7 +201,7 @@ func UpdateTransitionTexture() {
 	rl.DrawTexture(manager.MaskTexture.Texture, 0, 0, rl.Color{255, 255, 255, 255})
 
 	rl.EndShaderMode()
-	rl.EndTextureMode()
+	FnfEndTextureMode()
 }
 
 func ShowTransition(texture rl.Texture2D, callback func()) {
