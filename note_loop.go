@@ -342,6 +342,7 @@ func UpdateNotesAndStates(
 }
 
 func GetKeyPressState(
+	inputId InputGroupId,
 	notes []FnfNote,
 	noteIndexStart int,
 	isPlayingAudio bool,
@@ -356,7 +357,7 @@ func GetKeyPressState(
 
 	if !isBotPlay {
 		for dir, keys := range NoteKeys {
-			if AreKeysDown(keys...) {
+			if AreKeysDown(inputId, keys...) {
 				keyPressState[0][dir] = true
 			}
 		}

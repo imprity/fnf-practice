@@ -9,6 +9,8 @@ type OptionsScreen struct {
 	Menu *MenuDrawer
 
 	FpsItemId int64
+
+	InputId InputGroupId
 }
 
 func NewOptionsScreen() *OptionsScreen {
@@ -37,9 +39,7 @@ func NewOptionsScreen() *OptionsScreen {
 		// TODO : do not ignore error
 		SaveSettings()
 		ShowTransition(BlackPixel, func() {
-			DisableInput()
 			SetNextScreen(TheSelectScreen)
-			EnableInput()
 			HideTransition()
 		})
 	}
@@ -65,15 +65,13 @@ func NewOptionsScreen() *OptionsScreen {
 func (op *OptionsScreen) Update(deltaTime time.Duration) {
 	op.Menu.Update(deltaTime)
 
-	if AreKeysPressed(EscapeKey) {
+	if AreKeysPressed(op.InputId, EscapeKey) {
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
 		// TODO : do not ignore error
 		SaveSettings()
 		ShowTransition(BlackPixel, func() {
-			DisableInput()
 			SetNextScreen(TheSelectScreen)
-			EnableInput()
 			HideTransition()
 		})
 	}
@@ -93,5 +91,5 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	fpsItem := op.Menu.GetItemById(op.FpsItemId)
 	fpsItem.NValue = float32(TargetFPS)
 
-	EnableInput()
+	EnableInput(op.InputId)
 }

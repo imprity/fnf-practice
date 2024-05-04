@@ -103,6 +103,8 @@ type GameScreen struct {
 	RewindStarted  bool
 	RewindStartPos time.Duration //audio position
 
+	InputId InputGroupId
+
 	// menu stuff
 	MenuDrawer *MenuDrawer
 	DrawMenu   bool
@@ -180,6 +182,8 @@ func NewGameScreen() *GameScreen {
 	gs.HelpMessage.PosX = -5
 	gs.HelpMessage.PosY = -4
 
+	gs.InputId = MakeInputGroupId()
+
 	// set up menu
 	gs.MenuDrawer = NewMenuDrawer()
 	{
@@ -222,8 +226,6 @@ func NewGameScreen() *GameScreen {
 				if gs.IsSongLoaded {
 					gs.PauseAudio()
 				}
-				gs.MenuDrawer.InputDisabled = true
-
 				ShowTransition(BlackPixel, func() {
 					SetNextScreen(TheSelectScreen)
 					HideTransition()
@@ -504,7 +506,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// menu stuff
 	// =============================================
-	if AreKeysPressed(rl.KeyEscape) {
+	if AreKeysPressed(gs.InputId, EscapeKey) || AreKeysPressed(gs.MenuDrawer.InputId, EscapeKey){
 		wasDrawingMenu := gs.DrawMenu
 
 		gs.DrawMenu = !gs.DrawMenu
@@ -537,7 +539,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.TempPause(time.Millisecond * 5)
 	}
 
-	gs.MenuDrawer.InputDisabled = !gs.DrawMenu
+	if gs.DrawMenu{
+		gs.MenuDrawer.EnableInput()
+		DisableInput(gs.InputId)
+	}else{
+		gs.MenuDrawer.DisableInput()
+		EnableInput(gs.InputId)
+	}
 
 	gs.MenuDrawer.Update(deltaTime)
 
@@ -620,9 +628,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// handle user input
 	// =============================================
-	if !gs.DrawMenu {
+	{
 		// pause unpause
-		if AreKeysPressed(PauseKey) {
+		if AreKeysPressed(gs.InputId, PauseKey) {
 			if gs.IsPlayingAudio() {
 				gs.PauseAudio()
 			} else {
@@ -657,7 +665,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		*/
 
 		// book marking
-		if AreKeysPressed(SetBookMarkKey) {
+		if AreKeysPressed(gs.InputId, SetBookMarkKey) {
 			gs.BookMarkSet = !gs.BookMarkSet
 			if gs.BookMarkSet {
 				gs.BookMark = gs.AudioPosition()
@@ -669,12 +677,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		changedSpeed := false
 		audioSpeed := gs.AudioSpeed()
 
-		if AreKeysPressed(AudioSpeedDownKey) {
+		if AreKeysPressed(gs.InputId, AudioSpeedDownKey) {
 			changedSpeed = true
 			audioSpeed -= 0.1
 		}
 
-		if AreKeysPressed(AudioSpeedUpKey) {
+		if AreKeysPressed(gs.InputId, AudioSpeedUpKey) {
 			changedSpeed = true
 			audioSpeed += 0.1
 		}
@@ -691,12 +699,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			zoom := gs.Zoom()
 			changedZoom := false
 			// zoom in and out
-			if HandleKeyRepeat(time.Millisecond*100, time.Millisecond*100, ZoomInKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*100, time.Millisecond*100, ZoomInKey) {
 				zoom += 0.05
 				changedZoom = true
 			}
 
-			if HandleKeyRepeat(time.Millisecond*100, time.Millisecond*100, ZoomOutKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*100, time.Millisecond*100, ZoomOutKey) {
 				zoom -= 0.05
 				changedZoom = true
 			}
@@ -721,13 +729,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 			// NOTE : If we ever implement note up scroll
 			// this keybindings have to reversed
-			if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, NoteScrollUpKey) {
 				changedFromScroll = true
 				pos -= keyT
 				gs.ClearRewind()
 			}
 
-			if HandleKeyRepeat(time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, NoteScrollDownKey) {
 				changedFromScroll = true
 				pos += keyT
 				gs.ClearRewind()
@@ -750,13 +758,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
-		if AreKeysPressed(SongResetKey) {
+		if AreKeysPressed(gs.InputId, SongResetKey) {
 			positionArbitraryChange = true
 			gs.SetAudioPosition(0)
 			gs.ClearRewind()
 		}
 
-		if AreKeysPressed(JumpToBookMarkKey) {
+		if AreKeysPressed(gs.InputId, JumpToBookMarkKey) {
 			if gs.BookMarkSet {
 				positionArbitraryChange = true
 				gs.SetAudioPosition(gs.BookMark)
@@ -828,8 +836,11 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	wasKeyPressed := gs.isKeyPressed
 
 	gs.isKeyPressed = GetKeyPressState(
+		gs.InputId,
 		gs.Song.Notes, gs.noteIndexStart,
-		gs.IsPlayingAudio(), prevAudioPos, audioPos, gs.botPlay, gs.HitWindow)
+		gs.IsPlayingAudio(), prevAudioPos, audioPos, 
+		gs.botPlay, 
+		gs.HitWindow)
 
 	var noteEvents []NoteEvent
 
@@ -2052,7 +2063,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.botPlay = false
 
-	EnableInput()
+	EnableInput(gs.InputId)
 
 	gs.DrawMenu = false
 	gs.MenuDrawer.SelectedIndex = 0

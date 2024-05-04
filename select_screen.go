@@ -19,10 +19,14 @@ type SelectScreen struct {
 	MenuToGroup map[int64]FnfPathGroup
 
 	Collections []PathGroupCollection
+
+	InputId InputGroupId
 }
 
 func NewSelectScreen() *SelectScreen {
 	ss := new(SelectScreen)
+
+	ss.InputId = MakeInputGroupId()
 
 	ss.PreferredDifficulty = DifficultyNormal
 
@@ -50,9 +54,7 @@ func NewSelectScreen() *SelectScreen {
 		if !bValue {
 			return
 		}
-		DisableInput()
 		ShowTransition(DirSelectScreen, func() {
-			defer EnableInput()
 			defer HideTransition()
 
 			directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
@@ -86,9 +88,7 @@ func NewSelectScreen() *SelectScreen {
 		}
 
 		ShowTransition(BlackPixel, func() {
-			DisableInput()
 			SetNextScreen(TheOptionsScreen)
-			EnableInput()
 			HideTransition()
 		})
 	}
@@ -137,7 +137,6 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 			if !bValue {
 				return
 			}
-			DisableInput()
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 			ShowTransition(SongLoadingScreen, func() {
@@ -162,7 +161,6 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 				TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
 				SetNextScreen(TheGameScreen)
 
-				EnableInput()
 				HideTransition()
 			})
 		}
@@ -226,11 +224,11 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
 	ss.MainMenu.Update(deltaTime)
 
-	if AreKeysPressed(NoteKeysLeft...) {
+	if AreKeysPressed(ss.InputId, NoteKeysLeft...) {
 		ss.PreferredDifficulty -= 1
 	}
 
-	if AreKeysPressed(NoteKeysRight...) {
+	if AreKeysPressed(ss.InputId, NoteKeysRight...) {
 		ss.PreferredDifficulty += 1
 	}
 
@@ -263,5 +261,5 @@ func (ss *SelectScreen) Draw() {
 
 func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.MainMenu.ResetAnimation()
-	EnableInput()
+	ClearGlobalInputDisable()
 }

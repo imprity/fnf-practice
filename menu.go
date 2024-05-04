@@ -119,7 +119,7 @@ type MenuDrawer struct {
 
 	TriggerAnimDuraiton time.Duration
 
-	InputDisabled bool
+	InputId InputGroupId
 }
 
 func NewMenuDrawer() *MenuDrawer {
@@ -131,7 +131,25 @@ func NewMenuDrawer() *MenuDrawer {
 
 	md.ListInterval = 30
 
+	md.InputId = MakeInputGroupId()
+
 	return md
+}
+
+func (md *MenuDrawer) IsInputEnabled() bool{
+	return IsInputEnabled(md.InputId)
+}
+
+func (md *MenuDrawer) IsInputDisabled() bool{
+	return IsInputDisabled(md.InputId)
+}
+
+func (md *MenuDrawer) DisableInput(){
+	DisableInput(md.InputId)
+}
+
+func (md *MenuDrawer) EnableInput(){
+	EnableInput(md.InputId)
 }
 
 func (md *MenuDrawer) Update(deltaTime time.Duration) {
@@ -194,7 +212,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// ==========================
 	// handling input
 	// ==========================
-	if !md.InputDisabled {
+	{
 		callItemCallaback := func(item *MenuItem) {
 			listSelection := ""
 			if 0 <= item.ListSelected && item.ListSelected < len(item.List) {
@@ -205,12 +223,12 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			}
 		}
 
-		if AreKeysDown(NoteKeysUp...) {
+		if AreKeysDown(md.InputId, NoteKeysUp...) {
 			tryingToMove = true
 			tryingToMoveUp = true
 		}
 
-		if AreKeysDown(NoteKeysDown...) {
+		if AreKeysDown(md.InputId, NoteKeysDown...) {
 			tryingToMove = true
 			tryingToMoveUp = false
 		}
@@ -219,13 +237,13 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		const scrollFirstRate = time.Millisecond * 200
 		const scrollRepeatRate = time.Millisecond * 110
 
-		if HandleKeyRepeat(scrollFirstRate, scrollRepeatRate, NoteKeysUp...) {
+		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeysUp...) {
 			if !allDeco {
 				scrollUntilNonDeco(false)
 			}
 		}
 
-		if HandleKeyRepeat(scrollFirstRate, scrollRepeatRate, NoteKeysDown...) {
+		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeysDown...) {
 			if !allDeco {
 				scrollUntilNonDeco(true)
 			}
@@ -233,7 +251,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 		selected := md.Items[md.SelectedIndex]
 
-		if AreKeysPressed(SelectKey) {
+		if AreKeysPressed(md.InputId, SelectKey) {
 			switch selected.Type {
 			case MenuItemTrigger:
 				selected.Bvalue = true
@@ -259,11 +277,11 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				canGoRight = len(selected.List) > 0
 			}
 
-			if AreKeysDown(NoteKeysLeft...) && canGoLeft {
+			if AreKeysDown(md.InputId, NoteKeysLeft...) && canGoLeft {
 				selected.LeftArrowClickTimer = GlobalTimerNow()
 			}
 
-			if AreKeysDown(NoteKeysRight...) && canGoRight {
+			if AreKeysDown(md.InputId, NoteKeysRight...) && canGoRight {
 				selected.RightArrowClickTimer = GlobalTimerNow()
 			}
 
@@ -273,8 +291,8 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			const firstRate = time.Millisecond * 200
 			const repeateRate = time.Millisecond * 110
 
-			goLeft = HandleKeyRepeat(firstRate, repeateRate, NoteKeysLeft...) && canGoLeft
-			goRight = HandleKeyRepeat(firstRate, repeateRate, NoteKeysRight...) && canGoRight
+			goLeft = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysLeft...) && canGoLeft
+			goRight = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysRight...) && canGoRight
 
 			switch selected.Type {
 			case MenuItemToggle:

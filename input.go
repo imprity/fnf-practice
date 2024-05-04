@@ -7,26 +7,6 @@ import (
 	"time"
 )
 
-var isInputDisabled bool
-var inputDisabledCheckMutex sync.Mutex
-
-func IsInputDisabled() bool {
-	inputDisabledCheckMutex.Lock()
-	defer inputDisabledCheckMutex.Unlock()
-	return isInputDisabled
-}
-
-func DisableInput() {
-	inputDisabledCheckMutex.Lock()
-	defer inputDisabledCheckMutex.Unlock()
-	isInputDisabled = true
-}
-
-func EnableInput() {
-	inputDisabledCheckMutex.Lock()
-	defer inputDisabledCheckMutex.Unlock()
-	isInputDisabled = false
-}
 
 func MouseX() float32 {
 	screenRect := GetScreenRect()
@@ -105,8 +85,75 @@ var (
 // end of key map
 // ========================================
 
-func AreKeysPressed(keys ...int32) bool {
-	if IsInputDisabled() {
+type InputGroupId int64
+
+var (
+	isInputGroupEnabled map[InputGroupId]bool = make(map[InputGroupId]bool)
+
+	inputGroupSoloEnabled InputGroupId
+)
+
+var inputAllDisabled bool
+
+var inputGroupIdMutex sync.Mutex
+
+var InputGroupIdMax InputGroupId
+
+func MakeInputGroupId() InputGroupId{
+	inputGroupIdMutex.Lock()
+	defer inputGroupIdMutex.Unlock()
+
+	InputGroupIdMax += 1
+
+	isInputGroupEnabled[InputGroupIdMax] = true
+	
+	return InputGroupIdMax
+}
+
+func IsInputDisabled(id InputGroupId) bool {
+	if inputAllDisabled{
+		return true 
+	}
+
+	if inputGroupSoloEnabled <= 0{
+		// we don't have to check if id is in map
+		// because map returns false when there's no key
+		return !isInputGroupEnabled[id] 
+	}else{
+		return inputGroupSoloEnabled != id
+	}
+}
+
+func IsInputEnabled(id InputGroupId) bool {
+	return !IsInputDisabled(id)
+}
+
+func DisableInput(id InputGroupId) {
+	isInputGroupEnabled[id] = false
+}
+
+func EnableInput(id InputGroupId) {
+	isInputGroupEnabled[id] = true 
+}
+
+func DisableInputGlobal(){
+	inputAllDisabled = true
+}
+
+func ClearGlobalInputDisable(){
+	inputAllDisabled = false
+}
+
+func SetSoloInput(id InputGroupId){
+	inputGroupSoloEnabled = id
+}
+
+func ClearSoloInput(){
+	inputGroupSoloEnabled = 0
+}
+
+func AreKeysPressed(id InputGroupId, keys ...int32) bool {
+	if IsInputDisabled(id) {
 		return false
 	}
 
@@ -119,8 +166,8 @@ func AreKeysPressed(keys ...int32) bool {
 	return false
 }
 
-func AreKeysDown(keys ...int32) bool {
-	if IsInputDisabled() {
+func AreKeysDown(id InputGroupId, keys ...int32) bool {
+	if IsInputDisabled(id) {
 		return false
 	}
 
@@ -133,16 +180,16 @@ func AreKeysDown(keys ...int32) bool {
 	return false
 }
 
-func AreKeysUp(keys ...int32) bool {
-	if IsInputDisabled() {
+func AreKeysUp(id InputGroupId, keys ...int32) bool {
+	if IsInputDisabled(id) {
 		return true
 	}
 
-	return !AreKeysDown(keys...)
+	return !AreKeysDown(id, keys...)
 }
 
-func AreKeysReleased(keys ...int32) bool {
-	if IsInputDisabled() {
+func AreKeysReleased(id InputGroupId, keys ...int32) bool {
+	if IsInputDisabled(id) {
 		// NOTE : retruning false because I think key being released
 		// feels like something that would only happen if input is enabled
 		return false
@@ -159,19 +206,23 @@ func AreKeysReleased(keys ...int32) bool {
 
 var keyRepeatMap = make(map[int32]time.Duration)
 
-func HandleKeyRepeat(firstRate, repeatRate time.Duration, keys ...int32) bool {
+func HandleKeyRepeat(
+	id InputGroupId, 
+	firstRate, repeatRate time.Duration, 
+	keys ...int32) bool {
+
 	minKey := int32(math.MaxInt32)
 
 	for _, key := range keys {
 		minKey = min(key, minKey)
 	}
 
-	if !AreKeysDown(keys...) {
+	if !AreKeysDown(id, keys...) {
 		keyRepeatMap[minKey] = 0
 		return false
 	}
 
-	if AreKeysPressed(keys...) {
+	if AreKeysPressed(id, keys...) {
 		keyRepeatMap[minKey] = GlobalTimerNow() + firstRate
 		return true
 	}

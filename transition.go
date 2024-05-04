@@ -209,11 +209,15 @@ func ShowTransition(texture rl.Texture2D, callback func()) {
 	TheTransitionManager.AnimStartedAt = GlobalTimerNow()
 	TheTransitionManager.ImgTexture = texture
 	TheTransitionManager.Callback = callback
+
+	DisableInputGlobal()
 }
 
 func HideTransition() {
 	TheTransitionManager.ShowTransition = false
 	TheTransitionManager.AnimStartedAt = GlobalTimerNow()
+
+	ClearGlobalInputDisable()
 }
 
 func IsTransitionOn() bool {
