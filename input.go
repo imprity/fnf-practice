@@ -147,6 +147,10 @@ func SetSoloInput(id InputGroupId) {
 	inputGroupSoloEnabled = id
 }
 
+func IsInputSoloEnabled(id InputGroupId) bool {
+	return id == inputGroupSoloEnabled
+}
+
 func ClearSoloInput() {
 	inputGroupSoloEnabled = 0
 }

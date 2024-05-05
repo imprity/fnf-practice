@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"time"
 )
 
 var _ = fmt.Sprintf
@@ -26,10 +27,11 @@ type PopupDialogManager struct {
 	// I don't want to have size limitaion on queue
 	PopupDialogQueue []PopupDialog
 
-	Options        []string
 	SelectedOption int
 
 	InputId InputGroupId
+
+	SelectAnimT float32
 }
 
 var ThePopupDialogManager PopupDialogManager
@@ -61,6 +63,8 @@ func InitPopupDialog() {
 	pdm.OptionsRect.Y = pdm.TextBoxRect.Y + pdm.TextBoxRect.Height + optionsMarginTop
 	pdm.OptionsRect.Width = pdm.PopupRect.Width - optionsMarginSide*2
 	pdm.OptionsRect.Height = RectEnd(pdm.PopupRect).Y - pdm.OptionsRect.Y - optionsMarginBottom
+
+	pdm.SelectAnimT = 1
 }
 
 func FreePopupDialog() {
@@ -85,8 +89,14 @@ func DisplayPopup(
 	pdm.SelectedOption = 0
 }
 
-func UpdatePopup() {
+func UpdatePopup(deltaTime time.Duration) {
+
 	pdm := &ThePopupDialogManager
+
+	const selectAnimDuration = time.Millisecond * 30
+	pdm.SelectAnimT += float32(deltaTime) / float32(selectAnimDuration)
+
+	pdm.SelectAnimT = Clamp(pdm.SelectAnimT, 0, 1)
 
 	if len(pdm.PopupDialogQueue) <= 0 {
 		return
@@ -102,22 +112,26 @@ func UpdatePopup() {
 
 		pdm.PopupDialogQueue = pdm.PopupDialogQueue[:queueLen-1]
 		pdm.SelectedOption = 0
+
+		pdm.SelectAnimT = 1
 	}
 
 	if len(current.Options) > 0 {
 		if AreKeysPressed(pdm.InputId, NoteKeysLeft...) {
 			pdm.SelectedOption -= 1
+			pdm.SelectAnimT = 0
 		}
 
 		if AreKeysPressed(pdm.InputId, NoteKeysRight...) {
 			pdm.SelectedOption += 1
+			pdm.SelectAnimT = 0
 		}
 
-		pdm.SelectedOption = Clamp(pdm.SelectedOption, 0, len(current.Options))
+		pdm.SelectedOption = Clamp(pdm.SelectedOption, 0, len(current.Options)-1)
 
 		if AreKeysPressed(pdm.InputId, SelectKey) {
 			if current.Callback != nil {
-				current.Callback(pdm.Options[pdm.SelectedOption], false)
+				current.Callback(current.Options[pdm.SelectedOption], false)
 			}
 
 			afterResolve()
@@ -143,8 +157,13 @@ func DrawPopup() {
 	pdm := &ThePopupDialogManager
 
 	if len(pdm.PopupDialogQueue) <= 0 {
+		if IsInputSoloEnabled(pdm.InputId) {
+			ClearSoloInput()
+		}
 		return
 	}
+
+	SetSoloInput(pdm.InputId)
 
 	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
 
@@ -155,12 +174,9 @@ func DrawPopup() {
 	current := pdm.PopupDialogQueue[0]
 
 	// draw current msg
-	/*rl.DrawRectangleRec(
-		pdm.TextBoxRect,
-		rl.Color{255,0,0,100},
-	)*/
-
 	msgFontSize := float32(70)
+
+	rl.SetTextLineSpacing(int(msgFontSize)) // msg can be multilined, so we have to set line spacing
 
 	msgSize := rl.MeasureTextEx(FontRegular, current.Message, msgFontSize, 0)
 
@@ -171,9 +187,9 @@ func DrawPopup() {
 
 	if overFlowX || overFlowY {
 		if !overFlowX {
-			scale = pdm.TextBoxRect.Width / msgSize.X
-		} else if !overFlowY {
 			scale = pdm.TextBoxRect.Height / msgSize.Y
+		} else if !overFlowY {
+			scale = pdm.TextBoxRect.Width / msgSize.X
 		} else {
 			scale = min(
 				pdm.TextBoxRect.Height/msgSize.Y,
@@ -190,16 +206,13 @@ func DrawPopup() {
 		Y: pdm.TextBoxRect.Y + (pdm.TextBoxRect.Height-msgSize.Y)*0.5,
 	}
 
+	rl.SetTextLineSpacing(int(msgFontSize))
+
 	rl.DrawTextEx(FontRegular, current.Message,
 		textPos, msgFontSize, 0,
 		rl.Color{0, 0, 0, 255})
 
 	// draw options
-	/*rl.DrawRectangleRec(
-		pdm.OptionsRect,
-		rl.Color{255,0,0,100},
-	)*/
-
 	if len(current.Options) > 0 {
 		opMargin := float32(50)
 		opFontSize := float32(100)
@@ -215,25 +228,36 @@ func DrawPopup() {
 		}
 
 		if opWidth > pdm.OptionsRect.Width {
-			opFontSize *= pdm.OptionsRect.Width / opWidth
-			opMargin *= pdm.OptionsRect.Width / opWidth
+			scale := pdm.OptionsRect.Width / opWidth
+
+			opWidth *= scale
+			opFontSize *= scale
+			opMargin *= scale
 		}
 
 		offsetX := pdm.OptionsRect.X + (pdm.OptionsRect.Width-opWidth)*0.5
 		offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height-opFontSize)*0.5
 
 		for i, op := range current.Options {
-			col := rl.Color{100, 100, 100, 255}
+			col := rl.Color{70, 70, 70, 255}
+			pos := rl.Vector2{X: offsetX, Y: offsetY}
+			scale := float32(1.0)
+
+			size := rl.MeasureTextEx(FontBold, op, opFontSize, 0)
+
 			if i == pdm.SelectedOption {
 				col = rl.Color{0, 0, 0, 255}
+				scale = Lerp(1.0, 1.2, pdm.SelectAnimT)
+
+				pos = rl.Vector2{
+					X: offsetX - size.X*(scale-1)*0.5,
+					Y: offsetY - size.Y*(scale-1)*0.5,
+				}
 			}
 
-			w := rl.MeasureTextEx(FontBold, op, opFontSize, 0).X
+			rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, col)
 
-			rl.DrawTextEx(FontBold, op,
-				rl.Vector2{offsetX, offsetY}, opFontSize, 0, col)
-
-			offsetX += w + opMargin
+			offsetX += size.X + opMargin
 		}
 	}
 }

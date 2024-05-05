@@ -125,15 +125,6 @@ func main() {
 
 	GlobalTimerStart()
 
-	DisplayPopup(
-		"Hello World!",
-		[]string{"yes", "no"},
-		func(selected string, isCanceled bool) {
-			fmt.Printf("selected    : %v\n", selected)
-			fmt.Printf("is canceled : %v\n", isCanceled)
-		},
-	)
-
 	// From below, I stole many techniques from here :
 	// https://github.com/TylerGlaiel/FrameTimingControl
 	// You can read more about it here :
@@ -217,7 +208,7 @@ func main() {
 			upsEstimateCounter += 1
 			UpdateTransitionTexture()
 
-			UpdatePopup()
+			UpdatePopup(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
 
 			//rl.BeginTextureMode(TheRenderTexture)
 			FnfBeginTextureMode(TheRenderTexture)
