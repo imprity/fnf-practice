@@ -236,6 +236,13 @@ func LoadAssets() {
 
 	PopupBg = loadTexture("assets/popup_bg.png", true, ".png")
 
+	// create black pixel
+	blackPixelImg := rl.GenImageColor(2, 2, rl.Color{0, 0, 0, 255})
+	imgsToUnload = append(imgsToUnload, blackPixelImg)
+
+	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
+	texsToUnload = append(texsToUnload, BlackPixel)
+
 	regularPath := "assets/UhBeeSe_hyun/UhBee Se_hyun.ttf"
 	boldPath := "assets/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
 
@@ -245,23 +252,4 @@ func LoadAssets() {
 	helpFontPath := "assets/Pangolin/Pangolin-Regular.ttf"
 
 	HelpMsgFont = loadFont(helpFontPath, 30, ".ttf")
-}
-
-func DestroyAssets() {
-	rl.UnloadTexture(BlackPixel)
-}
-
-func CreateAssets() {
-	// create black pixel
-	blackPixelImg := rl.NewImage(
-		[]byte{
-			0, 0, 0, 255,
-			0, 0, 0, 255,
-			0, 0, 0, 255,
-			0, 0, 0, 255},
-		2, 2,
-		1,
-		rl.UncompressedR8g8b8a8)
-
-	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 }

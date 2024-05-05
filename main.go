@@ -117,9 +117,6 @@ func main() {
 
 	var screen Screen = TheSelectScreen
 
-	CreateAssets()
-	defer DestroyAssets()
-
 	LoadAssets()
 	defer UnloadAssets()
 
