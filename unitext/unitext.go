@@ -1,45 +1,64 @@
+// Package unitext provides functionality to render unicode text.
+// Basically a frontend for typesetting packages.
+// https://pkg.go.dev/github.com/go-text/typesetting
+//
+// This package is not that robust and doesn't expect multiline text.
+// Also it's pretty slow so don't use this for text editor or whatever.
+// It's only meant to be used for fnf-practice.
+// Look at example.go to see how to use this package.
 package unitext
 
 import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
-	"log"
 	"math"
 	"unicode/utf8"
 
 	"golang.org/x/image/math/fixed"
 
-	"github.com/srwiley/rasterx"
-
-	"github.com/go-text/typesetting/di"
+	//"github.com/go-text/typesetting/di"
 	"github.com/go-text/typesetting/fontscan"
 	meta "github.com/go-text/typesetting/opentype/api/metadata"
 	"github.com/go-text/typesetting/shaping"
-
-	"golang.org/x/exp/constraints"
 )
+
+
+// Logger to use. If nil uses log.Default()
+var Logger fontscan.Logger
+
+// Unitext looks up system fonts to determine what font to use
+// Which is slow so we cache the lookup result
+// Set CacheDir to set directory to store the lookup result
+// If not set uses appropriate directory
+//
+// Except for android, you HAVE TO set directory for android
+var CacheDir string
 
 var shaper shaping.HarfbuzzShaper
 
-func RenderUnicodeText(text string, logger *log.Logger) image.Image {
-	const fontSize = 20
+func RenderUnicodeText(text string, desiredFont DesiredFont, fontSize float32, textColor color.Color) (image.Image, error) {
 	runes := StringToRunes(text)
 
-	fontMap := fontscan.NewFontMap(logger)
+	fontMap := fontscan.NewFontMap(Logger)
 
 	var aspect meta.Aspect
-	aspect.SetDefaults()
+
+	aspect.Style = desiredFont.Style
+	aspect.Weight = desiredFont.Weight
+	aspect.Stretch = desiredFont.Stretch
 
 	query := fontscan.Query{
-		Families: []string{fontscan.Serif},
+		Families: desiredFont.Families,
 		Aspect:   aspect,
 	}
 
 	fontMap.SetQuery(query)
 
-	fontMap.UseSystemFonts("./fnf-font-cache/")
+	err := fontMap.UseSystemFonts(CacheDir)
+	if err != nil{
+		return nil, err
+	}
 
 	input := shaping.Input{
 		Text: runes,
@@ -47,15 +66,12 @@ func RenderUnicodeText(text string, logger *log.Logger) image.Image {
 		RunStart: 0,
 		RunEnd:   len(runes),
 
-		Size: fixed.I(fontSize),
-
-		// TODO : we are rendering path so I think just having left to right is fine..
-		// But may be that is not the case.
-		// do some research
-		Direction: di.DirectionLTR, // left to right
+		Size: floatToFixed266(fontSize),
 	}
 
-	inputs := shaping.SplitByFace(input, fontMap)
+	segmenter := shaping.Segmenter{}
+
+	inputs := segmenter.Split(input, fontMap)
 
 	var outputs []shaping.Output
 
@@ -87,9 +103,9 @@ func RenderUnicodeText(text string, logger *log.Logger) image.Image {
 	dotX := fixed.I(0)
 	dotY := -ascent
 
-	renderer := Renderer{
+	renderer := renderer{
 		FontSize: fontSize,
-		Color:    color.NRGBA{0, 255, 0, 255},
+		Color:    textColor,
 	}
 
 	for _, out := range outputs {
@@ -97,7 +113,7 @@ func RenderUnicodeText(text string, logger *log.Logger) image.Image {
 		dotX += out.Advance
 	}
 
-	return canvas
+	return canvas, nil
 }
 
 func StringToRunes(text string) []rune {
@@ -124,86 +140,3 @@ func StringToRunes(text string) []rune {
 	return runes
 }
 
-func getNewStroker(img draw.Image, c color.Color, thick float64) *rasterx.Stroker {
-	bounds := img.Bounds()
-
-	scanner := rasterx.NewScannerGV(bounds.Dx(), bounds.Dy(), img, bounds)
-	stroker := rasterx.NewStroker(bounds.Dx(), bounds.Dy(), scanner)
-	stroker.SetColor(c)
-
-	stroker.SetStroke(
-		floatToFixed266(thick),
-		fixed.I(1),
-		rasterx.RoundCap, rasterx.RoundCap,
-		rasterx.RoundGap,
-		rasterx.Round,
-	)
-
-	return stroker
-}
-
-func getNewFiller(img draw.Image, c color.Color) *rasterx.Filler {
-	bounds := img.Bounds()
-
-	scanner := rasterx.NewScannerGV(bounds.Dx(), bounds.Dy(), img, bounds)
-	filler := rasterx.NewFiller(bounds.Dx(), bounds.Dy(), scanner)
-	filler.SetColor(c)
-
-	return filler
-}
-
-func drawCircleLine(img draw.Image, x, y, r float64, c color.Color, thick float64) {
-	s := getNewStroker(img, c, thick)
-	rasterx.AddCircle(x, y, r, s)
-	s.Draw()
-}
-
-func drawCircleFill(img draw.Image, x, y, r float64, c color.Color) {
-	f := getNewFiller(img, c)
-	rasterx.AddCircle(x, y, r, f)
-	f.Draw()
-}
-
-func drawRectLine(img draw.Image, x, y, w, h float64, c color.Color, thick float64) {
-	s := getNewStroker(img, c, thick)
-	rasterx.AddRect(x, y, x+w, x+h, 0, s)
-	s.Draw()
-}
-
-func drawRectFill(img draw.Image, x, y, w, h float64, c color.Color) {
-	f := getNewFiller(img, c)
-	rasterx.AddRect(x, y, x+w, x+h, 0, f)
-	f.Draw()
-}
-
-func drawLine(img draw.Image, x1, y1, x2, y2 float64, c color.Color, thick float64) {
-	s := getNewStroker(img, c, thick)
-
-	s.Start(
-		fixed.Point26_6{
-			X: floatToFixed266(x1),
-			Y: floatToFixed266(y1),
-		})
-
-	s.Line(
-		fixed.Point26_6{
-			X: floatToFixed266(x2),
-			Y: floatToFixed266(y2),
-		})
-
-	s.Stop(false)
-
-	s.Draw()
-}
-
-func fixed266ToFloat32(i fixed.Int26_6) float32 {
-	return float32(i) / 64
-}
-
-func fixed266ToFloat64(i fixed.Int26_6) float64 {
-	return float64(i) / 64
-}
-
-func floatToFixed266[F constraints.Float](f F) fixed.Int26_6 {
-	return fixed.Int26_6(int(f * 64))
-}

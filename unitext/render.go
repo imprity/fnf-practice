@@ -12,6 +12,8 @@ import (
 	"io"
 	"math"
 
+	"golang.org/x/exp/constraints"
+
 	scale "golang.org/x/image/draw"
 	"golang.org/x/image/math/fixed"
 	_ "golang.org/x/image/tiff" // load image formats for users of the API
@@ -27,7 +29,7 @@ import (
 // The size and look of output depends on the various fields in this struct.
 // Developers should provide suitable output images for their draw requests.
 // This type is not thread safe so instances should be used from only 1 goroutine.
-type Renderer struct {
+type renderer struct {
 	// FontSize defines the point size of output text, commonly between 10 and 14 for regular text
 	FontSize float32
 	// Color is the pen colour for rendering
@@ -41,7 +43,7 @@ type Renderer struct {
 // The text will be drawn starting at the startX, startY pixel position.
 // Note that startX and startY are not multiplied by the `PixScale` value as they refer to output coordinates.
 // The return value is the X pixel position of the end of the drawn string.
-func (r *Renderer) DrawShapedRunAt(run shaping.Output, img draw.Image, startX, startY int) int {
+func (r *renderer) DrawShapedRunAt(run shaping.Output, img draw.Image, startX, startY int) int {
 	scale := r.FontSize / float32(run.Face.Upem())
 	r.fillerScale = scale
 
@@ -72,7 +74,7 @@ func (r *Renderer) DrawShapedRunAt(run shaping.Output, img draw.Image, startX, s
 	return int(math.Ceil(float64(x)))
 }
 
-func (r *Renderer) drawOutline(g shaping.Glyph, bitmap api.GlyphOutline, f *rasterx.Filler, scale float32, x, y float32) {
+func (r *renderer) drawOutline(g shaping.Glyph, bitmap api.GlyphOutline, f *rasterx.Filler, scale float32, x, y float32) {
 	for _, s := range bitmap.Segments {
 		switch s.Op {
 		case api.SegmentOpMoveTo:
@@ -91,7 +93,7 @@ func (r *Renderer) drawOutline(g shaping.Glyph, bitmap api.GlyphOutline, f *rast
 	f.Stop(true)
 }
 
-func (r *Renderer) drawBitmap(g shaping.Glyph, bitmap api.GlyphBitmap, img draw.Image, x, y float32) error {
+func (r *renderer) drawBitmap(g shaping.Glyph, bitmap api.GlyphBitmap, img draw.Image, x, y float32) error {
 	// scaled glyph rect content
 	top := y - fixed266ToFloat32(g.YBearing)
 	bottom := top - fixed266ToFloat32(g.Height)
@@ -123,7 +125,7 @@ func (r *Renderer) drawBitmap(g shaping.Glyph, bitmap api.GlyphBitmap, img draw.
 	return nil
 }
 
-func (r *Renderer) drawSVG(g shaping.Glyph, svg api.GlyphSVG, img draw.Image, x, y float32) error {
+func (r *renderer) drawSVG(g shaping.Glyph, svg api.GlyphSVG, img draw.Image, x, y float32) error {
 	pixWidth := g.Width.Round()
 	pixHeight := (-g.Height).Round()
 	pix, err := renderSVGStream(bytes.NewReader(svg.Source), pixWidth, pixHeight)
@@ -163,7 +165,104 @@ func renderSVGStream(stream io.Reader, width, height int) (*image.NRGBA, error) 
 	return out, nil
 }
 
+// ==============================
+// Helper functions
+// ==============================
+
 // bitAt returns the bit at the given index in the byte slice.
 func bitAt(b []byte, i int) byte {
 	return (b[i/8] >> (7 - i%8)) & 1
 }
+
+func fixed266Div(a, b fixed.Int26_6)fixed.Int26_6{
+	return a * 64 / b
+}
+
+func fixed266ToFloat32(i fixed.Int26_6) float32 {
+	return float32(i) / 64
+}
+
+func fixed266ToFloat64(i fixed.Int26_6) float64 {
+	return float64(i) / 64
+}
+
+func floatToFixed266[F constraints.Float](f F) fixed.Int26_6 {
+	return fixed.Int26_6(int(f * 64))
+}
+
+// ==============================
+// Debug drawing
+// ==============================
+
+func getNewStroker(img draw.Image, c color.Color, thick float64) *rasterx.Stroker {
+	bounds := img.Bounds()
+
+	scanner := rasterx.NewScannerGV(bounds.Dx(), bounds.Dy(), img, bounds)
+	stroker := rasterx.NewStroker(bounds.Dx(), bounds.Dy(), scanner)
+	stroker.SetColor(c)
+
+	stroker.SetStroke(
+		floatToFixed266(thick),
+		fixed.I(1),
+		rasterx.RoundCap, rasterx.RoundCap,
+		rasterx.RoundGap,
+		rasterx.Round,
+	)
+
+	return stroker
+}
+
+func getNewFiller(img draw.Image, c color.Color) *rasterx.Filler {
+	bounds := img.Bounds()
+
+	scanner := rasterx.NewScannerGV(bounds.Dx(), bounds.Dy(), img, bounds)
+	filler := rasterx.NewFiller(bounds.Dx(), bounds.Dy(), scanner)
+	filler.SetColor(c)
+
+	return filler
+}
+
+func drawCircleLine(img draw.Image, x, y, r float64, c color.Color, thick float64) {
+	s := getNewStroker(img, c, thick)
+	rasterx.AddCircle(x, y, r, s)
+	s.Draw()
+}
+
+func drawCircleFill(img draw.Image, x, y, r float64, c color.Color) {
+	f := getNewFiller(img, c)
+	rasterx.AddCircle(x, y, r, f)
+	f.Draw()
+}
+
+func drawRectLine(img draw.Image, x, y, w, h float64, c color.Color, thick float64) {
+	s := getNewStroker(img, c, thick)
+	rasterx.AddRect(x, y, x+w, x+h, 0, s)
+	s.Draw()
+}
+
+func drawRectFill(img draw.Image, x, y, w, h float64, c color.Color) {
+	f := getNewFiller(img, c)
+	rasterx.AddRect(x, y, x+w, x+h, 0, f)
+	f.Draw()
+}
+
+func drawLine(img draw.Image, x1, y1, x2, y2 float64, c color.Color, thick float64) {
+	s := getNewStroker(img, c, thick)
+
+	s.Start(
+		fixed.Point26_6{
+			X: floatToFixed266(x1),
+			Y: floatToFixed266(y1),
+		})
+
+	s.Line(
+		fixed.Point26_6{
+			X: floatToFixed266(x2),
+			Y: floatToFixed266(y2),
+		})
+
+	s.Stop(false)
+
+	s.Draw()
+}
+
