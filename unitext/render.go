@@ -1,7 +1,7 @@
 package unitext
 
 // This is basically a copy of https://github.com/go-text/render
-// But it uses oudated version of go-text/typesetting
+// But it uses outdated version of go-text/typesetting
 // and I thought it would be easier to manager if it's in this single file
 
 import (

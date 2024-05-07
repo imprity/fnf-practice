@@ -5,7 +5,7 @@ import (
 	"github.com/go-text/typesetting/fontscan"
 )
 
-// this is just copy paste of constants from typesetting packages
+// this is just a copy paste of constants from typesetting packages
 // I thought it would be nicer if it wasn't scattered all over the place
 
 // Generic families as defined by

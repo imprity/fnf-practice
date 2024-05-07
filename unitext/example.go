@@ -17,7 +17,7 @@ func main() {
 
 	unitext.Logger = logger
 	unitext.CacheDir = "font-cache"
-	text := "Hello " + "تثذرزسشص" + " world" + "لمنهويء" + "「こんにちは世界」한글도 포함"
+	text := "Hello " + "تثذرزسشص" + " world" + "لمنهويء" + "「こんにちは世界」 한글도 포함"
 
 	desiredFont := unitext.MakeDesiredFont()
 	desiredFont.Families = append(desiredFont.Families, unitext.FontFamilyCursive)
