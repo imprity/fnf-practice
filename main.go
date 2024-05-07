@@ -196,7 +196,7 @@ func main() {
 			}
 
 			if rl.IsKeyPressed(ReloadAssetsKey) {
-				LoadAssets()
+				ReloadAssets()
 			}
 
 			//update screen

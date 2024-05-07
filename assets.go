@@ -50,10 +50,17 @@ var BookMarkBigTex rl.Texture2D
 var BookMarkSmallTex rl.Texture2D
 
 var (
-	FontRegular rl.Font
-	FontBold    rl.Font
+	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun.ttf"
+	fontRegularData []byte
+	FontRegular     rl.Font
 
-	HelpMsgFont rl.Font
+	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
+	fontBoldData []byte
+	FontBold     rl.Font
+
+	//go:embed fonts/Pangolin/Pangolin-Regular.ttf
+	helpMsgFontData []byte
+	HelpMsgFont     rl.Font
 )
 
 var PopupBg rl.Texture2D
@@ -66,44 +73,20 @@ var (
 	fontsToUnload []rl.Font
 )
 
-var isAssetLoaded bool
-
-func UnloadAssets() {
-	if isAssetLoaded {
-		for _, tex := range texsToUnload {
-			if tex.ID > 0 {
-				rl.UnloadTexture(tex)
-			}
-		}
-
-		texsToUnload = texsToUnload[:0]
-
-		for _, img := range imgsToUnload {
-			if rl.IsImageReady(img) {
-				rl.UnloadImage(img)
-			}
-		}
-
-		imgsToUnload = imgsToUnload[:0]
-
-		for _, font := range fontsToUnload {
-			if rl.IsFontReady(font) {
-				rl.UnloadFont(font)
-			}
-		}
-
-		fontsToUnload = fontsToUnload[:0]
-
-		isAssetLoaded = false
-	}
+func LoadAssets() {
+	loadAssets(false)
 }
 
-func LoadAssets() {
-	UnloadAssets()
+func ReloadAssets() {
+	loadAssets(true)
+}
 
-	defer func() {
-		isAssetLoaded = true
-	}()
+func UnloadAssets() {
+	unloadAssets(false)
+}
+
+func loadAssets(isReload bool) {
+	unloadAssets(isReload)
 
 	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D {
 		var byteArray []byte
@@ -142,30 +125,15 @@ func LoadAssets() {
 		return tex
 	}
 
-	loadFont := func(path string, fontSize int32, fileType string) rl.Font {
-		var byteArray []byte
-		var err error
-
-		if *FlagHotReloading {
-			byteArray, err = os.ReadFile(path)
-		} else {
-			byteArray, err = fs.ReadFile(EmebededAssets, path)
-		}
-
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-
+	loadFont := func(fontData []byte, fontName string, fontSize int32, fileType string) rl.Font {
 		// NOTE : for code points we are supplying empty code points
 		// this will default to loading only ascii characters
-		// I thougt about adding all the corean code points but I think that would be too expensive
-
-		// TODO : SUPPORT UNICODE (somehow)
+		// I thougt about adding all the Korean code points but I think that would be too expensive
 		var emptyCodePoints []rune
-		font := rl.LoadFontFromMemory(fileType, byteArray, fontSize, emptyCodePoints)
+		font := rl.LoadFontFromMemory(fileType, fontData, fontSize, emptyCodePoints)
 
 		if !rl.IsFontReady(font) {
-			ErrorLogger.Fatalf("failed to load font : %v", path)
+			ErrorLogger.Fatalf("failed to load font : %v", fontName)
 		}
 
 		fontsToUnload = append(fontsToUnload, font)
@@ -243,13 +211,37 @@ func LoadAssets() {
 	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 	texsToUnload = append(texsToUnload, BlackPixel)
 
-	regularPath := "assets/UhBeeSe_hyun/UhBee Se_hyun.ttf"
-	boldPath := "assets/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
+	if !isReload {
+		FontRegular = loadFont(fontRegularData, "FontRegular", 128, ".ttf")
+		FontBold = loadFont(fontBoldData, "FontBold", 128, ".ttf")
 
-	FontRegular = loadFont(regularPath, 128, ".ttf")
-	FontBold = loadFont(boldPath, 128, ".ttf")
+		HelpMsgFont = loadFont(helpMsgFontData, "HelpMsgFont", 30, ".ttf")
+	}
+}
 
-	helpFontPath := "assets/Pangolin/Pangolin-Regular.ttf"
+func unloadAssets(isReload bool) {
+	for _, tex := range texsToUnload {
+		if tex.ID > 0 {
+			rl.UnloadTexture(tex)
+		}
+	}
 
-	HelpMsgFont = loadFont(helpFontPath, 30, ".ttf")
+	texsToUnload = texsToUnload[:0]
+
+	for _, img := range imgsToUnload {
+		if rl.IsImageReady(img) {
+			rl.UnloadImage(img)
+		}
+	}
+
+	imgsToUnload = imgsToUnload[:0]
+
+	if !isReload {
+		for _, font := range fontsToUnload {
+			if rl.IsFontReady(font) {
+				rl.UnloadFont(font)
+			}
+		}
+		fontsToUnload = fontsToUnload[:0]
+	}
 }
