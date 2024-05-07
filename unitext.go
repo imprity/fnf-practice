@@ -9,7 +9,7 @@ import (
 	"fnf-practice/unitext"
 )
 
-//go:embed fonts\dejavu-fonts-ttf-2.37\ttf\DejaVuSans.ttf
+//go:embed fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf
 var dejavuFontData []byte
 
 var unitextFailed bool = false
