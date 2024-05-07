@@ -2088,6 +2088,10 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.ResetStatesThatTracksGamePlayChanges()
 }
 
+func (gs *GameScreen) Free() {
+	// pass
+}
+
 // =================================
 // help message related stuffs
 // =================================

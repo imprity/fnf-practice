@@ -174,7 +174,7 @@ func bitAt(b []byte, i int) byte {
 	return (b[i/8] >> (7 - i%8)) & 1
 }
 
-func fixed266Div(a, b fixed.Int26_6)fixed.Int26_6{
+func fixed266Div(a, b fixed.Int26_6) fixed.Int26_6 {
 	return a * 64 / b
 }
 
@@ -265,4 +265,3 @@ func drawLine(img draw.Image, x1, y1, x2, y2 float64, c color.Color, thick float
 
 	s.Draw()
 }
-

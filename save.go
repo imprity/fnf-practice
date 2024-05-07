@@ -97,6 +97,11 @@ func decodeJsonFile(path string, v any) error {
 }
 
 func SaveCollections(collections []PathGroupCollection) error {
+	path, err := RelativePath(CollectionsFilePath)
+	if err != nil {
+		return err
+	}
+
 	cj := CollectionsJson{
 		MajorVersion: CollectionsJsonMajorVersion,
 		MinorVersion: CollectionsJsonMajorVersion,
@@ -104,7 +109,7 @@ func SaveCollections(collections []PathGroupCollection) error {
 		Collections: collections,
 	}
 
-	if err := encodeToJsonFile(CollectionsFilePath, cj); err != nil {
+	if err := encodeToJsonFile(path, cj); err != nil {
 		return err
 	}
 
@@ -112,14 +117,21 @@ func SaveCollections(collections []PathGroupCollection) error {
 }
 
 func LoadCollections() ([]PathGroupCollection, error) {
-	exists, err := checkFileExists(CollectionsFilePath)
+	path, err := RelativePath(CollectionsFilePath)
+	if err != nil {
+		return []PathGroupCollection{}, err
+	}
+
+	fmt.Printf("collection path : %v\n", path)
+
+	exists, err := checkFileExists(path)
 	if err != nil {
 		return []PathGroupCollection{}, err
 	}
 
 	if exists {
 		jc := CollectionsJson{}
-		err := decodeJsonFile(CollectionsFilePath, &jc)
+		err := decodeJsonFile(path, &jc)
 		if err != nil {
 			return []PathGroupCollection{}, err
 		}
@@ -131,6 +143,11 @@ func LoadCollections() ([]PathGroupCollection, error) {
 }
 
 func SaveSettings() error {
+	path, err := RelativePath(SettingsFilePath)
+	if err != nil {
+		return err
+	}
+
 	sj := SettingsJson{
 		MajorVersion: SettingsJsonMajorVersion,
 		MinorVersion: SettingsJsonMinorVersion,
@@ -138,7 +155,7 @@ func SaveSettings() error {
 		TargetFPS: TargetFPS,
 	}
 
-	if err := encodeToJsonFile(SettingsFilePath, sj); err != nil {
+	if err := encodeToJsonFile(path, sj); err != nil {
 		return err
 	}
 
@@ -146,14 +163,19 @@ func SaveSettings() error {
 }
 
 func LoadSettings() error {
-	exists, err := checkFileExists(SettingsFilePath)
+	path, err := RelativePath(SettingsFilePath)
+	if err != nil {
+		return err
+	}
+
+	exists, err := checkFileExists(path)
 	if err != nil {
 		return err
 	}
 
 	if exists {
 		js := SettingsJson{}
-		err := decodeJsonFile(SettingsFilePath, &js)
+		err := decodeJsonFile(path, &js)
 		if err != nil {
 			return err
 		}

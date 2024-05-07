@@ -91,3 +91,7 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	fpsItem := op.Menu.GetItemById(op.FpsItemId)
 	fpsItem.NValue = float32(TargetFPS)
 }
+
+func (op *OptionsScreen) Free() {
+	// pass
+}

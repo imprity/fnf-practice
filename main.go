@@ -36,6 +36,7 @@ func SetNextScreen(screen Screen) {
 }
 
 var ErrorLogger *log.Logger = log.New(os.Stderr, "FNF__ERROR : ", log.Lshortfile)
+var FnfLogger *log.Logger = log.New(os.Stdout, "FNF__LOG : ", log.Lshortfile)
 
 var TheRenderTexture rl.RenderTexture2D
 
@@ -90,6 +91,8 @@ func main() {
 		ErrorLogger.Fatal(err)
 	}
 
+	InitUnitext()
+
 	InitTransition()
 	defer FreeTransition()
 	InitPopupDialog()
@@ -100,12 +103,18 @@ func main() {
 	TheSelectScreen = NewSelectScreen()
 	TheOptionsScreen = NewOptionsScreen()
 
-	//load settings
+	// queue freeing
+	defer TheGameScreen.Free()
+	defer TheSelectScreen.Free()
+	defer TheOptionsScreen.Free()
+
+	// load settings
 	err = LoadSettings()
 	if err != nil { // TODO : This is a terrible. Don't just fucking crash
 		ErrorLogger.Fatal(err)
 	}
 
+	// load collections
 	var savedCollections []PathGroupCollection
 	savedCollections, err = LoadCollections()
 	if err != nil { // TODO : This is a terrible. Don't just fucking crash
@@ -115,6 +124,7 @@ func main() {
 		TheSelectScreen.AddCollection(collection)
 	}
 
+	// set the first screen
 	var screen Screen = TheSelectScreen
 
 	LoadAssets()

@@ -9,6 +9,8 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+var DrawMenuDebug bool = false
+
 type MenuItemType int
 
 const (
@@ -56,13 +58,15 @@ type MenuItem struct {
 	ListSelected int
 	List         []string
 
+	OnValueChange func(bValue bool, nValue float32, listSelection string)
+
 	// variables for animations
 	NameClickTimer       time.Duration
 	ValueClickTimer      time.Duration
 	LeftArrowClickTimer  time.Duration
 	RightArrowClickTimer time.Duration
 
-	OnValueChange func(bValue bool, nValue float32, listSelection string)
+	bound rl.Rectangle
 }
 
 var MenuItemMaxId int64
@@ -98,6 +102,20 @@ func NewMenuItem() *MenuItem {
 	return item
 }
 
+// creates deco item with " " as it's name
+// intended to be used for rendering complex "deco" item
+func NewDummyDecoMenuItem(size float32) *MenuItem {
+	dummy := NewMenuItem()
+
+	dummy.Type = MenuItemDeco
+
+	dummy.Name = " "
+
+	dummy.SizeRegular = size
+
+	return dummy
+}
+
 func (mi *MenuItem) CanDecrement() bool {
 	return mi.NValue-mi.NValueInterval >= mi.NValueMin-0.00001
 }
@@ -117,8 +135,6 @@ type MenuDrawer struct {
 
 	ScrollAnimT float32
 
-	TriggerAnimDuraiton time.Duration
-
 	InputId InputGroupId
 }
 
@@ -126,8 +142,6 @@ func NewMenuDrawer() *MenuDrawer {
 	md := new(MenuDrawer)
 
 	md.ScrollAnimT = 1
-
-	md.TriggerAnimDuraiton = time.Millisecond * 150
 
 	md.ListInterval = 30
 
@@ -373,12 +387,16 @@ func (md *MenuDrawer) Draw() {
 		return
 	}
 
-	// DEBUG =======================================
-	rl.DrawLine(
-		0, SCREEN_HEIGHT*0.5,
-		SCREEN_WIDTH, SCREEN_HEIGHT*0.5,
-		rl.Color{255, 0, 0, 255})
-	// DEBUG =======================================
+	if DrawMenuDebug {
+		rl.DrawLine(
+			0, SCREEN_HEIGHT*0.5,
+			SCREEN_WIDTH, SCREEN_HEIGHT*0.5,
+			rl.Color{255, 0, 0, 255})
+
+		for _, item := range md.Items {
+			rl.DrawRectangleRec(item.bound, rl.Color{255, 0, 0, 100})
+		}
+	}
 
 	calcClick := func(timer time.Duration) float32 {
 		clickT := float64(GlobalTimerNow()-timer) / float64(time.Millisecond*150)
@@ -408,6 +426,18 @@ func (md *MenuDrawer) Draw() {
 	xAdvance := xOffset
 	yCenter := float32(0)
 
+	itemBound := rl.Rectangle{}
+	itemBoundSet := false
+
+	updateItemBound := func(bound rl.Rectangle) {
+		if !itemBoundSet {
+			itemBound = bound
+			itemBoundSet = true
+		} else {
+			itemBound = RectUnion(itemBound, bound)
+		}
+	}
+
 	drawText := func(text string, fontSize, scale float32, col Color) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
@@ -417,6 +447,13 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
+
+		bound := rl.Rectangle{
+			X: pos.X, Y: pos.Y,
+			Width: textSize.X * scale, Height: textSize.Y * scale,
+		}
+		updateItemBound(bound)
+
 		return textSize.X
 	}
 
@@ -429,6 +466,14 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
+
+		bound := rl.Rectangle{
+			X: pos.X, Y: pos.Y,
+			Width: textSize.X * scale, Height: textSize.Y * scale,
+		}
+
+		updateItemBound(bound)
+
 		return width
 	}
 
@@ -443,6 +488,8 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col.ToImageRGBA())
+
+		updateItemBound(dstRect)
 		return wScale * srcRect.Width
 	}
 
@@ -547,6 +594,10 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		yOffset += item.SizeRegular + md.ListInterval
+
+		// update item's rendered rect
+		item.bound = itemBound
+		itemBoundSet = false
 	}
 }
 
@@ -562,6 +613,16 @@ func (md *MenuDrawer) GetSeletedId() int64 {
 		return 0
 	}
 	return md.Items[md.SelectedIndex].Id
+}
+
+func (md *MenuDrawer) GetItemBound(id int64) (rl.Rectangle, bool) {
+	item := md.GetItemById(id)
+
+	if item != nil {
+		return item.bound, true
+	}
+
+	return rl.Rectangle{}, false
 }
 
 func (md *MenuDrawer) GetItemById(id int64) *MenuItem {

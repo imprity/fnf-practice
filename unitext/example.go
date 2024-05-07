@@ -5,8 +5,8 @@ package main
 import (
 	"bufio"
 	"fnf-practice/unitext"
-	"image/png"
 	"image/color"
+	"image/png"
 	"log"
 	"os"
 )
@@ -22,8 +22,8 @@ func main() {
 	desiredFont := unitext.MakeDesiredFont()
 	desiredFont.Families = append(desiredFont.Families, unitext.FontFamilyCursive)
 
-	img, err := unitext.RenderUnicodeText(text, desiredFont, 40, color.NRGBA{255,0,255,255})
-	if err != nil{
+	img, err := unitext.RenderUnicodeText(text, desiredFont, 40, color.NRGBA{255, 0, 255, 255})
+	if err != nil {
 		log.Fatal(err)
 	}
 

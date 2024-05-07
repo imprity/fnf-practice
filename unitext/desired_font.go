@@ -1,8 +1,8 @@
 package unitext
 
 import (
-	meta "github.com/go-text/typesetting/opentype/api/metadata"
 	"github.com/go-text/typesetting/fontscan"
+	meta "github.com/go-text/typesetting/opentype/api/metadata"
 )
 
 // this is just a copy paste of constants from typesetting packages
@@ -21,17 +21,17 @@ const (
 )
 
 // Style (also called slant) allows italic or oblique faces to be selected.
-type FontStyle   = meta.Style
+type FontStyle = meta.Style
 
 // Weight is the degree of blackness or stroke thickness of a font. This value
 // ranges from 100.0 to 900.0, with 400.0 as normal.
-type FontWeight  = meta.Weight
+type FontWeight = meta.Weight
 
 // Stretch is the width of a font as an approximate fraction of the normal
 // width. Widths range from 0.5 to 2.0 inclusive, with 1.0 as the normal width.
 type FontStretch = meta.Stretch
 
-type DesiredFont struct{
+type DesiredFont struct {
 	Families []string
 
 	Style   FontStyle
@@ -39,7 +39,7 @@ type DesiredFont struct{
 	Stretch FontStretch
 }
 
-func MakeDesiredFont() DesiredFont{
+func MakeDesiredFont() DesiredFont {
 	df := DesiredFont{}
 	df.Style = StyleNormal
 	df.Weight = WeightNormal
@@ -97,4 +97,3 @@ const (
 	// Ultra-expanded width (200%), the widest possible.
 	StretchUltraExpanded FontStretch = meta.StretchUltraExpanded
 )
-

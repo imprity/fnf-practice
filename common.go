@@ -2,6 +2,8 @@ package main
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 
 	"golang.org/x/exp/constraints"
 
@@ -42,22 +44,36 @@ func Clamp[N constraints.Integer | constraints.Float](n, minN, maxN N) N {
 	return n
 }
 
-// copied from https://www.febucci.com/2018/08/easing-functions/
-
-func EaseIn[F constraints.Float](t F) F {
-	return t * t
-}
-
-func EaseOut[F constraints.Float](t F) F {
-	return 1.0 - (t-1.0)*(t-1.0)
-}
-
-func EaseInAndOut[F constraints.Float](t F) F {
-	return Lerp(EaseIn(t), EaseOut(t), t)
-}
-
 func Lerp[F constraints.Float](a, b, t F) F {
 	return a + (b-a)*t
+}
+
+func ExecutablePath() (string, error) {
+	path, err := os.Executable()
+
+	if err != nil {
+		return "", err
+	}
+
+	evaled, err := filepath.EvalSymlinks(path)
+
+	if err != nil {
+		return "", err
+	}
+
+	return evaled, nil
+}
+
+func RelativePath(path string) (string, error) {
+	exePath, err := ExecutablePath()
+
+	if err != nil {
+		return "", err
+	}
+
+	joined := filepath.Join(filepath.Dir(exePath), path)
+
+	return joined, nil
 }
 
 type CircularQueue[T any] struct {
@@ -124,37 +140,6 @@ func (q *CircularQueue[T]) Clear() {
 	q.Length = 0
 	q.Start = 0
 	q.End = 0
-}
-
-type ReadChannel[T any] struct {
-	RequestChannel chan bool
-	DataChannel    chan T
-}
-
-func (rc ReadChannel[T]) RequestRead() {
-	rc.RequestChannel <- true
-}
-
-func (rc ReadChannel[T]) Read() T {
-	return <-rc.DataChannel
-}
-
-type ReadManyChannel[T any] struct {
-	RequestChannel chan bool
-	SizeChannel    chan int
-	DataChannel    chan T
-}
-
-func (rm ReadManyChannel[T]) RequestRead() {
-	rm.RequestChannel <- true
-}
-
-func (rm ReadManyChannel[T]) ReadSize() int {
-	return <-rm.SizeChannel
-}
-
-func (rm ReadManyChannel[T]) Read() T {
-	return <-rm.DataChannel
 }
 
 func IsClockWise(v1, v2, v3 rl.Vector2) bool {
@@ -496,4 +481,18 @@ func EaseInOutCubic(x float64) float64 {
 	} else {
 		return 1 - math.Pow(-2*x+2, 3)/2
 	}
+}
+
+// copied from https://www.febucci.com/2018/08/easing-functions/
+
+func EaseIn[F constraints.Float](t F) F {
+	return t * t
+}
+
+func EaseOut[F constraints.Float](t F) F {
+	return 1.0 - (t-1.0)*(t-1.0)
+}
+
+func EaseInAndOut[F constraints.Float](t F) F {
+	return Lerp(EaseIn(t), EaseOut(t), t)
 }

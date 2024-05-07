@@ -1,12 +1,20 @@
 package main
 
 import (
-	rl "github.com/gen2brain/raylib-go/raylib"
-	"github.com/sqweek/dialog"
 	"log"
 	"os"
 	"time"
+
+	"github.com/sqweek/dialog"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+
+	"fnf-practice/unitext"
 )
+
+// TODO : figure out where the execution file is located
+// rather than being relative to cwd
+const UnitextCacheDir = "./fnf-font-cache"
 
 type SelectScreen struct {
 	MainMenu *MenuDrawer
@@ -21,6 +29,13 @@ type SelectScreen struct {
 	Collections []PathGroupCollection
 
 	InputId InputGroupId
+
+	// variables about rendering path items
+	PathDecoToPathTex map[int64]rl.Texture2D
+	PathDecoToPathImg map[int64]*rl.Image
+
+	PathFontSize float32
+	PathItemSize float32
 }
 
 func NewSelectScreen() *SelectScreen {
@@ -32,6 +47,14 @@ func NewSelectScreen() *SelectScreen {
 
 	ss.MenuToGroup = make(map[int64]FnfPathGroup)
 
+	// init variables about path rendering
+	ss.PathDecoToPathTex = make(map[int64]rl.Texture2D)
+	ss.PathDecoToPathImg = make(map[int64]*rl.Image)
+
+	ss.PathFontSize = 20
+	ss.PathItemSize = 40
+
+	// init main menu
 	ss.MainMenu = NewMenuDrawer()
 
 	menuDeco := NewMenuItem()
@@ -168,21 +191,23 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		return menuItem
 	}
 
-	// TODO : Font we use is not cut for display path
-	// since it doesn't support many unicode characters
-	// And I have a feeling it'll be more complicated then just slapping
-	// another font.
-	// this TODO shouldn't even be here but I wasn't sure where to put it
 	newBasePathDecoItem := func(collection PathGroupCollection) *MenuItem {
-		pathDeco := NewMenuItem()
+		dummyDeco := NewDummyDecoMenuItem(ss.PathItemSize)
 
-		pathDeco.Type = MenuItemDeco
+		// generate path image
+		desiredFont := unitext.MakeDesiredFont()
 
-		pathDeco.Name = collection.BasePath
+		pathImg := RenderUnicodeText(
+			collection.BasePath,
+			desiredFont, ss.PathFontSize, Color255(255, 255, 255, 255),
+		)
 
-		pathDeco.FadeIfUnselected = false
+		pathTex := rl.LoadTextureFromImage(pathImg)
 
-		return pathDeco
+		ss.PathDecoToPathImg[dummyDeco.Id] = pathImg
+		ss.PathDecoToPathTex[dummyDeco.Id] = pathTex
+
+		return dummyDeco
 	}
 
 	groups := collection.PathGroups
@@ -241,6 +266,25 @@ func (ss *SelectScreen) Draw() {
 
 	ss.MainMenu.Draw()
 
+	//draw path text
+	for id, tex := range ss.PathDecoToPathTex {
+		bound, ok := ss.MainMenu.GetItemBound(id)
+		if ok {
+			// draw bg rectangle
+			bgRect := rl.Rectangle{
+				X: 0, Y: bound.Y,
+				Width: SCREEN_WIDTH, Height: bound.Height,
+			}
+
+			rl.DrawRectangleRec(bgRect, rl.Color{0, 0, 0, 100})
+
+			texX := 100
+			texY := bgRect.Y + (bgRect.Height-f32(tex.Height))*0.5
+
+			rl.DrawTexture(tex, i32(texX), i32(texY), rl.Color{255, 255, 255, 255})
+		}
+	}
+
 	group, ok := ss.MenuToGroup[ss.MainMenu.GetSeletedId()]
 
 	if ok {
@@ -261,4 +305,16 @@ func (ss *SelectScreen) Draw() {
 
 func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.MainMenu.ResetAnimation()
+}
+
+func (ss *SelectScreen) Free() {
+	// free path imgs and texs
+
+	for _, tex := range ss.PathDecoToPathTex {
+		rl.UnloadTexture(tex)
+	}
+
+	for _, img := range ss.PathDecoToPathImg {
+		rl.UnloadImage(img)
+	}
 }

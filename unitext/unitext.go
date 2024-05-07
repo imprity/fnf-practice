@@ -23,7 +23,6 @@ import (
 	"github.com/go-text/typesetting/shaping"
 )
 
-
 // Logger to use. If nil uses log.Default()
 var Logger fontscan.Logger
 
@@ -56,7 +55,7 @@ func RenderUnicodeText(text string, desiredFont DesiredFont, fontSize float32, t
 	fontMap.SetQuery(query)
 
 	err := fontMap.UseSystemFonts(CacheDir)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -139,4 +138,3 @@ func StringToRunes(text string) []rune {
 
 	return runes
 }
-
