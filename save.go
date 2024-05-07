@@ -122,8 +122,6 @@ func LoadCollections() ([]PathGroupCollection, error) {
 		return []PathGroupCollection{}, err
 	}
 
-	fmt.Printf("collection path : %v\n", path)
-
 	exists, err := checkFileExists(path)
 	if err != nil {
 		return []PathGroupCollection{}, err
