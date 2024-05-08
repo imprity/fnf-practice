@@ -67,8 +67,6 @@ func main() {
 		}()
 	}
 
-	var err error
-
 	rl.SetConfigFlags(rl.FlagWindowResizable)
 
 	var printDebugMsg bool = false
@@ -86,8 +84,7 @@ func main() {
 
 	rl.SetTextureFilter(TheRenderTexture.Texture, rl.FilterBilinear)
 
-	err = InitAudio()
-	if err != nil {
+	if err := InitAudio(); err != nil {
 		ErrorLogger.Fatal(err)
 	}
 
@@ -110,19 +107,20 @@ func main() {
 	defer TheOptionsScreen.Free()
 
 	// load settings
-	err = LoadSettings()
-	if err != nil { // TODO : This is a terrible. Don't just fucking crash
-		ErrorLogger.Fatal(err)
+	if err := LoadSettings(); err != nil {
+		ErrorLogger.Println(err)
+		DisplayAlert("failed to load settings")
 	}
 
 	// load collections
-	var savedCollections []PathGroupCollection
-	savedCollections, err = LoadCollections()
-	if err != nil { // TODO : This is a terrible. Don't just fucking crash
-		ErrorLogger.Fatal(err)
-	}
-	for _, collection := range savedCollections {
-		TheSelectScreen.AddCollection(collection)
+	//var savedCollections []PathGroupCollection
+	if savedCollections, err := LoadCollections(); err != nil {
+		ErrorLogger.Println(err)
+		DisplayAlert("failed to load songs")
+	} else {
+		for _, collection := range savedCollections {
+			TheSelectScreen.AddCollection(collection)
+		}
 	}
 
 	// set the first screen

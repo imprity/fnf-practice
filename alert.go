@@ -21,7 +21,7 @@ var TheAlertManager AlertManager
 func InitAlert() {
 	am := &TheAlertManager
 
-	am.AlertLifetime = time.Millisecond * 1000
+	am.AlertLifetime = time.Millisecond * 2000
 }
 
 func DisplayAlert(msg string) {
@@ -38,6 +38,11 @@ func UpdateAlert(deltaTime time.Duration) {
 	am := &TheAlertManager
 
 	if am.Alerts.IsEmpty() {
+		return
+	}
+
+	// don't update alerts while transition is on
+	if IsTransitionOn() {
 		return
 	}
 

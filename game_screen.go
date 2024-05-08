@@ -646,25 +646,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			gs.ClearRewind()
 		}
 
-		//changing difficulty
-		// Is this even necessary?
-		// TODO : delete this if it really is not doing anything
-		/*
-			prevDifficulty := gs.SelectedDifficulty
-
-			if prevDifficulty != gs.SelectedDifficulty {
-				if gs.HasSong[gs.SelectedDifficulty] {
-					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
-
-					gs.PauseAudio()
-
-					gs.ResetStatesThatTracksGamePlayChanges()
-				} else {
-					gs.SelectedDifficulty = prevDifficulty
-				}
-			}
-		*/
-
 		// book marking
 		if AreKeysPressed(gs.InputId, SetBookMarkKey) {
 			gs.BookMarkSet = !gs.BookMarkSet

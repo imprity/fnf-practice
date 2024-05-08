@@ -15,6 +15,9 @@ type OptionsScreen struct {
 
 func NewOptionsScreen() *OptionsScreen {
 	op := new(OptionsScreen)
+
+	op.InputId = MakeInputGroupId()
+
 	op.Menu = NewMenuDrawer()
 
 	optionsDeco := NewMenuItem()
@@ -36,8 +39,11 @@ func NewOptionsScreen() *OptionsScreen {
 
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
-		// TODO : do not ignore error
-		SaveSettings()
+		err := SaveSettings()
+		if err != nil {
+			ErrorLogger.Println(err)
+			DisplayAlert("failed to save settings")
+		}
 		ShowTransition(BlackPixel, func() {
 			SetNextScreen(TheSelectScreen)
 			HideTransition()
@@ -68,8 +74,11 @@ func (op *OptionsScreen) Update(deltaTime time.Duration) {
 	if AreKeysPressed(op.InputId, EscapeKey) {
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
-		// TODO : do not ignore error
-		SaveSettings()
+		err := SaveSettings()
+		if err != nil {
+			ErrorLogger.Println(err)
+			DisplayAlert("failed to save settings")
+		}
 		ShowTransition(BlackPixel, func() {
 			SetNextScreen(TheSelectScreen)
 			HideTransition()

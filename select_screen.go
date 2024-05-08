@@ -12,10 +12,6 @@ import (
 	"fnf-practice/unitext"
 )
 
-// TODO : figure out where the execution file is located
-// rather than being relative to cwd
-const UnitextCacheDir = "./fnf-font-cache"
-
 type SelectScreen struct {
 	MainMenu *MenuDrawer
 
@@ -168,22 +164,31 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 				var err error
 
-				// TODO : dosomething with this error other than panicking
 				instBytes, err = LoadAudio(group.InstPath)
 				if err != nil {
-					ErrorLogger.Fatal(err)
+					ErrorLogger.Println(err)
+					DisplayAlert("failed to load song")
+					goto SONG_ERROR
 				}
 
 				if group.VoicePath != "" {
 					voiceBytes, err = LoadAudio(group.VoicePath)
 					if err != nil {
-						ErrorLogger.Fatal(err)
+						ErrorLogger.Println(err)
+						DisplayAlert("failed to load song")
+						goto SONG_ERROR
 					}
 				}
 
 				TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
 				SetNextScreen(TheGameScreen)
 
+				goto TRANSITION_END
+
+			SONG_ERROR:
+				SetNextScreen(TheSelectScreen)
+
+			TRANSITION_END:
 				HideTransition()
 			})
 		}
