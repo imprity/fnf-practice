@@ -97,6 +97,7 @@ func main() {
 	defer FreeTransition()
 	InitPopupDialog()
 	defer FreePopupDialog()
+	InitAlert()
 
 	// create screens
 	TheGameScreen = NewGameScreen()
@@ -189,6 +190,9 @@ func main() {
 		}
 
 		for timeAccumulator > time.Duration(float64(time.Second)/float64(TargetFPS+1)) {
+			// ========================
+			// update routine
+			// ========================
 			rl.PollInputEvents()
 
 			if rl.IsKeyPressed(ToggleDebugKey) {
@@ -212,47 +216,55 @@ func main() {
 
 			CallTransitionCallbackIfNeeded()
 
-			upsEstimateCounter += 1
 			UpdateTransitionTexture()
 
 			UpdatePopup(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
 
-			//rl.BeginTextureMode(TheRenderTexture)
+			UpdateAlert(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+
+			upsEstimateCounter += 1
+
+			// ========================
+			// draw routine
+			// ========================
 			FnfBeginTextureMode(TheRenderTexture)
-			screen.Draw() //draw screen
-			DrawPopup()   // draw popup
-			//rl.EndTextureMode()
+			{
+				screen.Draw() //draw screen
+				DrawPopup()   // draw popup
+				DrawAlert()
+			}
 			FnfEndTextureMode()
 
 			rl.BeginDrawing()
-			rl.ClearBackground(rl.Color{0, 0, 0, 255})
+			{
+				rl.ClearBackground(rl.Color{0, 0, 0, 255})
 
-			// draw render texture
-			rl.DrawTexturePro(
-				TheRenderTexture.Texture,
-				rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-				GetScreenRect(),
-				rl.Vector2{},
-				0,
-				rl.Color{255, 255, 255, 255},
-			)
+				// draw render texture
+				rl.DrawTexturePro(
+					TheRenderTexture.Texture,
+					rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+					GetScreenRect(),
+					rl.Vector2{},
+					0,
+					rl.Color{255, 255, 255, 255},
+				)
 
-			// draw transition texture
-			rl.DrawTexturePro(
-				TheTransitionManager.TransitionTexture.Texture,
-				rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-				GetScreenRect(),
-				rl.Vector2{},
-				0,
-				rl.Color{255, 255, 255, 255},
-			)
+				// draw transition texture
+				rl.DrawTexturePro(
+					TheTransitionManager.TransitionTexture.Texture,
+					rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+					GetScreenRect(),
+					rl.Vector2{},
+					0,
+					rl.Color{255, 255, 255, 255},
+				)
 
-			if printDebugMsg {
-				DrawDebugMsgs()
+				if printDebugMsg {
+					DrawDebugMsgs()
+				}
+
+				fpsEstimateCounter += 1
 			}
-
-			fpsEstimateCounter += 1
-
 			rl.EndDrawing()
 
 			rl.SwapScreenBuffer()

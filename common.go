@@ -142,6 +142,54 @@ func (q *CircularQueue[T]) Clear() {
 	q.End = 0
 }
 
+type Queue[T any] struct {
+	Data []T
+}
+
+func (q *Queue[T]) Length() int {
+	return len(q.Data)
+}
+
+func (q *Queue[T]) IsEmpty() bool {
+	return len(q.Data) <= 0
+}
+
+func (q *Queue[T]) Enqueue(item T) {
+	q.Data = append(q.Data, item)
+}
+
+func (q *Queue[T]) Dequeue() T {
+	toReturn := q.Data[0]
+
+	for i := 0; i+1 < len(q.Data); i++ {
+		q.Data[i] = q.Data[i+1]
+	}
+
+	q.Data = q.Data[:len(q.Data)-1]
+
+	return toReturn
+}
+
+func (q *Queue[T]) At(index int) T {
+	return q.Data[index]
+}
+
+func (q *Queue[T]) Set(index int, item T) {
+	q.Data[index] = item
+}
+
+func (q *Queue[T]) PeekFirst() T {
+	return q.Data[0]
+}
+
+func (q *Queue[T]) PeekLast() T {
+	return q.Data[len(q.Data)-1]
+}
+
+func (q *Queue[T]) Clear() {
+	q.Data = q.Data[:0]
+}
+
 func IsClockWise(v1, v2, v3 rl.Vector2) bool {
 	return (v2.X-v1.X)*(v3.Y-v1.Y)-(v2.Y-v1.Y)*(v3.X-v1.X) < 0
 }

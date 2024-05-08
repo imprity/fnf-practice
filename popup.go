@@ -25,7 +25,7 @@ type PopupDialogManager struct {
 
 	// NOTE : This does not use circular queue because
 	// I don't want to have size limitaion on queue
-	PopupDialogQueue []PopupDialog
+	PopupDialogQueue Queue[PopupDialog]
 
 	SelectedOption int
 
@@ -84,7 +84,7 @@ func DisplayPopup(
 		Callback: callback,
 	}
 
-	pdm.PopupDialogQueue = append(pdm.PopupDialogQueue, dialog)
+	pdm.PopupDialogQueue.Enqueue(dialog)
 
 	pdm.SelectedOption = 0
 }
@@ -98,19 +98,14 @@ func UpdatePopup(deltaTime time.Duration) {
 
 	pdm.SelectAnimT = Clamp(pdm.SelectAnimT, 0, 1)
 
-	if len(pdm.PopupDialogQueue) <= 0 {
+	if pdm.PopupDialogQueue.IsEmpty() {
 		return
 	}
 
-	current := pdm.PopupDialogQueue[0]
+	current := pdm.PopupDialogQueue.PeekFirst()
 
 	afterResolve := func() {
-		queueLen := len(pdm.PopupDialogQueue)
-		for i := 0; i+1 < queueLen; i++ {
-			pdm.PopupDialogQueue[i] = pdm.PopupDialogQueue[i+1]
-		}
-
-		pdm.PopupDialogQueue = pdm.PopupDialogQueue[:queueLen-1]
+		pdm.PopupDialogQueue.Dequeue()
 		pdm.SelectedOption = 0
 
 		pdm.SelectAnimT = 1
@@ -156,7 +151,7 @@ func UpdatePopup(deltaTime time.Duration) {
 func DrawPopup() {
 	pdm := &ThePopupDialogManager
 
-	if len(pdm.PopupDialogQueue) <= 0 {
+	if pdm.PopupDialogQueue.IsEmpty() {
 		if IsInputSoloEnabled(pdm.InputId) {
 			ClearSoloInput()
 		}
@@ -171,7 +166,7 @@ func DrawPopup() {
 	rl.DrawTexture(PopupBg, 0, 0, rl.Color{255, 255, 255, 255})
 	rl.EndBlendMode()
 
-	current := pdm.PopupDialogQueue[0]
+	current := pdm.PopupDialogQueue.PeekFirst()
 
 	// draw current msg
 	msgFontSize := float32(70)
@@ -214,8 +209,8 @@ func DrawPopup() {
 
 	// draw options
 	if len(current.Options) > 0 {
-		opMargin := float32(50)
-		opFontSize := float32(100)
+		opMargin := float32(80)
+		opFontSize := float32(85)
 
 		opWidth := float32(0)
 
@@ -239,7 +234,7 @@ func DrawPopup() {
 		offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height-opFontSize)*0.5
 
 		for i, op := range current.Options {
-			col := rl.Color{70, 70, 70, 255}
+			col := rl.Color{120, 120, 120, 255}
 			pos := rl.Vector2{X: offsetX, Y: offsetY}
 			scale := float32(1.0)
 
