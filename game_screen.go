@@ -108,12 +108,12 @@ type GameScreen struct {
 	InputId InputGroupId
 
 	// menu stuff
-	MenuDrawer *MenuDrawer
+	Menu *MenuDrawer
 	DrawMenu   bool
 
-	BotPlayMenuItemId         int64
-	DifficultyMenuItemId      int64
-	RewindOnMistakeMenuItemId int64
+	BotPlayMenuItemId         MenuItemId 
+	DifficultyMenuItemId      MenuItemId 
+	RewindOnMistakeMenuItemId MenuItemId 
 
 	// variables about note rendering
 	NotesMarginLeft   float32
@@ -187,7 +187,7 @@ func NewGameScreen() *GameScreen {
 	gs.HelpMessage.PosY = -4
 
 	// set up menu
-	gs.MenuDrawer = NewMenuDrawer()
+	gs.Menu = NewMenuDrawer()
 	{
 		resumeItem := NewMenuItem()
 		resumeItem.Type = MenuItemTrigger
@@ -197,7 +197,7 @@ func NewGameScreen() *GameScreen {
 				gs.DrawMenu = false
 			}
 		}
-		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, resumeItem)
+		gs.Menu.AddItems(resumeItem)
 
 		rewindItem := NewMenuItem()
 		rewindItem.Type = MenuItemToggle
@@ -206,19 +206,19 @@ func NewGameScreen() *GameScreen {
 			gs.RewindOnMistake = bValue
 		}
 		gs.RewindOnMistakeMenuItemId = rewindItem.Id
-		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, rewindItem)
+		gs.Menu.AddItems(rewindItem)
 
 		botPlayItem := NewMenuItem()
 		botPlayItem.Type = MenuItemToggle
 		botPlayItem.Name = "Bot Play"
 		gs.BotPlayMenuItemId = botPlayItem.Id
-		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, botPlayItem)
+		gs.Menu.AddItems(botPlayItem)
 
 		difficultyItem := NewMenuItem()
 		difficultyItem.Type = MenuItemList
 		difficultyItem.Name = "Difficulty"
 		gs.DifficultyMenuItemId = difficultyItem.Id
-		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, difficultyItem)
+		gs.Menu.AddItems(difficultyItem)
 
 		quitItem := NewMenuItem()
 		quitItem.Type = MenuItemTrigger
@@ -234,7 +234,7 @@ func NewGameScreen() *GameScreen {
 				})
 			}
 		}
-		gs.MenuDrawer.Items = append(gs.MenuDrawer.Items, quitItem)
+		gs.Menu.AddItems(quitItem)
 	}
 
 	return gs
@@ -508,7 +508,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// menu stuff
 	// =============================================
-	if AreKeysPressed(gs.InputId, EscapeKey) || AreKeysPressed(gs.MenuDrawer.InputId, EscapeKey) {
+	if AreKeysPressed(gs.InputId, EscapeKey) || AreKeysPressed(gs.Menu.InputId, EscapeKey) {
 		wasDrawingMenu := gs.DrawMenu
 
 		gs.DrawMenu = !gs.DrawMenu
@@ -517,13 +517,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// before menu popup
 		// =============================================
 		if !wasDrawingMenu && gs.DrawMenu {
-			botPlayItem := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+			botPlayItem := gs.Menu.GetItemById(gs.BotPlayMenuItemId)
 			botPlayItem.Bvalue = gs.IsBotPlay()
 
-			rewindItem := gs.MenuDrawer.GetItemById(gs.RewindOnMistakeMenuItemId)
+			rewindItem := gs.Menu.GetItemById(gs.RewindOnMistakeMenuItemId)
 			rewindItem.Bvalue = gs.RewindOnMistake
 
-			difficultyItem := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+			difficultyItem := gs.Menu.GetItemById(gs.DifficultyMenuItemId)
 			difficultyItem.List = difficultyItem.List[:0]
 
 			for d := FnfDifficulty(0); d < DifficultySize; d++ {
@@ -542,22 +542,22 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	}
 
 	if gs.DrawMenu {
-		gs.MenuDrawer.EnableInput()
+		gs.Menu.EnableInput()
 		DisableInput(gs.InputId)
 	} else {
-		gs.MenuDrawer.DisableInput()
+		gs.Menu.DisableInput()
 		EnableInput(gs.InputId)
 	}
 
-	gs.MenuDrawer.Update(deltaTime)
+	gs.Menu.Update(deltaTime)
 
 	if gs.DrawMenu {
-		botPlayItem := gs.MenuDrawer.GetItemById(gs.BotPlayMenuItemId)
+		botPlayItem := gs.Menu.GetItemById(gs.BotPlayMenuItemId)
 		if botPlayItem.Bvalue != gs.IsBotPlay() {
 			gs.SetBotPlay(botPlayItem.Bvalue)
 		}
 
-		dItem := gs.MenuDrawer.GetItemById(gs.DifficultyMenuItemId)
+		dItem := gs.Menu.GetItemById(gs.DifficultyMenuItemId)
 		dStr := dItem.List[dItem.ListSelected]
 
 		for d, str := range DifficultyStrs {
@@ -1684,7 +1684,7 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	if gs.DrawMenu {
 		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
-		gs.MenuDrawer.Draw()
+		gs.Menu.Draw()
 	}
 }
 
@@ -2046,7 +2046,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.botPlay = false
 
 	gs.DrawMenu = false
-	gs.MenuDrawer.SelectedIndex = 0
+	gs.Menu.SelectedIndex = 0
 
 	gs.prevPlayerPosition = 0
 
@@ -2058,7 +2058,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.BookMarkSet = false
 
-	gs.MenuDrawer.ResetAnimation()
+	gs.Menu.ResetAnimation()
 
 	gs.SetAudioPosition(0)
 

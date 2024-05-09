@@ -32,6 +32,8 @@ func init() {
 	MenuItemTypeStrs[MenuItemDeco] = "Deco"
 }
 
+type MenuItemId int64
+
 type MenuItem struct {
 	Type MenuItemType
 
@@ -41,7 +43,7 @@ type MenuItem struct {
 	Color            Color
 	FadeIfUnselected bool
 
-	Id int64
+	Id MenuItemId 
 
 	Name string
 
@@ -69,7 +71,7 @@ type MenuItem struct {
 	bound rl.Rectangle
 }
 
-var MenuItemMaxId int64
+var MenuItemMaxId MenuItemId 
 var MenuItemIdMutex sync.Mutex
 
 const (
@@ -125,8 +127,6 @@ func (mi *MenuItem) CanIncrement() bool {
 }
 
 type MenuDrawer struct {
-	Items []*MenuItem
-
 	SelectedIndex int
 
 	ListInterval float32
@@ -136,6 +136,8 @@ type MenuDrawer struct {
 	ScrollAnimT float32
 
 	InputId InputGroupId
+
+	items []*MenuItem
 }
 
 func NewMenuDrawer() *MenuDrawer {
@@ -167,13 +169,13 @@ func (md *MenuDrawer) EnableInput() {
 }
 
 func (md *MenuDrawer) Update(deltaTime time.Duration) {
-	if len(md.Items) <= 0 {
+	if len(md.items) <= 0 {
 		return
 	}
 
-	for index, item := range md.Items {
+	for index, item := range md.items {
 		if item.Type == MenuItemTrigger {
-			md.Items[index].Bvalue = false
+			md.items[index].Bvalue = false
 		}
 	}
 
@@ -182,7 +184,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	allDeco := true
 	nonDecoCount := 0
 
-	for _, item := range md.Items {
+	for _, item := range md.items {
 		if item.Type != MenuItemDeco {
 			nonDecoCount += 1
 			allDeco = false
@@ -197,20 +199,20 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				md.SelectedIndex -= 1
 			}
 
-			if md.SelectedIndex >= len(md.Items) {
+			if md.SelectedIndex >= len(md.items) {
 				md.SelectedIndex = 0
 			} else if md.SelectedIndex < 0 {
-				md.SelectedIndex = len(md.Items) - 1
+				md.SelectedIndex = len(md.items) - 1
 			}
 
-			if md.Items[md.SelectedIndex].Type != MenuItemDeco {
+			if md.items[md.SelectedIndex].Type != MenuItemDeco {
 				break
 			}
 		}
 	}
 
 	if !allDeco {
-		if md.Items[md.SelectedIndex].Type == MenuItemDeco {
+		if md.items[md.SelectedIndex].Type == MenuItemDeco {
 			scrollUntilNonDeco(true)
 		}
 	}
@@ -263,7 +265,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			}
 		}
 
-		selected := md.Items[md.SelectedIndex]
+		selected := md.items[md.SelectedIndex]
 
 		if AreKeysPressed(md.InputId, SelectKey) {
 			switch selected.Type {
@@ -361,7 +363,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	seletionY := float32(SCREEN_HEIGHT * 0.5)
 	seletionY -= md.GetSelectedItem().SizeRegular * 0.5
 
-	for index, item := range md.Items {
+	for index, item := range md.items {
 		if index >= md.SelectedIndex {
 			break
 		}
@@ -383,7 +385,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 }
 
 func (md *MenuDrawer) Draw() {
-	if len(md.Items) <= 0 {
+	if len(md.items) <= 0 {
 		return
 	}
 
@@ -393,7 +395,7 @@ func (md *MenuDrawer) Draw() {
 			SCREEN_WIDTH, SCREEN_HEIGHT*0.5,
 			rl.Color{255, 0, 0, 255})
 
-		for _, item := range md.Items {
+		for _, item := range md.items {
 			rl.DrawRectangleRec(item.bound, rl.Color{255, 0, 0, 100})
 		}
 	}
@@ -518,7 +520,7 @@ func (md *MenuDrawer) Draw() {
 		return col
 	}
 
-	for index, item := range md.Items {
+	for index, item := range md.items {
 		yCenter = yOffset + item.SizeRegular*0.5
 
 		xAdvance = xOffset
@@ -602,20 +604,20 @@ func (md *MenuDrawer) Draw() {
 }
 
 func (md *MenuDrawer) GetSelectedItem() *MenuItem {
-	if len(md.Items) <= 0 {
+	if len(md.items) <= 0 {
 		return nil
 	}
-	return md.Items[md.SelectedIndex]
+	return md.items[md.SelectedIndex]
 }
 
-func (md *MenuDrawer) GetSeletedId() int64 {
-	if len(md.Items) <= 0 {
+func (md *MenuDrawer) GetSeletedId() MenuItemId {
+	if len(md.items) <= 0 {
 		return 0
 	}
-	return md.Items[md.SelectedIndex].Id
+	return md.items[md.SelectedIndex].Id
 }
 
-func (md *MenuDrawer) GetItemBound(id int64) (rl.Rectangle, bool) {
+func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
 	item := md.GetItemById(id)
 
 	if item != nil {
@@ -625,8 +627,8 @@ func (md *MenuDrawer) GetItemBound(id int64) (rl.Rectangle, bool) {
 	return rl.Rectangle{}, false
 }
 
-func (md *MenuDrawer) GetItemById(id int64) *MenuItem {
-	for _, item := range md.Items {
+func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
+	for _, item := range md.items {
 		if item.Id == id {
 			return item
 		}
@@ -635,16 +637,20 @@ func (md *MenuDrawer) GetItemById(id int64) *MenuItem {
 	return nil
 }
 
+func (md *MenuDrawer) AddItems(items ...*MenuItem){
+	md.items = append(md.items, items...)
+}
+
 func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
-	at = Clamp(at, 0, len(md.Items))
+	at = Clamp(at, 0, len(md.items))
 
 	var newItems []*MenuItem
 
-	newItems = append(newItems, md.Items[0:at]...)
+	newItems = append(newItems, md.items[0:at]...)
 	newItems = append(newItems, items...)
-	newItems = append(newItems, md.Items[at:]...)
+	newItems = append(newItems, md.items[at:]...)
 
-	md.Items = newItems
+	md.items = newItems
 }
 
 func (md *MenuDrawer) ResetAnimation() {

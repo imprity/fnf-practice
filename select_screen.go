@@ -13,22 +13,22 @@ import (
 )
 
 type SelectScreen struct {
-	MainMenu *MenuDrawer
+	Menu *MenuDrawer
 
 	PreferredDifficulty FnfDifficulty
 
-	DirectoryOpenItemId int64
-	SongDecoItemId      int64
+	DirectoryOpenItemId MenuItemId 
+	SongDecoItemId      MenuItemId 
 
-	MenuToGroup map[int64]FnfPathGroup
+	MenuToGroup map[MenuItemId]FnfPathGroup
 
 	Collections []PathGroupCollection
 
 	InputId InputGroupId
 
 	// variables about rendering path items
-	PathDecoToPathTex map[int64]rl.Texture2D
-	PathDecoToPathImg map[int64]*rl.Image
+	PathDecoToPathTex map[MenuItemId]rl.Texture2D
+	PathDecoToPathImg map[MenuItemId]*rl.Image
 
 	PathFontSize float32
 	PathItemSize float32
@@ -41,17 +41,17 @@ func NewSelectScreen() *SelectScreen {
 
 	ss.PreferredDifficulty = DifficultyNormal
 
-	ss.MenuToGroup = make(map[int64]FnfPathGroup)
+	ss.MenuToGroup = make(map[MenuItemId]FnfPathGroup)
 
 	// init variables about path rendering
-	ss.PathDecoToPathTex = make(map[int64]rl.Texture2D)
-	ss.PathDecoToPathImg = make(map[int64]*rl.Image)
+	ss.PathDecoToPathTex = make(map[MenuItemId]rl.Texture2D)
+	ss.PathDecoToPathImg = make(map[MenuItemId]*rl.Image)
 
 	ss.PathFontSize = 20
 	ss.PathItemSize = 40
 
 	// init main menu
-	ss.MainMenu = NewMenuDrawer()
+	ss.Menu = NewMenuDrawer()
 
 	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
@@ -60,7 +60,7 @@ func NewSelectScreen() *SelectScreen {
 	menuDeco.FadeIfUnselected = false
 	menuDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 	menuDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
-	ss.MainMenu.Items = append(ss.MainMenu.Items, menuDeco)
+	ss.Menu.AddItems(menuDeco)
 
 	// =======================================
 	// creating directory open menu
@@ -92,7 +92,7 @@ func NewSelectScreen() *SelectScreen {
 			SaveCollections(ss.Collections)
 		})
 	}
-	ss.MainMenu.Items = append(ss.MainMenu.Items, directoryOpen)
+	ss.Menu.AddItems(directoryOpen)
 
 	// =======================================
 	// end of creating directory open menu
@@ -111,7 +111,7 @@ func NewSelectScreen() *SelectScreen {
 			HideTransition()
 		})
 	}
-	ss.MainMenu.Items = append(ss.MainMenu.Items, optionsItem)
+	ss.Menu.AddItems(optionsItem)
 
 	return ss
 }
@@ -220,17 +220,17 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 	if len(groups) > 0 {
 		ss.Collections = append(ss.Collections, collection)
 
-		ss.MainMenu.Items = append(ss.MainMenu.Items, newBasePathDecoItem(collection))
+		ss.Menu.AddItems(newBasePathDecoItem(collection))
 
 		for _, group := range groups {
 			menuItem := newSongMenuItem(group)
-			ss.MainMenu.Items = append(ss.MainMenu.Items, menuItem)
+			ss.Menu.AddItems(menuItem)
 		}
 
 		// =====================
 		// add song deco
 		// =====================
-		if deco := ss.MainMenu.GetItemById(ss.SongDecoItemId); deco == nil {
+		if deco := ss.Menu.GetItemById(ss.SongDecoItemId); deco == nil {
 			songDeco := NewMenuItem()
 
 			songDeco.Type = MenuItemDeco
@@ -243,7 +243,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 			songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 			songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 
-			ss.MainMenu.InsertAt(3, songDeco)
+			ss.Menu.InsertAt(3, songDeco)
 
 			ss.SongDecoItemId = songDeco.Id
 		}
@@ -252,7 +252,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 }
 
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
-	ss.MainMenu.Update(deltaTime)
+	ss.Menu.Update(deltaTime)
 
 	if AreKeysPressed(ss.InputId, NoteKeysLeft...) {
 		ss.PreferredDifficulty -= 1
@@ -269,11 +269,11 @@ func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
-	ss.MainMenu.Draw()
+	ss.Menu.Draw()
 
 	//draw path text
 	for id, tex := range ss.PathDecoToPathTex {
-		bound, ok := ss.MainMenu.GetItemBound(id)
+		bound, ok := ss.Menu.GetItemBound(id)
 		if ok {
 			// draw bg rectangle
 			bgRect := rl.Rectangle{
@@ -290,7 +290,7 @@ func (ss *SelectScreen) Draw() {
 		}
 	}
 
-	group, ok := ss.MenuToGroup[ss.MainMenu.GetSeletedId()]
+	group, ok := ss.MenuToGroup[ss.Menu.GetSeletedId()]
 
 	if ok {
 		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
@@ -309,7 +309,7 @@ func (ss *SelectScreen) Draw() {
 }
 
 func (ss *SelectScreen) BeforeScreenTransition() {
-	ss.MainMenu.ResetAnimation()
+	ss.Menu.ResetAnimation()
 }
 
 func (ss *SelectScreen) Free() {

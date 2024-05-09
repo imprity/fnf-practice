@@ -8,7 +8,7 @@ import (
 type OptionsScreen struct {
 	Menu *MenuDrawer
 
-	FpsItemId int64
+	FpsItemId MenuItemId
 
 	InputId InputGroupId
 }
@@ -27,7 +27,7 @@ func NewOptionsScreen() *OptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 	optionsDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
-	op.Menu.Items = append(op.Menu.Items, optionsDeco)
+	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
 	backItem.Name = "Back To Menu"
@@ -49,7 +49,7 @@ func NewOptionsScreen() *OptionsScreen {
 			HideTransition()
 		})
 	}
-	op.Menu.Items = append(op.Menu.Items, backItem)
+	op.Menu.AddItems(backItem)
 
 	fpsItem := NewMenuItem()
 	fpsItem.Name = "Target FPS"
@@ -63,7 +63,7 @@ func NewOptionsScreen() *OptionsScreen {
 		TargetFPS = int32(nValue)
 	}
 	op.FpsItemId = fpsItem.Id
-	op.Menu.Items = append(op.Menu.Items, fpsItem)
+	op.Menu.AddItems(fpsItem)
 
 	return op
 }
