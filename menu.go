@@ -43,7 +43,7 @@ type MenuItem struct {
 	Color            Color
 	FadeIfUnselected bool
 
-	Id MenuItemId 
+	Id MenuItemId
 
 	Name string
 
@@ -71,7 +71,7 @@ type MenuItem struct {
 	bound rl.Rectangle
 }
 
-var MenuItemMaxId MenuItemId 
+var MenuItemMaxId MenuItemId
 var MenuItemIdMutex sync.Mutex
 
 const (
@@ -637,7 +637,7 @@ func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
 	return nil
 }
 
-func (md *MenuDrawer) AddItems(items ...*MenuItem){
+func (md *MenuDrawer) AddItems(items ...*MenuItem) {
 	md.items = append(md.items, items...)
 }
 

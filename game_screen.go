@@ -108,12 +108,12 @@ type GameScreen struct {
 	InputId InputGroupId
 
 	// menu stuff
-	Menu *MenuDrawer
-	DrawMenu   bool
+	Menu     *MenuDrawer
+	DrawMenu bool
 
-	BotPlayMenuItemId         MenuItemId 
-	DifficultyMenuItemId      MenuItemId 
-	RewindOnMistakeMenuItemId MenuItemId 
+	BotPlayMenuItemId         MenuItemId
+	DifficultyMenuItemId      MenuItemId
+	RewindOnMistakeMenuItemId MenuItemId
 
 	// variables about note rendering
 	NotesMarginLeft   float32

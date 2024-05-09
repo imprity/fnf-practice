@@ -17,8 +17,8 @@ type SelectScreen struct {
 
 	PreferredDifficulty FnfDifficulty
 
-	DirectoryOpenItemId MenuItemId 
-	SongDecoItemId      MenuItemId 
+	DirectoryOpenItemId MenuItemId
+	SongDecoItemId      MenuItemId
 
 	MenuToGroup map[MenuItemId]FnfPathGroup
 
