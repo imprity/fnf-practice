@@ -37,15 +37,15 @@ type MenuItemId int64
 type MenuItem struct {
 	Type MenuItemType
 
+	Id MenuItemId
+
+	Name string
+
 	SizeRegular  float32
 	SizeSelected float32
 
 	Color            Color
 	FadeIfUnselected bool
-
-	Id MenuItemId
-
-	Name string
 
 	Bvalue bool
 
@@ -55,12 +55,21 @@ type MenuItem struct {
 	NValueMax      float32
 	NValueInterval float32
 
-	NValueFmtString string
-
 	ListSelected int
 	List         []string
 
 	OnValueChange func(bValue bool, nValue float32, listSelection string)
+
+	// format string to use to displat NValue
+	NValueFmtString string
+
+	// whether if toggle item will use checkbox or < yes, no >
+	ToggleStyleCheckBox bool
+
+	CheckedBoxColor   Color // default is 0x79 E4 AF FF
+	UncheckedBoxColor Color // default is 0xD1 D1 D1 FF
+
+	CheckmarkColor Color // default is 0xFF FF FF FF
 
 	// variables for animations
 	NameClickTimer       time.Duration
@@ -100,6 +109,13 @@ func NewMenuItem() *MenuItem {
 	item.Color = Col(1, 1, 1, 1)
 
 	item.FadeIfUnselected = true
+
+	item.ToggleStyleCheckBox = true
+
+	item.CheckedBoxColor = Color255(0x79, 0xE4, 0xAF, 0xFF)
+	item.UncheckedBoxColor = Color255(0xD1, 0xD1, 0xD1, 0xFF)
+
+	item.CheckmarkColor = Color255(0xFF, 0xFF, 0xFF, 0xFF)
 
 	return item
 }
@@ -285,12 +301,16 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			canGoLeft := true
 			canGoRight := true
 
-			if selected.Type == MenuItemNumber {
+			switch selected.Type {
+			case MenuItemNumber:
 				canGoLeft = selected.CanDecrement()
 				canGoRight = selected.CanIncrement()
-			} else if selected.Type == MenuItemList {
+			case MenuItemList:
 				canGoLeft = len(selected.List) > 0
 				canGoRight = len(selected.List) > 0
+			case MenuItemToggle:
+				canGoLeft = !selected.ToggleStyleCheckBox
+				canGoRight = !selected.ToggleStyleCheckBox
 			}
 
 			if AreKeysDown(md.InputId, NoteKeysLeft...) && canGoLeft {
@@ -440,6 +460,9 @@ func (md *MenuDrawer) Draw() {
 		}
 	}
 
+	xDrawOffset := float32(0)
+	yDrawOffset := float32(0)
+
 	drawText := func(text string, fontSize, scale float32, col Color) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
@@ -447,6 +470,9 @@ func (md *MenuDrawer) Draw() {
 			X: xAdvance,
 			Y: yCenter - textSize.Y*scale*0.5,
 		}
+
+		pos.X += xDrawOffset
+		pos.Y += yDrawOffset
 
 		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
 
@@ -466,6 +492,9 @@ func (md *MenuDrawer) Draw() {
 			X: (width-textSize.X)*0.5 + xAdvance,
 			Y: yCenter - textSize.Y*scale*0.5,
 		}
+
+		pos.X += xDrawOffset
+		pos.Y += yDrawOffset
 
 		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
 
@@ -489,27 +518,36 @@ func (md *MenuDrawer) Draw() {
 			Width: wScale * srcRect.Width * scale, Height: height * scale,
 		}
 
+		dstRect.X += xDrawOffset
+		dstRect.Y += yDrawOffset
+
 		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col.ToImageRGBA())
 
 		updateItemBound(dstRect)
 		return wScale * srcRect.Width
 	}
 
+	drawSprite := func(sprite Sprite, spriteN int, height, scale float32, col Color) float32 {
+		spriteRect := SpriteRect(sprite, spriteN)
+
+		return drawImage(sprite.Texture, spriteRect, height, scale, col)
+	}
+
 	drawArrow := func(drawLeft bool, height, scale float32, fill, stroke Color) float32 {
-		var innerRect rl.Rectangle
-		var outerRect rl.Rectangle
+		var innerSpriteN int
+		var outerSpriteN int
 
 		if drawLeft {
-			innerRect = SpriteRect(UIarrowsSprite, UIarrowLeftInner)
-			outerRect = SpriteRect(UIarrowsSprite, UIarrowLeftOuter)
+			innerSpriteN = UIarrowLeftInner
+			outerSpriteN = UIarrowLeftOuter
 		} else {
-			innerRect = SpriteRect(UIarrowsSprite, UIarrowRightInner)
-			outerRect = SpriteRect(UIarrowsSprite, UIarrowRightOuter)
+			innerSpriteN = UIarrowRightInner
+			outerSpriteN = UIarrowRightOuter
 		}
 
 		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-		advance := drawImage(UIarrowsSprite.Texture, innerRect, height, scale, fill)
-		drawImage(UIarrowsSprite.Texture, outerRect, height, scale, stroke)
+		advance := drawSprite(UIarrowsSprite, innerSpriteN, height, scale, fill)
+		drawSprite(UIarrowsSprite, outerSpriteN, height, scale, stroke)
 		rl.EndBlendMode()
 
 		return advance
@@ -518,6 +556,15 @@ func (md *MenuDrawer) Draw() {
 	fadeC := func(col Color, fade float64) Color {
 		col.A *= fade
 		return col
+	}
+
+	dimmC := func(col Color, dimm float64) Color {
+		hsv := ToHSV(col)
+
+		hsv[1] *= dimm
+		hsv[2] *= dimm
+
+		return FromHSV(hsv)
 	}
 
 	for index, item := range md.items {
@@ -546,53 +593,94 @@ func (md *MenuDrawer) Draw() {
 		xAdvance += drawText(item.Name, size, nameScale, fadeC(item.Color, fade))
 		xAdvance += 40
 
-		switch item.Type {
-		case MenuItemToggle, MenuItemList, MenuItemNumber:
-			arrowFill := fadeC(Col(1, 1, 1, 1), fade)
-			arrowStroke := Col(0, 0, 0, 1)
+		if item.Type == MenuItemToggle && item.ToggleStyleCheckBox {
+			checkBoxScale := float32(1.2)
 
-			if index != md.SelectedIndex {
-				arrowStroke = Color{}
+			checkBoxOffsetX := float32(0)
+			checkBoxOffsetY := -size * 0.1
+
+			xDrawOffset = checkBoxOffsetX
+			yDrawOffset = checkBoxOffsetY
+
+			boxRect := rl.Rectangle{
+				X: 0, Y: 0,
+				Width: f32(CheckBoxBox.Width), Height: f32(CheckBoxBox.Height),
 			}
 
-			xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke)
+			if item.Bvalue {
+				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.CheckedBoxColor, fade))
+			} else {
+				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.UncheckedBoxColor, fade))
+			}
 
-			xAdvance += 10 // <- 10 value 10 ->
+			if item.Bvalue {
+				const animDuration = time.Millisecond * 200
 
-			valueWidthMax := float32(0)
+				delta := TimeSinceNow(item.ValueClickTimer)
 
-			switch item.Type {
-			case MenuItemToggle:
-				valueWidthMax = rl.MeasureTextEx(FontBold, "yes", size, 0).X
-			case MenuItemList:
-				for _, entry := range item.List {
-					valueWidthMax = max(rl.MeasureTextEx(FontBold, entry, size, 0).X, valueWidthMax)
+				t := f32(delta) / f32(animDuration)
+				t = Clamp(t, 0, 1)
+
+				spriteN := int(f32(CheckBoxMark.Count) * t)
+
+				if spriteN >= CheckBoxMark.Count {
+					spriteN = CheckBoxMark.Count - 1
 				}
-			case MenuItemNumber:
-				minText := fmt.Sprintf(item.NValueFmtString, item.NValueMin)
-				maxText := fmt.Sprintf(item.NValueFmtString, item.NValueMax)
-				valueWidthMax = max(rl.MeasureTextEx(FontBold, minText, size, 0).X, valueWidthMax)
-				valueWidthMax = max(rl.MeasureTextEx(FontBold, maxText, size, 0).X, valueWidthMax)
+
+				drawSprite(CheckBoxMark, spriteN, size, checkBoxScale, dimmC(item.CheckmarkColor, fade))
 			}
 
+			xDrawOffset = 0
+			yDrawOffset = 0
+		} else {
 			switch item.Type {
-			case MenuItemToggle:
-				if item.Bvalue {
-					drawTextCentered("Yes", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
-				} else {
-					drawTextCentered("No", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+			case MenuItemToggle, MenuItemList, MenuItemNumber:
+				arrowFill := fadeC(Col(1, 1, 1, 1), fade)
+				arrowStroke := Col(0, 0, 0, 1)
+
+				if index != md.SelectedIndex {
+					arrowStroke = Color{}
 				}
-			case MenuItemList:
-				drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax, fadeC(item.Color, fade))
-			case MenuItemNumber:
-				toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
-				drawTextCentered(toDraw, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+
+				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke)
+
+				xAdvance += 10 // <- 10 value 10 ->
+
+				valueWidthMax := float32(0)
+
+				switch item.Type {
+				case MenuItemToggle:
+					valueWidthMax = rl.MeasureTextEx(FontBold, "yes", size, 0).X
+				case MenuItemList:
+					for _, entry := range item.List {
+						valueWidthMax = max(rl.MeasureTextEx(FontBold, entry, size, 0).X, valueWidthMax)
+					}
+				case MenuItemNumber:
+					minText := fmt.Sprintf(item.NValueFmtString, item.NValueMin)
+					maxText := fmt.Sprintf(item.NValueFmtString, item.NValueMax)
+					valueWidthMax = max(rl.MeasureTextEx(FontBold, minText, size, 0).X, valueWidthMax)
+					valueWidthMax = max(rl.MeasureTextEx(FontBold, maxText, size, 0).X, valueWidthMax)
+				}
+
+				switch item.Type {
+				case MenuItemToggle:
+					if item.Bvalue {
+						drawTextCentered("Yes", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+					} else {
+						drawTextCentered("No", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+					}
+				case MenuItemList:
+					drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+				case MenuItemNumber:
+					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
+					drawTextCentered(toDraw, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+				}
+
+				xAdvance += valueWidthMax
+				xAdvance += 10 // <- 10 value 10 ->
+
+				drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke)
 			}
-
-			xAdvance += valueWidthMax
-			xAdvance += 10 // <- 10 value 10 ->
-
-			drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke)
 		}
 
 		yOffset += item.SizeRegular + md.ListInterval

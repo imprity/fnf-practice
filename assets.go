@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"io/fs"
 	"os"
@@ -27,6 +28,11 @@ const (
 	UIarrowRightInner
 
 	UIarrowsSpriteCount
+)
+
+var (
+	CheckBoxMark Sprite
+	CheckBoxBox  rl.Texture2D
 )
 
 var GameScreenBg rl.Texture2D
@@ -80,7 +86,7 @@ func UnloadAssets() {
 func loadAssets(isReload bool) {
 	unloadAssets(isReload)
 
-	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D {
+	loadData := func(path string) []byte {
 		var byteArray []byte
 		var err error
 
@@ -93,6 +99,12 @@ func loadAssets(isReload bool) {
 		if err != nil {
 			ErrorLogger.Fatal(err)
 		}
+
+		return byteArray
+	}
+
+	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D {
+		byteArray := loadData(path)
 
 		img := rl.LoadImageFromMemory(fileType, byteArray, int32(len(byteArray)))
 
@@ -133,6 +145,7 @@ func loadAssets(isReload bool) {
 		return font
 	}
 
+	// load fnf arrows texture
 	{
 		outerTex := loadTexture("assets/arrows_outer.png", true, ".png")
 		innerTex := loadTexture("assets/arrows_inner.png", true, ".png")
@@ -155,11 +168,12 @@ func loadAssets(isReload bool) {
 		ArrowsOuterSprite.Width = f32(outerTex.Width) / f32(NoteDirSize)
 		ArrowsInnerSprite.Width = f32(innerTex.Width) / f32(NoteDirSize)
 	}
-	
+
+	// load fnf arrows glow texture
 	{
 		glowTex := loadTexture("assets/arrows_glow.png", true, ".png")
 
-		ArrowsGlowSprite.Texture = glowTex 
+		ArrowsGlowSprite.Texture = glowTex
 
 		ArrowsGlowSprite.Count = int(NoteDirSize)
 
@@ -169,10 +183,11 @@ func loadAssets(isReload bool) {
 		ArrowsGlowSprite.Width = f32(glowTex.Width) / f32(NoteDirSize)
 	}
 
+	// load ui arrows texture
 	{
 		uiArrowsTex := loadTexture("assets/ui_arrows.png", true, ".png")
 
-		UIarrowsSprite.Texture = uiArrowsTex 
+		UIarrowsSprite.Texture = uiArrowsTex
 
 		UIarrowsSprite.Count = UIarrowsSpriteCount
 
@@ -180,6 +195,24 @@ func loadAssets(isReload bool) {
 
 		// NOTE : same also goes for ui arrows
 		UIarrowsSprite.Width = f32(uiArrowsTex.Width) / UIarrowsSpriteCount
+	}
+
+	// load checkbox sprite
+	{
+		CheckBoxBox = loadTexture("assets/checkbox-box.png", true, ".png")
+
+		jsonBytes := loadData("assets/checkbox-sprites.json")
+		buffer := bytes.NewBuffer(jsonBytes)
+
+		var err error
+
+		CheckBoxMark, err = ParseSpriteJsonMetadata(buffer)
+
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
+
+		CheckBoxMark.Texture = loadTexture("assets/checkbox-sprites.png", true, ".png")
 	}
 
 	BookMarkBigTex = loadTexture("assets/bookmark_big.png", true, ".png")

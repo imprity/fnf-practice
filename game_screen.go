@@ -1807,8 +1807,8 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 	)
 
 	rect := rl.Rectangle{
-		X : 0, Y : 0,
-		Width : glowW, Height : glowH,
+		X: 0, Y: 0,
+		Width: glowW, Height: glowH,
 	}
 
 	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, c.ToImageRGBA())
@@ -1833,13 +1833,13 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 	)
 
 	outerRect := rl.Rectangle{
-		X : 0, Y : 0,
-		Width : ArrowsOuterSprite.Width, Height : ArrowsOuterSprite.Height,
+		X: 0, Y: 0,
+		Width: ArrowsOuterSprite.Width, Height: ArrowsOuterSprite.Height,
 	}
 
 	innerRect := rl.Rectangle{
-		X : 0, Y : 0,
-		Width : ArrowsInnerSprite.Width, Height : ArrowsInnerSprite.Height,
+		X: 0, Y: 0,
+		Width: ArrowsInnerSprite.Width, Height: ArrowsInnerSprite.Height,
 	}
 
 	DrawSpriteTransfromed(ArrowsInnerSprite, int(dir), innerRect, mat, fill.ToImageRGBA())

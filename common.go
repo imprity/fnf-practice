@@ -194,7 +194,7 @@ func IsClockWise(v1, v2, v3 rl.Vector2) bool {
 	return (v2.X-v1.X)*(v3.Y-v1.Y)-(v2.Y-v1.Y)*(v3.X-v1.X) < 0
 }
 
-func IsRectEmpty(r rl.Rectangle) bool{
+func IsRectEmpty(r rl.Rectangle) bool {
 	return r.Width <= 0 || r.Height <= 0
 }
 
@@ -211,15 +211,15 @@ func RectUnion(r1, r2 rl.Rectangle) rl.Rectangle {
 	}
 }
 
-func RectIntersect(r1, r2 rl.Rectangle) rl.Rectangle{
+func RectIntersect(r1, r2 rl.Rectangle) rl.Rectangle {
 	newR := rl.Rectangle{}
 
 	newR.X = max(r1.X, r2.X)
 	newR.Y = max(r1.Y, r2.Y)
-	newR.Width = min(r1.X + r1.Width, r2.X + r2.Width) - newR.X
-	newR.Height = min(r1.Y + r1.Height, r2.Y + r2.Height) - newR.Y
+	newR.Width = min(r1.X+r1.Width, r2.X+r2.Width) - newR.X
+	newR.Height = min(r1.Y+r1.Height, r2.Y+r2.Height) - newR.Y
 
-	if IsRectEmpty(newR){
+	if IsRectEmpty(newR) {
 		newR.X += newR.Width * 0.5
 		newR.Y += newR.Height * 0.5
 		newR.Width, newR.Height = 0.0, 0.0
