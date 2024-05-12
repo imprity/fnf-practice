@@ -1789,10 +1789,10 @@ func (gs *GameScreen) DrawSustainBar(
 func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 	rl.BeginBlendMode(rl.BlendAddColors)
 
-	arrowH := ArrowsRects[0].Height
+	arrowH := ArrowsOuterSprite.Height
 
-	glowW := ArrowsGlowRects[0].Width
-	glowH := ArrowsGlowRects[0].Height
+	glowW := ArrowsGlowSprite.Width
+	glowH := ArrowsGlowSprite.Height
 
 	// we calculate scale using arrow texture since arrowHeight means height of the arrow texture
 	scale := arrowHeight / arrowH
@@ -1806,7 +1806,12 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 			0),
 	)
 
-	DrawTextureTransfromed(ArrowsGlowTex, ArrowsGlowRects[dir], mat, c.ToImageRGBA())
+	rect := rl.Rectangle{
+		X : 0, Y : 0,
+		Width : glowW, Height : glowH,
+	}
+
+	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, c.ToImageRGBA())
 
 	rl.EndBlendMode()
 }
@@ -1814,8 +1819,8 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-	texW := ArrowsRects[0].Width
-	texH := ArrowsRects[0].Height
+	texW := ArrowsOuterSprite.Width
+	texH := ArrowsOuterSprite.Height
 
 	scale := arrowHeight / texH
 	mat := rl.MatrixScale(scale, scale, scale)
@@ -1827,8 +1832,18 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0),
 	)
 
-	DrawTextureTransfromed(ArrowsInnerTex, ArrowsRects[dir], mat, fill.ToImageRGBA())
-	DrawTextureTransfromed(ArrowsOuterTex, ArrowsRects[dir], mat, stroke.ToImageRGBA())
+	outerRect := rl.Rectangle{
+		X : 0, Y : 0,
+		Width : ArrowsOuterSprite.Width, Height : ArrowsOuterSprite.Height,
+	}
+
+	innerRect := rl.Rectangle{
+		X : 0, Y : 0,
+		Width : ArrowsInnerSprite.Width, Height : ArrowsInnerSprite.Height,
+	}
+
+	DrawSpriteTransfromed(ArrowsInnerSprite, int(dir), innerRect, mat, fill.ToImageRGBA())
+	DrawSpriteTransfromed(ArrowsOuterSprite, int(dir), outerRect, mat, stroke.ToImageRGBA())
 
 	rl.EndBlendMode()
 }

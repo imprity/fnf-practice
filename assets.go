@@ -12,11 +12,13 @@ import (
 var EmebededAssets embed.FS
 
 var (
-	ArrowsOuterTex rl.Texture2D
-	ArrowsInnerTex rl.Texture2D
-
-	ArrowsRects [NoteDirSize]rl.Rectangle
+	ArrowsInnerSprite Sprite
+	ArrowsOuterSprite Sprite
 )
+
+var ArrowsGlowSprite Sprite
+
+var UIarrowsSprite Sprite
 
 const (
 	UIarrowLeftOuter = iota
@@ -24,17 +26,7 @@ const (
 	UIarrowLeftInner
 	UIarrowRightInner
 
-	UIarrowRectsSize
-)
-
-var (
-	UIarrowsTex  rl.Texture2D
-	UIarrowRects [UIarrowRectsSize]rl.Rectangle
-)
-
-var (
-	ArrowsGlowTex   rl.Texture2D
-	ArrowsGlowRects [NoteDirSize]rl.Rectangle
+	UIarrowsSpriteCount
 )
 
 var GameScreenBg rl.Texture2D
@@ -141,48 +133,53 @@ func loadAssets(isReload bool) {
 		return font
 	}
 
-	ArrowsOuterTex = loadTexture("assets/arrows_outer.png", true, ".png")
-	ArrowsInnerTex = loadTexture("assets/arrows_inner.png", true, ".png")
+	{
+		outerTex := loadTexture("assets/arrows_outer.png", true, ".png")
+		innerTex := loadTexture("assets/arrows_inner.png", true, ".png")
 
-	if ArrowsOuterTex.Width != ArrowsInnerTex.Width || ArrowsOuterTex.Height != ArrowsInnerTex.Height {
-		ErrorLogger.Fatal("Arrow inner and outer images should have same size")
+		if outerTex.Width != innerTex.Width || outerTex.Height != innerTex.Height {
+			ErrorLogger.Fatal("Arrow inner and outer images should have same size")
+		}
+
+		ArrowsOuterSprite.Texture = outerTex
+		ArrowsInnerSprite.Texture = innerTex
+
+		ArrowsOuterSprite.Count = int(NoteDirSize)
+		ArrowsInnerSprite.Count = int(NoteDirSize)
+
+		ArrowsOuterSprite.Height = f32(outerTex.Height)
+		ArrowsInnerSprite.Height = f32(innerTex.Height)
+
+		// NOTE : we will assume that we can get arrow width
+		// by just devding the texture width by 4
+		ArrowsOuterSprite.Width = f32(outerTex.Width) / f32(NoteDirSize)
+		ArrowsInnerSprite.Width = f32(innerTex.Width) / f32(NoteDirSize)
+	}
+	
+	{
+		glowTex := loadTexture("assets/arrows_glow.png", true, ".png")
+
+		ArrowsGlowSprite.Texture = glowTex 
+
+		ArrowsGlowSprite.Count = int(NoteDirSize)
+
+		ArrowsGlowSprite.Height = f32(glowTex.Height)
+
+		// NOTE : same goes for glow arrows
+		ArrowsGlowSprite.Width = f32(glowTex.Width) / f32(NoteDirSize)
 	}
 
-	// NOTE : we will assume that we can get arrow rects
-	// by just devding the width by 4
+	{
+		uiArrowsTex := loadTexture("assets/ui_arrows.png", true, ".png")
 
-	width := float32(ArrowsOuterTex.Width) / 4.0
+		UIarrowsSprite.Texture = uiArrowsTex 
 
-	for i := NoteDir(0); i < NoteDirSize; i++ {
-		x := float32(i) * width
-		ArrowsRects[i] = rl.Rectangle{
-			x, 0, width, float32(ArrowsOuterTex.Height),
-		}
-	}
+		UIarrowsSprite.Count = UIarrowsSpriteCount
 
-	ArrowsGlowTex = loadTexture("assets/arrows_glow.png", true, ".png")
+		UIarrowsSprite.Height = f32(uiArrowsTex.Height)
 
-	// NOTE : same goes for glow arrows
-
-	width = float32(ArrowsGlowTex.Width) / 4.0
-
-	for i := NoteDir(0); i < NoteDirSize; i++ {
-		x := float32(i) * width
-		ArrowsGlowRects[i] = rl.Rectangle{
-			x, 0, width, float32(ArrowsGlowTex.Height),
-		}
-	}
-
-	// NOTE : same also goes for ui arrows
-	UIarrowsTex = loadTexture("assets/ui_arrows.png", true, ".png")
-
-	width = float32(UIarrowsTex.Width) / 4.0
-
-	for i := 0; i < UIarrowRectsSize; i++ {
-		x := float32(i) * width
-		UIarrowRects[i] = rl.Rectangle{
-			x, 0, width, float32(UIarrowsTex.Height),
-		}
+		// NOTE : same also goes for ui arrows
+		UIarrowsSprite.Width = f32(uiArrowsTex.Width) / UIarrowsSpriteCount
 	}
 
 	BookMarkBigTex = loadTexture("assets/bookmark_big.png", true, ".png")

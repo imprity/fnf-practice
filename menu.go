@@ -500,16 +500,16 @@ func (md *MenuDrawer) Draw() {
 		var outerRect rl.Rectangle
 
 		if drawLeft {
-			innerRect = UIarrowRects[UIarrowLeftInner]
-			outerRect = UIarrowRects[UIarrowLeftOuter]
+			innerRect = SpriteRect(UIarrowsSprite, UIarrowLeftInner)
+			outerRect = SpriteRect(UIarrowsSprite, UIarrowLeftOuter)
 		} else {
-			innerRect = UIarrowRects[UIarrowRightInner]
-			outerRect = UIarrowRects[UIarrowRightOuter]
+			innerRect = SpriteRect(UIarrowsSprite, UIarrowRightInner)
+			outerRect = SpriteRect(UIarrowsSprite, UIarrowRightOuter)
 		}
 
 		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-		advance := drawImage(UIarrowsTex, innerRect, height, scale, fill)
-		drawImage(UIarrowsTex, outerRect, height, scale, stroke)
+		advance := drawImage(UIarrowsSprite.Texture, innerRect, height, scale, fill)
+		drawImage(UIarrowsSprite.Texture, outerRect, height, scale, stroke)
 		rl.EndBlendMode()
 
 		return advance
