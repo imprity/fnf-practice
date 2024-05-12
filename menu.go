@@ -1,8 +1,8 @@
 package main
 
 import (
-	//"math"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -610,7 +610,7 @@ func (md *MenuDrawer) GetSelectedItem() *MenuItem {
 	return md.items[md.SelectedIndex]
 }
 
-func (md *MenuDrawer) GetSeletedId() MenuItemId {
+func (md *MenuDrawer) GetSelectedId() MenuItemId {
 	if len(md.items) <= 0 {
 		return 0
 	}
@@ -639,6 +639,29 @@ func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
 
 func (md *MenuDrawer) AddItems(items ...*MenuItem) {
 	md.items = append(md.items, items...)
+}
+
+func (md *MenuDrawer) DeleteItems(ids ...MenuItemId) {
+	md.items = slices.DeleteFunc(md.items, func(item *MenuItem) bool {
+		for _, id := range ids {
+			if item.Id == id {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func (md *MenuDrawer) DeleteItemsAt(indices ...int) {
+	var newItems []*MenuItem
+
+	for i, item := range md.items {
+		if !slices.Contains(indices, i) {
+			newItems = append(newItems, item)
+		}
+	}
+
+	md.items = newItems
 }
 
 func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {

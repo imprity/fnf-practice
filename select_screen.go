@@ -290,7 +290,7 @@ func (ss *SelectScreen) Draw() {
 		}
 	}
 
-	group, ok := ss.MenuToGroup[ss.Menu.GetSeletedId()]
+	group, ok := ss.MenuToGroup[ss.Menu.GetSelectedId()]
 
 	if ok {
 		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
