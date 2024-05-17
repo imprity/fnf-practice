@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -206,10 +207,11 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 				var err error
 
+				var songs [DifficultySize]FnfSong
+
 				instBytes, err = LoadAudio(group.InstPath)
 				if err != nil {
 					ErrorLogger.Println(err)
-					DisplayAlert("failed to load song")
 					goto SONG_ERROR
 				}
 
@@ -217,17 +219,37 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 					voiceBytes, err = LoadAudio(group.VoicePath)
 					if err != nil {
 						ErrorLogger.Println(err)
-						DisplayAlert("failed to load song")
 						goto SONG_ERROR
 					}
 				}
 
-				TheGameScreen.LoadSongs(group.Songs, group.HasSong, difficulty, instBytes, voiceBytes)
+				for diff, hasSong := range group.HasSong {
+					if hasSong {
+						fileBytes, err := os.ReadFile(group.SongPaths[diff])
+						if err != nil {
+							ErrorLogger.Println(err)
+							goto SONG_ERROR
+						}
+
+						buffer := bytes.NewBuffer(fileBytes)
+
+						song, err := ParseJsonToFnfSong(buffer)
+						if err != nil {
+							ErrorLogger.Println(err)
+							goto SONG_ERROR
+						}
+
+						songs[diff] = song
+					}
+				}
+
+				TheGameScreen.LoadSongs(songs, group.HasSong, difficulty, instBytes, voiceBytes)
 				SetNextScreen(TheGameScreen)
 
 				goto TRANSITION_END
 
 			SONG_ERROR:
+				DisplayAlert(fmt.Sprintf("failed to load the song : %v", group.SongName))
 				SetNextScreen(TheSelectScreen)
 
 			TRANSITION_END:

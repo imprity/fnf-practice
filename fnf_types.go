@@ -193,7 +193,6 @@ type FnfPathGroupId int64
 type FnfPathGroup struct {
 	SongName string
 
-	Songs     [DifficultySize]FnfSong
 	SongPaths [DifficultySize]string
 	HasSong   [DifficultySize]bool
 
