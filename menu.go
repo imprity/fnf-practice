@@ -61,6 +61,8 @@ type MenuItem struct {
 
 	UserData any
 
+	IsHidden bool
+
 	// format string to use to displat NValue
 	NValueFmtString string
 
@@ -137,6 +139,10 @@ func (mi *MenuItem) CanIncrement() bool {
 	return mi.NValue+mi.NValueInterval <= mi.NValueMax+0.00001
 }
 
+func (mi *MenuItem) IsSelectable() bool {
+	return !mi.IsHidden && mi.Type != MenuItemDeco
+}
+
 type MenuDrawer struct {
 	SelectedIndex int
 
@@ -194,17 +200,17 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 	prevSelected := md.SelectedIndex
 
-	allDeco := true
-	nonDecoCount := 0
+	noSelectable := true
+	selectableItemCount := 0
 
 	for _, item := range md.items {
-		if item.Type != MenuItemDeco {
-			nonDecoCount += 1
-			allDeco = false
+		if item.IsSelectable() {
+			selectableItemCount += 1
+			noSelectable = false
 		}
 	}
 
-	scrollUntilNonDeco := func(forward bool) {
+	scrollUntilSelectable := func(forward bool) {
 		for {
 			if forward {
 				md.SelectedIndex += 1
@@ -218,15 +224,15 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				md.SelectedIndex = len(md.items) - 1
 			}
 
-			if md.items[md.SelectedIndex].Type != MenuItemDeco {
+			if md.items[md.SelectedIndex].IsSelectable() {
 				break
 			}
 		}
 	}
 
-	if !allDeco {
-		if md.items[md.SelectedIndex].Type == MenuItemDeco {
-			scrollUntilNonDeco(true)
+	if !noSelectable {
+		if !md.items[md.SelectedIndex].IsSelectable() {
+			scrollUntilSelectable(true)
 		}
 	}
 
@@ -234,7 +240,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	tryingToMoveUp := false
 	canNotMove := false
 
-	if nonDecoCount <= 1 {
+	if selectableItemCount <= 1 {
 		canNotMove = true
 	}
 
@@ -272,100 +278,102 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		const scrollRepeatRate = time.Millisecond * 110
 
 		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeysUp...) {
-			if !allDeco {
-				scrollUntilNonDeco(false)
+			if !noSelectable {
+				scrollUntilSelectable(false)
 			}
 		}
 
 		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeysDown...) {
-			if !allDeco {
-				scrollUntilNonDeco(true)
+			if !noSelectable {
+				scrollUntilSelectable(true)
 			}
 		}
 
-		selected := md.items[md.SelectedIndex]
+		if !noSelectable {
+			selected := md.items[md.SelectedIndex]
 
-		if AreKeysPressed(md.InputId, SelectKey) {
-			switch selected.Type {
-			case MenuItemTrigger:
-				selected.Bvalue = true
-				selected.NameClickTimer = GlobalTimerNow()
-			case MenuItemToggle:
-				selected.Bvalue = !selected.Bvalue
-				selected.ValueClickTimer = GlobalTimerNow()
-			}
-
-			callItemCallback(selected)
-		}
-
-		switch selected.Type {
-		case MenuItemList, MenuItemNumber, MenuItemToggle:
-			canGoLeft := true
-			canGoRight := true
-
-			switch selected.Type {
-			case MenuItemNumber:
-				canGoLeft = selected.CanDecrement()
-				canGoRight = selected.CanIncrement()
-			case MenuItemList:
-				canGoLeft = len(selected.List) > 0
-				canGoRight = len(selected.List) > 0
-			case MenuItemToggle:
-				canGoLeft = !selected.ToggleStyleCheckBox
-				canGoRight = !selected.ToggleStyleCheckBox
-			}
-
-			if AreKeysDown(md.InputId, NoteKeysLeft...) && canGoLeft {
-				selected.LeftArrowClickTimer = GlobalTimerNow()
-			}
-
-			if AreKeysDown(md.InputId, NoteKeysRight...) && canGoRight {
-				selected.RightArrowClickTimer = GlobalTimerNow()
-			}
-
-			goLeft := false
-			goRight := false
-
-			const firstRate = time.Millisecond * 200
-			const repeateRate = time.Millisecond * 110
-
-			goLeft = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysLeft...) && canGoLeft
-			goRight = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysRight...) && canGoRight
-
-			switch selected.Type {
-			case MenuItemToggle:
-				if goLeft || goRight {
+			if AreKeysPressed(md.InputId, SelectKey) {
+				switch selected.Type {
+				case MenuItemTrigger:
+					selected.Bvalue = true
+					selected.NameClickTimer = GlobalTimerNow()
+				case MenuItemToggle:
 					selected.Bvalue = !selected.Bvalue
-					callItemCallback(selected)
+					selected.ValueClickTimer = GlobalTimerNow()
 				}
-			case MenuItemList:
-				if len(selected.List) > 0 {
-					listSelected := selected.ListSelected
 
-					if goLeft && canGoLeft {
-						listSelected -= 1
-					} else if goRight && canGoRight {
-						listSelected += 1
-					}
+				callItemCallback(selected)
+			}
 
-					if listSelected >= len(selected.List) {
-						listSelected = 0
-					} else if listSelected < 0 {
-						listSelected = len(selected.List) - 1
-					}
+			switch selected.Type {
+			case MenuItemList, MenuItemNumber, MenuItemToggle:
+				canGoLeft := true
+				canGoRight := true
 
-					if selected.ListSelected != listSelected {
-						selected.ListSelected = listSelected
+				switch selected.Type {
+				case MenuItemNumber:
+					canGoLeft = selected.CanDecrement()
+					canGoRight = selected.CanIncrement()
+				case MenuItemList:
+					canGoLeft = len(selected.List) > 0
+					canGoRight = len(selected.List) > 0
+				case MenuItemToggle:
+					canGoLeft = !selected.ToggleStyleCheckBox
+					canGoRight = !selected.ToggleStyleCheckBox
+				}
+
+				if AreKeysDown(md.InputId, NoteKeysLeft...) && canGoLeft {
+					selected.LeftArrowClickTimer = GlobalTimerNow()
+				}
+
+				if AreKeysDown(md.InputId, NoteKeysRight...) && canGoRight {
+					selected.RightArrowClickTimer = GlobalTimerNow()
+				}
+
+				goLeft := false
+				goRight := false
+
+				const firstRate = time.Millisecond * 200
+				const repeateRate = time.Millisecond * 110
+
+				goLeft = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysLeft...) && canGoLeft
+				goRight = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysRight...) && canGoRight
+
+				switch selected.Type {
+				case MenuItemToggle:
+					if goLeft || goRight {
+						selected.Bvalue = !selected.Bvalue
 						callItemCallback(selected)
 					}
-				}
-			case MenuItemNumber:
-				if goLeft {
-					selected.NValue -= selected.NValueInterval
-					callItemCallback(selected)
-				} else if goRight {
-					selected.NValue += selected.NValueInterval
-					callItemCallback(selected)
+				case MenuItemList:
+					if len(selected.List) > 0 {
+						listSelected := selected.ListSelected
+
+						if goLeft && canGoLeft {
+							listSelected -= 1
+						} else if goRight && canGoRight {
+							listSelected += 1
+						}
+
+						if listSelected >= len(selected.List) {
+							listSelected = 0
+						} else if listSelected < 0 {
+							listSelected = len(selected.List) - 1
+						}
+
+						if selected.ListSelected != listSelected {
+							selected.ListSelected = listSelected
+							callItemCallback(selected)
+						}
+					}
+				case MenuItemNumber:
+					if goLeft {
+						selected.NValue -= selected.NValueInterval
+						callItemCallback(selected)
+					} else if goRight {
+						selected.NValue += selected.NValueInterval
+						callItemCallback(selected)
+					}
 				}
 			}
 		}
@@ -380,20 +388,27 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 	// but I have a strong feeling that this is not frame indipendent
 	// but it's just for menu so I don't think it matters too much...
+	selected := md.items[md.SelectedIndex]
+
 	blend := Clamp(float32(deltaTime.Seconds()*20), 0.00, 1.0)
 
 	seletionY := float32(SCREEN_HEIGHT * 0.5)
-	seletionY -= md.GetSelectedItem().SizeRegular * 0.5
+	seletionY -= selected.SizeRegular * 0.5
 
 	for index, item := range md.items {
 		if index >= md.SelectedIndex {
 			break
 		}
+
+		if item.IsHidden {
+			continue
+		}
+
 		seletionY -= item.SizeRegular + md.ListInterval
 	}
 
 	if tryingToMove && canNotMove {
-		push := (md.GetSelectedItem().SizeRegular*0.5 + md.ListInterval) * 0.8
+		push := (selected.SizeRegular*0.5 + md.ListInterval) * 0.8
 		if tryingToMoveUp {
 			seletionY += push
 		} else {
@@ -578,6 +593,10 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	for index, item := range md.items {
+		if item.IsHidden {
+			continue
+		}
+
 		yCenter = yOffset + item.SizeRegular*0.5
 
 		xAdvance = xOffset
@@ -705,14 +724,22 @@ func (md *MenuDrawer) GetSelectedItem() *MenuItem {
 	if len(md.items) <= 0 {
 		return nil
 	}
-	return md.items[md.SelectedIndex]
+	item := md.items[md.SelectedIndex]
+	if item.IsSelectable() {
+		return item
+	}
+	return nil
 }
 
 func (md *MenuDrawer) GetSelectedId() MenuItemId {
 	if len(md.items) <= 0 {
 		return 0
 	}
-	return md.items[md.SelectedIndex].Id
+	item := md.items[md.SelectedIndex]
+	if item.IsSelectable() {
+		return item.Id
+	}
+	return 0
 }
 
 func (md *MenuDrawer) GetUserData(id MenuItemId) any {
