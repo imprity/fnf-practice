@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -13,7 +14,10 @@ import (
 )
 
 type SelectScreen struct {
-	Menu *MenuDrawer
+	Menu       *MenuDrawer
+	DeleteMenu *MenuDrawer
+
+	DrawDeleteMenu bool
 
 	PreferredDifficulty FnfDifficulty
 
@@ -26,7 +30,11 @@ type SelectScreen struct {
 
 	InputId InputGroupId
 
+	ShouldDeletePathGroup map[FnfPathGroupId]bool
+
 	// variables about rendering path items
+	CollectionToPathDeco map[PathGroupCollectionId]MenuItemId
+
 	PathDecoToPathTex map[MenuItemId]rl.Texture2D
 	PathDecoToPathImg map[MenuItemId]*rl.Image
 
@@ -37,21 +45,23 @@ type SelectScreen struct {
 func NewSelectScreen() *SelectScreen {
 	ss := new(SelectScreen)
 
-	ss.InputId = MakeInputGroupId()
+	ss.InputId = NewInputGroupId()
 
 	ss.PreferredDifficulty = DifficultyNormal
+
+	// init main menu
+	ss.Menu = NewMenuDrawer()
 
 	ss.MenuToGroup = make(map[MenuItemId]FnfPathGroup)
 
 	// init variables about path rendering
+	ss.CollectionToPathDeco = make(map[PathGroupCollectionId]MenuItemId)
+
 	ss.PathDecoToPathTex = make(map[MenuItemId]rl.Texture2D)
 	ss.PathDecoToPathImg = make(map[MenuItemId]*rl.Image)
 
 	ss.PathFontSize = 20
 	ss.PathItemSize = 40
-
-	// init main menu
-	ss.Menu = NewMenuDrawer()
 
 	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
@@ -89,7 +99,10 @@ func NewSelectScreen() *SelectScreen {
 
 			ss.AddCollection(collection)
 
-			SaveCollections(ss.Collections)
+			err = SaveCollections(ss.Collections)
+			if err != nil {
+				DisplayAlert("Failed to save song list")
+			}
 		})
 	}
 	ss.Menu.AddItems(directoryOpen)
@@ -112,6 +125,131 @@ func NewSelectScreen() *SelectScreen {
 		})
 	}
 	ss.Menu.AddItems(optionsItem)
+
+	// ============================
+	// menus about deleting songs
+	// ============================
+
+	// init delete menu
+	ss.DeleteMenu = NewMenuDrawer()
+
+	deleteSongsItem := NewMenuItem()
+	deleteSongsItem.Name = "Delete Songs"
+	deleteSongsItem.Type = MenuItemTrigger
+
+	deleteMarkedSongs := func() {
+		var newCollections []PathGroupCollection
+
+		for _, collection := range ss.Collections {
+			newGroups := []FnfPathGroup{}
+
+			for _, group := range collection.PathGroups {
+				if _, del := ss.ShouldDeletePathGroup[group.Id()]; !del {
+					newGroups = append(newGroups, group)
+				}
+			}
+
+			if len(newGroups) > 0 {
+				collection.PathGroups = newGroups
+				newCollections = append(newCollections, collection)
+			} else {
+				decoToDelete := ss.CollectionToPathDeco[collection.Id()]
+				ss.Menu.DeleteItems(decoToDelete)
+			}
+		}
+
+		ss.Collections = newCollections
+
+		for groupId, del := range ss.ShouldDeletePathGroup {
+			if del {
+				for itemId, itemGroup := range ss.MenuToGroup {
+					if groupId == itemGroup.Id() {
+						ss.Menu.DeleteItems(itemId)
+						delete(ss.MenuToGroup, itemId)
+					}
+				}
+			}
+		}
+
+		err := SaveCollections(ss.Collections)
+		if err != nil {
+			DisplayAlert("Failed to save song list")
+		}
+	}
+
+	deleteSongsItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+		if !bValue {
+			return
+		}
+
+		ss.DrawDeleteMenu = true
+
+		ss.DeleteMenu.ClearItems()
+
+		ss.ShouldDeletePathGroup = make(map[FnfPathGroupId]bool)
+
+		deleteConfirm := NewMenuItem()
+		deleteConfirm.Name = "DELETE SONGS"
+		deleteConfirm.Type = MenuItemTrigger
+
+		deleteConfirm.OnValueChange = func(bValue bool, _ float32, _ string) {
+			if !bValue {
+				return
+			}
+
+			// count how many songs are going to be deleted
+			toBeDeletedCount := 0
+
+			for _, del := range ss.ShouldDeletePathGroup {
+				if del {
+					toBeDeletedCount += 1
+				}
+			}
+
+			if toBeDeletedCount <= 0 {
+				// just exit when there's nothing to delete
+				ss.DrawDeleteMenu = false
+				return
+			}
+
+			DisplayPopup(
+				fmt.Sprintf("Delete %d songs?", toBeDeletedCount),
+				[]string{"Yes", "No"},
+				func(selected string, isCanceled bool) {
+					// if it's canceled, then do nothing
+					if !isCanceled {
+						ss.DrawDeleteMenu = false
+
+						if selected == "Yes" {
+							deleteMarkedSongs()
+						}
+					}
+				},
+			)
+		}
+
+		ss.DeleteMenu.AddItems(deleteConfirm)
+
+		// create delete check box for each song we have
+		for _, collection := range ss.Collections {
+			decoItemId := ss.CollectionToPathDeco[collection.Id()]
+			ss.DeleteMenu.AddItems(ss.Menu.GetItemById(decoItemId))
+
+			for _, group := range collection.PathGroups {
+				deleteItem := NewMenuItem()
+				deleteItem.Type = MenuItemToggle
+				deleteItem.Name = group.SongName
+
+				deleteItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+					ss.ShouldDeletePathGroup[group.Id()] = bValue
+				}
+
+				ss.DeleteMenu.AddItems(deleteItem)
+			}
+		}
+	}
+
+	ss.Menu.AddItems(deleteSongsItem)
 
 	return ss
 }
@@ -209,6 +347,8 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		pathTex := rl.LoadTextureFromImage(pathImg)
 
+		ss.CollectionToPathDeco[collection.Id()] = dummyDeco.Id
+
 		ss.PathDecoToPathImg[dummyDeco.Id] = pathImg
 		ss.PathDecoToPathTex[dummyDeco.Id] = pathTex
 
@@ -243,7 +383,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 			songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
 			songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
 
-			ss.Menu.InsertAt(3, songDeco)
+			ss.Menu.InsertAt(4, songDeco)
 
 			ss.SongDecoItemId = songDeco.Id
 		}
@@ -252,24 +392,75 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 }
 
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
-	ss.Menu.Update(deltaTime)
+	if !ss.DrawDeleteMenu {
+		ss.Menu.Update(deltaTime)
 
-	if AreKeysPressed(ss.InputId, NoteKeysLeft...) {
-		ss.PreferredDifficulty -= 1
+		if AreKeysPressed(ss.InputId, NoteKeysLeft...) {
+			ss.PreferredDifficulty -= 1
+		}
+
+		if AreKeysPressed(ss.InputId, NoteKeysRight...) {
+			ss.PreferredDifficulty += 1
+		}
+
+		ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
+
+		// =========================
+		// update debug msg
+		// =========================
+		if !ss.DrawDeleteMenu {
+			selected := ss.Menu.GetSelectedId()
+			if group, ok := ss.MenuToGroup[selected]; ok {
+				key := "Seleted group id"
+				value := fmt.Sprintf("%d", group.Id())
+				DebugPrint(key, value)
+			}
+		}
+		for i, c := range ss.Collections {
+			key := fmt.Sprintf("Collection %d ID", i)
+			value := fmt.Sprintf("%d", c.Id())
+			DebugPrint(key, value)
+		}
+	} else {
+		ss.DeleteMenu.Update(deltaTime)
+
+		if AreKeysPressed(ss.DeleteMenu.InputId, EscapeKey) {
+			// clear delete items
+			ss.DeleteMenu.ClearItems()
+			// clear marked to be deleted
+			ss.ShouldDeletePathGroup = nil
+
+			ss.DrawDeleteMenu = false
+		}
 	}
-
-	if AreKeysPressed(ss.InputId, NoteKeysRight...) {
-		ss.PreferredDifficulty += 1
-	}
-
-	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
 }
 
 func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
-	ss.Menu.Draw()
+	if !ss.DrawDeleteMenu {
+		ss.Menu.Draw()
+
+		group, ok := ss.MenuToGroup[ss.Menu.GetSelectedId()]
+
+		if ok {
+			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+
+			str := DifficultyStrs[difficulty]
+			size := float32(60)
+
+			textSize := rl.MeasureTextEx(FontBold, DifficultyStrs[difficulty], size, 0)
+
+			x := SCREEN_WIDTH - (100 + textSize.X)
+			y := float32(20)
+
+			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
+				size, 0, rl.Color{255, 255, 255, 255})
+		}
+	} else {
+		ss.DeleteMenu.Draw()
+	}
 
 	//draw path text
 	for id, tex := range ss.PathDecoToPathTex {
@@ -289,27 +480,15 @@ func (ss *SelectScreen) Draw() {
 			rl.DrawTexture(tex, i32(texX), i32(texY), rl.Color{255, 255, 255, 255})
 		}
 	}
-
-	group, ok := ss.MenuToGroup[ss.Menu.GetSelectedId()]
-
-	if ok {
-		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
-
-		str := DifficultyStrs[difficulty]
-		size := float32(60)
-
-		textSize := rl.MeasureTextEx(FontBold, DifficultyStrs[difficulty], size, 0)
-
-		x := SCREEN_WIDTH - (100 + textSize.X)
-		y := float32(20)
-
-		rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
-			size, 0, rl.Color{255, 255, 255, 255})
-	}
 }
 
 func (ss *SelectScreen) BeforeScreenTransition() {
+	ss.DrawDeleteMenu = false
+
 	ss.Menu.ResetAnimation()
+
+	ss.DeleteMenu.ClearItems()
+	ss.DeleteMenu.ResetAnimation()
 }
 
 func (ss *SelectScreen) Free() {

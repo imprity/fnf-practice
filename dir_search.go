@@ -313,9 +313,15 @@ func TryToFindSongs(root string, logger *log.Logger) PathGroupCollection {
 		return strings.Compare(a.SongName, b.SongName)
 	})
 
+	// give groups id
+	for i := range pathGroups {
+		pathGroups[i].id = NewFnfPathGroupId()
+	}
+
 	collection := PathGroupCollection{
 		BasePath:   root,
 		PathGroups: pathGroups,
+		id:         NewPathGroupCollectionId(),
 	}
 
 	return collection

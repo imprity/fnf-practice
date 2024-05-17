@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"slices"
-	"sync"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -80,8 +79,7 @@ type MenuItem struct {
 	bound rl.Rectangle
 }
 
-var MenuItemMaxId MenuItemId
-var MenuItemIdMutex sync.Mutex
+var menuItemIdGenerator IdGenerator[MenuItemId]
 
 const (
 	MenuItemSizeRegularDefault  = 70
@@ -89,14 +87,9 @@ const (
 )
 
 func NewMenuItem() *MenuItem {
-	MenuItemIdMutex.Lock()
-	defer MenuItemIdMutex.Unlock()
-
 	item := new(MenuItem)
 
-	MenuItemMaxId += 1
-
-	item.Id = MenuItemMaxId
+	item.Id = menuItemIdGenerator.NewId()
 
 	item.SizeRegular = MenuItemSizeRegularDefault
 	item.SizeSelected = MenuItemSizeSelectedDefault
@@ -163,7 +156,7 @@ func NewMenuDrawer() *MenuDrawer {
 
 	md.ListInterval = 30
 
-	md.InputId = MakeInputGroupId()
+	md.InputId = NewInputGroupId()
 
 	return md
 }
@@ -762,6 +755,10 @@ func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
 	newItems = append(newItems, md.items[at:]...)
 
 	md.items = newItems
+}
+
+func (md *MenuDrawer) ClearItems() {
+	md.items = md.items[:0]
 }
 
 func (md *MenuDrawer) ResetAnimation() {

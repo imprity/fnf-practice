@@ -134,6 +134,16 @@ func LoadCollections() ([]PathGroupCollection, error) {
 			return []PathGroupCollection{}, err
 		}
 
+		for cIndex, collection := range jc.Collections {
+			// give collections unique id
+			jc.Collections[cIndex].id = NewPathGroupCollectionId()
+
+			// give path group unique id
+			for pIndex := range collection.PathGroups {
+				collection.PathGroups[pIndex].id = NewFnfPathGroupId()
+			}
+		}
+
 		return jc.Collections, nil
 	} else {
 		return []PathGroupCollection{}, nil

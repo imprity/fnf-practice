@@ -39,7 +39,7 @@ var ThePopupDialogManager PopupDialogManager
 func InitPopupDialog() {
 	pdm := &ThePopupDialogManager
 
-	pdm.InputId = MakeInputGroupId()
+	pdm.InputId = NewInputGroupId()
 
 	pdm.PopupRect = rl.Rectangle{
 		Width: 870, Height: 540,
@@ -87,10 +87,11 @@ func DisplayPopup(
 	pdm.PopupDialogQueue.Enqueue(dialog)
 
 	pdm.SelectedOption = 0
+
+	SetSoloInput(pdm.InputId)
 }
 
 func UpdatePopup(deltaTime time.Duration) {
-
 	pdm := &ThePopupDialogManager
 
 	const selectAnimDuration = time.Millisecond * 30
@@ -99,8 +100,14 @@ func UpdatePopup(deltaTime time.Duration) {
 	pdm.SelectAnimT = Clamp(pdm.SelectAnimT, 0, 1)
 
 	if pdm.PopupDialogQueue.IsEmpty() {
+		if IsInputSoloEnabled(pdm.InputId) {
+			ClearSoloInput()
+		}
 		return
 	}
+
+	// I know DisplayPopup sets solo input but just to be safe
+	SetSoloInput(pdm.InputId)
 
 	current := pdm.PopupDialogQueue.PeekFirst()
 
@@ -152,13 +159,8 @@ func DrawPopup() {
 	pdm := &ThePopupDialogManager
 
 	if pdm.PopupDialogQueue.IsEmpty() {
-		if IsInputSoloEnabled(pdm.InputId) {
-			ClearSoloInput()
-		}
 		return
 	}
-
-	SetSoloInput(pdm.InputId)
 
 	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
 

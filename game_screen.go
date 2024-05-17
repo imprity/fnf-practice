@@ -179,7 +179,7 @@ func NewGameScreen() *GameScreen {
 
 	gs.tempPauseUntil = -Years150
 
-	gs.InputId = MakeInputGroupId()
+	gs.InputId = NewInputGroupId()
 
 	gs.HelpMessage = NewHelpMessage(gs.InputId)
 

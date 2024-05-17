@@ -82,7 +82,7 @@ func DrawDebugMsgs() {
 		textRect = RectUnion(textRect, msgRect)
 
 		offsetX = 0
-		offsetY += msgRect.Y + msgRect.Height + msgHozMargin
+		offsetY += msgRect.Height + msgHozMargin
 	}
 
 	bgRect := textRect
@@ -97,4 +97,8 @@ func DrawDebugMsgs() {
 	for _, t := range texts {
 		rl.DrawTextEx(defaultFont, t.Text, t.Pos, fontSize, fontSpacing, rl.Color{255, 255, 255, 255})
 	}
+}
+
+func ClearDebugMsgs() {
+	DebugMsgs = DebugMsgs[:0]
 }

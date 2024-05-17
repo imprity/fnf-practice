@@ -3,7 +3,6 @@ package main
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"math"
-	"sync"
 	"time"
 )
 
@@ -94,19 +93,14 @@ var (
 
 var inputAllDisabled bool
 
-var inputGroupIdMutex sync.Mutex
+var inputGroupIdGenerator IdGenerator[InputGroupId]
 
-var InputGroupIdMax InputGroupId
+func NewInputGroupId() InputGroupId {
+	id := inputGroupIdGenerator.NewId()
 
-func MakeInputGroupId() InputGroupId {
-	inputGroupIdMutex.Lock()
-	defer inputGroupIdMutex.Unlock()
+	isInputGroupEnabled[id] = true
 
-	InputGroupIdMax += 1
-
-	isInputGroupEnabled[InputGroupIdMax] = true
-
-	return InputGroupIdMax
+	return id
 }
 
 func IsInputDisabled(id InputGroupId) bool {

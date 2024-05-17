@@ -16,7 +16,7 @@ type OptionsScreen struct {
 func NewOptionsScreen() *OptionsScreen {
 	op := new(OptionsScreen)
 
-	op.InputId = MakeInputGroupId()
+	op.InputId = NewInputGroupId()
 
 	op.Menu = NewMenuDrawer()
 

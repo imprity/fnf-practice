@@ -201,6 +201,14 @@ func main() {
 				ReloadAssets()
 			}
 
+			UpdatePopup(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+
+			UpdateTransitionTexture()
+
+			UpdateAlert(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+
+			CallTransitionCallbackIfNeeded()
+
 			//update screen
 			if !TheTransitionManager.ShowTransition {
 				if NextScreen != nil {
@@ -211,14 +219,6 @@ func main() {
 
 				screen.Update(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
 			}
-
-			CallTransitionCallbackIfNeeded()
-
-			UpdateTransitionTexture()
-
-			UpdatePopup(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
-
-			UpdateAlert(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
 
 			upsEstimateCounter += 1
 
@@ -274,6 +274,8 @@ func main() {
 			}
 		}
 
+		ClearDebugMsgs()
+
 		{
 			now := time.Now()
 			delta := now.Sub(estimateTimer)
@@ -288,7 +290,6 @@ func main() {
 			DebugPrint("estimate fps", fmt.Sprintf("%.3f", fpsEstimate))
 			DebugPrint("estimate ups", fmt.Sprintf("%.3f", upsEstimate))
 		}
-
 	}
 }
 

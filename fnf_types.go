@@ -188,6 +188,8 @@ var DifficultyStrs [DifficultySize]string = [DifficultySize]string{
 	"hard",
 }
 
+type FnfPathGroupId int64
+
 type FnfPathGroup struct {
 	SongName string
 
@@ -197,11 +199,37 @@ type FnfPathGroup struct {
 
 	InstPath  string
 	VoicePath string
+
+	id FnfPathGroupId
 }
+
+var fnfPathGroupIdGenerator IdGenerator[FnfPathGroupId]
+
+func NewFnfPathGroupId() FnfPathGroupId {
+	return fnfPathGroupIdGenerator.NewId()
+}
+
+func (fp *FnfPathGroup) Id() FnfPathGroupId {
+	return fp.id
+}
+
+type PathGroupCollectionId int64
 
 type PathGroupCollection struct {
 	PathGroups []FnfPathGroup
 	BasePath   string
+
+	id PathGroupCollectionId
+}
+
+var pathGroupCollectionIdGenerator IdGenerator[PathGroupCollectionId]
+
+func NewPathGroupCollectionId() PathGroupCollectionId {
+	return pathGroupCollectionIdGenerator.NewId()
+}
+
+func (pg *PathGroupCollection) Id() PathGroupCollectionId {
+	return pg.id
 }
 
 type FnfHitRating int
