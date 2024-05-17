@@ -24,7 +24,7 @@ type SelectScreen struct {
 	DirectoryOpenItemId MenuItemId
 	SongDecoItemId      MenuItemId
 
-	MenuToGroup map[MenuItemId]FnfPathGroup
+	IdToGroup map[FnfPathGroupId]FnfPathGroup
 
 	Collections []PathGroupCollection
 
@@ -33,8 +33,6 @@ type SelectScreen struct {
 	ShouldDeletePathGroup map[FnfPathGroupId]bool
 
 	// variables about rendering path items
-	CollectionToPathDeco map[PathGroupCollectionId]MenuItemId
-
 	PathDecoToPathTex map[MenuItemId]rl.Texture2D
 	PathDecoToPathImg map[MenuItemId]*rl.Image
 
@@ -52,11 +50,9 @@ func NewSelectScreen() *SelectScreen {
 	// init main menu
 	ss.Menu = NewMenuDrawer()
 
-	ss.MenuToGroup = make(map[MenuItemId]FnfPathGroup)
+	ss.IdToGroup = make(map[FnfPathGroupId]FnfPathGroup)
 
 	// init variables about path rendering
-	ss.CollectionToPathDeco = make(map[PathGroupCollectionId]MenuItemId)
-
 	ss.PathDecoToPathTex = make(map[MenuItemId]rl.Texture2D)
 	ss.PathDecoToPathImg = make(map[MenuItemId]*rl.Image)
 
@@ -153,23 +149,29 @@ func NewSelectScreen() *SelectScreen {
 				collection.PathGroups = newGroups
 				newCollections = append(newCollections, collection)
 			} else {
-				decoToDelete := ss.CollectionToPathDeco[collection.Id()]
-				ss.Menu.DeleteItems(decoToDelete)
+				toDelete := ss.Menu.SearchItem(func(item *MenuItem) bool {
+					if id, ok := item.UserData.(PathGroupCollectionId); ok {
+						return id == collection.Id()
+					}
+					return false
+				})
+				ss.Menu.DeleteItems(toDelete)
 			}
 		}
 
 		ss.Collections = newCollections
 
-		for groupId, del := range ss.ShouldDeletePathGroup {
-			if del {
-				for itemId, itemGroup := range ss.MenuToGroup {
-					if groupId == itemGroup.Id() {
-						ss.Menu.DeleteItems(itemId)
-						delete(ss.MenuToGroup, itemId)
-					}
+		ss.Menu.DeleteFunc(
+			func(item *MenuItem) bool {
+				data := item.UserData
+
+				if id, ok := data.(FnfPathGroupId); ok {
+					return ss.ShouldDeletePathGroup[id]
 				}
-			}
-		}
+
+				return false
+			},
+		)
 
 		err := SaveCollections(ss.Collections)
 		if err != nil {
@@ -232,7 +234,13 @@ func NewSelectScreen() *SelectScreen {
 
 		// create delete check box for each song we have
 		for _, collection := range ss.Collections {
-			decoItemId := ss.CollectionToPathDeco[collection.Id()]
+			decoItemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
+				if id, ok := item.UserData.(PathGroupCollectionId); ok {
+					return id == collection.Id()
+				}
+				return false
+			})
+
 			ss.DeleteMenu.AddItems(ss.Menu.GetItemById(decoItemId))
 
 			for _, group := range collection.PathGroups {
@@ -288,7 +296,8 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		menuItem.Type = MenuItemTrigger
 		menuItem.Name = group.SongName
-		ss.MenuToGroup[menuItem.Id] = group
+
+		menuItem.UserData = group.Id()
 
 		menuItem.OnValueChange = func(bValue bool, _ float32, _ string) {
 			if !bValue {
@@ -337,6 +346,8 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 	newBasePathDecoItem := func(collection PathGroupCollection) *MenuItem {
 		dummyDeco := NewDummyDecoMenuItem(ss.PathItemSize)
 
+		dummyDeco.UserData = collection.Id()
+
 		// generate path image
 		desiredFont := unitext.MakeDesiredFont()
 
@@ -346,8 +357,6 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		)
 
 		pathTex := rl.LoadTextureFromImage(pathImg)
-
-		ss.CollectionToPathDeco[collection.Id()] = dummyDeco.Id
 
 		ss.PathDecoToPathImg[dummyDeco.Id] = pathImg
 		ss.PathDecoToPathTex[dummyDeco.Id] = pathTex
@@ -365,6 +374,8 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		for _, group := range groups {
 			menuItem := newSongMenuItem(group)
 			ss.Menu.AddItems(menuItem)
+
+			ss.IdToGroup[group.Id()] = group
 		}
 
 		// =====================
@@ -410,9 +421,13 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 		// =========================
 		if !ss.DrawDeleteMenu {
 			selected := ss.Menu.GetSelectedId()
-			if group, ok := ss.MenuToGroup[selected]; ok {
+			data := ss.Menu.GetUserData(selected)
+			if id, ok := data.(FnfPathGroupId); ok {
+				group := ss.IdToGroup[id]
+
 				key := "Seleted group id"
 				value := fmt.Sprintf("%d", group.Id())
+
 				DebugPrint(key, value)
 			}
 		}
@@ -442,9 +457,12 @@ func (ss *SelectScreen) Draw() {
 	if !ss.DrawDeleteMenu {
 		ss.Menu.Draw()
 
-		group, ok := ss.MenuToGroup[ss.Menu.GetSelectedId()]
+		selected := ss.Menu.GetSelectedId()
+		data := ss.Menu.GetUserData(selected)
 
-		if ok {
+		if id, ok := data.(FnfPathGroupId); ok {
+			group := ss.IdToGroup[id]
+
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 			str := DifficultyStrs[difficulty]

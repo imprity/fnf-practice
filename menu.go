@@ -59,6 +59,8 @@ type MenuItem struct {
 
 	OnValueChange func(bValue bool, nValue float32, listSelection string)
 
+	UserData any
+
 	// format string to use to displat NValue
 	NValueFmtString string
 
@@ -698,6 +700,25 @@ func (md *MenuDrawer) GetSelectedId() MenuItemId {
 	return md.items[md.SelectedIndex].Id
 }
 
+func (md *MenuDrawer) GetUserData(id MenuItemId) any {
+	item := md.GetItemById(id)
+	if item == nil {
+		return nil
+	}
+
+	return item.UserData
+}
+
+func (md *MenuDrawer) SearchItem(searchFunc func(item *MenuItem) bool) MenuItemId {
+	for _, item := range md.items {
+		if searchFunc(item) {
+			return item.Id
+		}
+	}
+
+	return 0
+}
+
 func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
 	item := md.GetItemById(id)
 
@@ -719,7 +740,11 @@ func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
 }
 
 func (md *MenuDrawer) AddItems(items ...*MenuItem) {
-	md.items = append(md.items, items...)
+	for _, item := range items {
+		if item != nil {
+			md.items = append(md.items, item)
+		}
+	}
 }
 
 func (md *MenuDrawer) DeleteItems(ids ...MenuItemId) {
@@ -745,6 +770,14 @@ func (md *MenuDrawer) DeleteItemsAt(indices ...int) {
 	md.items = newItems
 }
 
+func (md *MenuDrawer) DeleteFunc(del func(*MenuItem) bool) {
+	md.items = slices.DeleteFunc(md.items, del)
+}
+
+func (md *MenuDrawer) ClearItems() {
+	md.items = md.items[:0]
+}
+
 func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
 	at = Clamp(at, 0, len(md.items))
 
@@ -755,10 +788,6 @@ func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
 	newItems = append(newItems, md.items[at:]...)
 
 	md.items = newItems
-}
-
-func (md *MenuDrawer) ClearItems() {
-	md.items = md.items[:0]
 }
 
 func (md *MenuDrawer) ResetAnimation() {
