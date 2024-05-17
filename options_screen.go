@@ -97,8 +97,7 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	op.Menu.ResetAnimation()
 	op.Menu.SelectedIndex = 1
 
-	fpsItem := op.Menu.GetItemById(op.FpsItemId)
-	fpsItem.NValue = float32(TargetFPS)
+	op.Menu.SetItemNvalue(op.FpsItemId, float32(TargetFPS))
 }
 
 func (op *OptionsScreen) Free() {

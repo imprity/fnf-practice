@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -46,7 +47,7 @@ type MenuItem struct {
 	Color            Color
 	FadeIfUnselected bool
 
-	Bvalue bool
+	BValue bool
 
 	NValue float32
 
@@ -194,7 +195,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 	for index, item := range md.items {
 		if item.Type == MenuItemTrigger {
-			md.items[index].Bvalue = false
+			md.items[index].BValue = false
 		}
 	}
 
@@ -258,7 +259,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 					if 0 <= item.ListSelected && item.ListSelected < len(item.List) {
 						listSelection = item.List[item.ListSelected]
 					}
-					item.OnValueChange(item.Bvalue, item.NValue, listSelection)
+					item.OnValueChange(item.BValue, item.NValue, listSelection)
 				}
 			}
 		}
@@ -295,10 +296,10 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			if AreKeysPressed(md.InputId, SelectKey) {
 				switch selected.Type {
 				case MenuItemTrigger:
-					selected.Bvalue = true
+					selected.BValue = true
 					selected.NameClickTimer = GlobalTimerNow()
 				case MenuItemToggle:
-					selected.Bvalue = !selected.Bvalue
+					selected.BValue = !selected.BValue
 					selected.ValueClickTimer = GlobalTimerNow()
 				}
 
@@ -342,7 +343,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				switch selected.Type {
 				case MenuItemToggle:
 					if goLeft || goRight {
-						selected.Bvalue = !selected.Bvalue
+						selected.BValue = !selected.BValue
 						callItemCallback(selected)
 					}
 				case MenuItemList:
@@ -636,13 +637,13 @@ func (md *MenuDrawer) Draw() {
 				Width: f32(CheckBoxBox.Width), Height: f32(CheckBoxBox.Height),
 			}
 
-			if item.Bvalue {
+			if item.BValue {
 				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.CheckedBoxColor, fade))
 			} else {
 				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.UncheckedBoxColor, fade))
 			}
 
-			if item.Bvalue {
+			if item.BValue {
 				const animDuration = time.Millisecond * 200
 
 				delta := TimeSinceNow(item.ValueClickTimer)
@@ -693,7 +694,7 @@ func (md *MenuDrawer) Draw() {
 
 				switch item.Type {
 				case MenuItemToggle:
-					if item.Bvalue {
+					if item.BValue {
 						drawTextCentered("Yes", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
 					} else {
 						drawTextCentered("No", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
@@ -836,6 +837,99 @@ func (md *MenuDrawer) SetItemHidden(id MenuItemId, hidden bool) {
 	item := md.GetItemById(id)
 	if item != nil {
 		item.IsHidden = hidden
+	}
+}
+
+// Sets item BValue.
+// Doesn't trigger item callback
+func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) {
+	item := md.GetItemById(id)
+	if item != nil {
+		if item.BValue != bValue {
+			item.BValue = bValue
+
+			// Trigger item click animation if necessary
+			if item.Type == MenuItemTrigger {
+				item.NameClickTimer = GlobalTimerNow()
+			} else if item.Type == MenuItemToggle {
+				item.ValueClickTimer = GlobalTimerNow()
+			}
+		}
+	}
+}
+
+func (md *MenuDrawer) GetItemBValue(id MenuItemId) bool {
+	item := md.GetItemById(id)
+	if item != nil {
+		return item.BValue
+	}
+
+	return false
+}
+
+// Sets item NValue.
+// Doesn't trigger item callback
+func (md *MenuDrawer) SetItemNvalue(id MenuItemId, nValue float32) {
+	item := md.GetItemById(id)
+	if item != nil {
+		prevValue := item.NValue
+		item.NValue = nValue
+
+		if math.Abs(f64(nValue-prevValue)) > 0.0001 && // epsilon fresh from my ass
+			item.Type == MenuItemNumber {
+
+			item.ValueClickTimer = GlobalTimerNow()
+		}
+	}
+}
+
+func (md *MenuDrawer) GetItemNValue(id MenuItemId) float32 {
+	item := md.GetItemById(id)
+	if item != nil {
+		return item.NValue
+	}
+
+	return 0
+}
+
+// Sets item ListSelected.
+// Doesn't trigger item callback
+func (md *MenuDrawer) SetItemListSelected(id MenuItemId, selected int) {
+	item := md.GetItemById(id)
+	if item != nil && len(item.List) > 0 {
+		selected = Clamp(selected, 0, len(item.List)-1)
+
+		if selected != item.ListSelected && item.Type == MenuItemList {
+			item.ListSelected = selected
+			item.ValueClickTimer = GlobalTimerNow()
+		}
+	}
+}
+
+func (md *MenuDrawer) GetItemListSelected(id MenuItemId) (index int, selected string) {
+	item := md.GetItemById(id)
+
+	if item != nil && len(item.List) > 0 {
+		index = Clamp(item.ListSelected, 0, len(item.List)-1)
+		selected = item.List[index]
+	} else {
+		index, selected = 0, ""
+	}
+
+	return
+}
+
+// Sets item List.
+// Doesn't trigger item callback and animation
+func (md *MenuDrawer) SetItemList(id MenuItemId, list []string, selected int) {
+	item := md.GetItemById(id)
+
+	if item != nil {
+		if len(list) > 0 {
+			selected = Clamp(selected, 0, len(list)-1)
+			item.List = list
+			item.ListSelected = selected
+		}
 	}
 }
 

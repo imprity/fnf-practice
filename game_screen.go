@@ -517,22 +517,22 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// before menu popup
 		// =============================================
 		if !wasDrawingMenu && gs.DrawMenu {
-			botPlayItem := gs.Menu.GetItemById(gs.BotPlayMenuItemId)
-			botPlayItem.Bvalue = gs.IsBotPlay()
+			gs.Menu.SetItemBValue(gs.BotPlayMenuItemId, gs.IsBotPlay())
 
-			rewindItem := gs.Menu.GetItemById(gs.RewindOnMistakeMenuItemId)
-			rewindItem.Bvalue = gs.RewindOnMistake
+			gs.Menu.SetItemBValue(gs.RewindOnMistakeMenuItemId, gs.RewindOnMistake)
 
-			difficultyItem := gs.Menu.GetItemById(gs.DifficultyMenuItemId)
-			difficultyItem.List = difficultyItem.List[:0]
+			var difficultyList []string
+			var difficultySelected int
 
 			for d := FnfDifficulty(0); d < DifficultySize; d++ {
 				if gs.HasSong[d] {
-					difficultyItem.List = append(difficultyItem.List, DifficultyStrs[d])
+					difficultyList = append(difficultyList, DifficultyStrs[d])
 					if d == gs.SelectedDifficulty {
-						difficultyItem.ListSelected = len(difficultyItem.List) - 1
+						difficultySelected = len(difficultyList) - 1
 					}
 				}
+
+				gs.Menu.SetItemList(gs.DifficultyMenuItemId, difficultyList, difficultySelected)
 			}
 		}
 	}
@@ -552,13 +552,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	gs.Menu.Update(deltaTime)
 
 	if gs.DrawMenu {
-		botPlayItem := gs.Menu.GetItemById(gs.BotPlayMenuItemId)
-		if botPlayItem.Bvalue != gs.IsBotPlay() {
-			gs.SetBotPlay(botPlayItem.Bvalue)
+		botPlay := gs.Menu.GetItemBValue(gs.BotPlayMenuItemId)
+		if botPlay != gs.IsBotPlay() {
+			gs.SetBotPlay(botPlay)
 		}
 
-		dItem := gs.Menu.GetItemById(gs.DifficultyMenuItemId)
-		dStr := dItem.List[dItem.ListSelected]
+		_, dStr := gs.Menu.GetItemListSelected(gs.DifficultyMenuItemId)
 
 		for d, str := range DifficultyStrs {
 			difficulty := FnfDifficulty(d)
