@@ -184,6 +184,8 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		return
 	}
 
+	var itemCallback func() = nil
+
 	for index, item := range md.items {
 		if item.Type == MenuItemTrigger {
 			md.items[index].Bvalue = false
@@ -240,13 +242,18 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// handling input
 	// ==========================
 	{
-		callItemCallaback := func(item *MenuItem) {
-			listSelection := ""
-			if 0 <= item.ListSelected && item.ListSelected < len(item.List) {
-				listSelection = item.List[item.ListSelected]
-			}
+		callItemCallback := func(item *MenuItem) {
 			if item.OnValueChange != nil {
-				item.OnValueChange(item.Bvalue, item.NValue, listSelection)
+
+				// NOTE : we don't actually wanna call item callback now
+				// we will call it when update is over
+				itemCallback = func() {
+					listSelection := ""
+					if 0 <= item.ListSelected && item.ListSelected < len(item.List) {
+						listSelection = item.List[item.ListSelected]
+					}
+					item.OnValueChange(item.Bvalue, item.NValue, listSelection)
+				}
 			}
 		}
 
@@ -288,7 +295,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				selected.ValueClickTimer = GlobalTimerNow()
 			}
 
-			callItemCallaback(selected)
+			callItemCallback(selected)
 		}
 
 		switch selected.Type {
@@ -329,7 +336,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			case MenuItemToggle:
 				if goLeft || goRight {
 					selected.Bvalue = !selected.Bvalue
-					callItemCallaback(selected)
+					callItemCallback(selected)
 				}
 			case MenuItemList:
 				if len(selected.List) > 0 {
@@ -349,16 +356,16 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 					if selected.ListSelected != listSelected {
 						selected.ListSelected = listSelected
-						callItemCallaback(selected)
+						callItemCallback(selected)
 					}
 				}
 			case MenuItemNumber:
 				if goLeft {
 					selected.NValue -= selected.NValueInterval
-					callItemCallaback(selected)
+					callItemCallback(selected)
 				} else if goRight {
 					selected.NValue += selected.NValueInterval
-					callItemCallaback(selected)
+					callItemCallback(selected)
 				}
 			}
 		}
@@ -397,6 +404,14 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	md.Yoffset = Lerp(md.Yoffset, seletionY, blend)
 
 	md.ScrollAnimT = Lerp(md.ScrollAnimT, 1.0, blend)
+
+	// ================================
+	// actually call item callback
+	// ================================
+	if itemCallback != nil {
+		itemCallback()
+	}
+
 }
 
 func (md *MenuDrawer) Draw() {

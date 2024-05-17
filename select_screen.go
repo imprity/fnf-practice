@@ -133,128 +133,11 @@ func NewSelectScreen() *SelectScreen {
 	deleteSongsItem.Name = "Delete Songs"
 	deleteSongsItem.Type = MenuItemTrigger
 
-	deleteMarkedSongs := func() {
-		var newCollections []PathGroupCollection
-
-		for _, collection := range ss.Collections {
-			newGroups := []FnfPathGroup{}
-
-			for _, group := range collection.PathGroups {
-				if _, del := ss.ShouldDeletePathGroup[group.Id()]; !del {
-					newGroups = append(newGroups, group)
-				}
-			}
-
-			if len(newGroups) > 0 {
-				collection.PathGroups = newGroups
-				newCollections = append(newCollections, collection)
-			} else {
-				toDelete := ss.Menu.SearchItem(func(item *MenuItem) bool {
-					if id, ok := item.UserData.(PathGroupCollectionId); ok {
-						return id == collection.Id()
-					}
-					return false
-				})
-				ss.Menu.DeleteItems(toDelete)
-			}
-		}
-
-		ss.Collections = newCollections
-
-		ss.Menu.DeleteFunc(
-			func(item *MenuItem) bool {
-				data := item.UserData
-
-				if id, ok := data.(FnfPathGroupId); ok {
-					return ss.ShouldDeletePathGroup[id]
-				}
-
-				return false
-			},
-		)
-
-		err := SaveCollections(ss.Collections)
-		if err != nil {
-			DisplayAlert("Failed to save song list")
-		}
-	}
-
 	deleteSongsItem.OnValueChange = func(bValue bool, _ float32, _ string) {
 		if !bValue {
 			return
 		}
-
-		ss.DrawDeleteMenu = true
-
-		ss.DeleteMenu.ClearItems()
-
-		ss.ShouldDeletePathGroup = make(map[FnfPathGroupId]bool)
-
-		deleteConfirm := NewMenuItem()
-		deleteConfirm.Name = "DELETE SONGS"
-		deleteConfirm.Type = MenuItemTrigger
-
-		deleteConfirm.OnValueChange = func(bValue bool, _ float32, _ string) {
-			if !bValue {
-				return
-			}
-
-			// count how many songs are going to be deleted
-			toBeDeletedCount := 0
-
-			for _, del := range ss.ShouldDeletePathGroup {
-				if del {
-					toBeDeletedCount += 1
-				}
-			}
-
-			if toBeDeletedCount <= 0 {
-				// just exit when there's nothing to delete
-				ss.DrawDeleteMenu = false
-				return
-			}
-
-			DisplayPopup(
-				fmt.Sprintf("Delete %d songs?", toBeDeletedCount),
-				[]string{"Yes", "No"},
-				func(selected string, isCanceled bool) {
-					// if it's canceled, then do nothing
-					if !isCanceled {
-						ss.DrawDeleteMenu = false
-
-						if selected == "Yes" {
-							deleteMarkedSongs()
-						}
-					}
-				},
-			)
-		}
-
-		ss.DeleteMenu.AddItems(deleteConfirm)
-
-		// create delete check box for each song we have
-		for _, collection := range ss.Collections {
-			decoItemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
-				if id, ok := item.UserData.(PathGroupCollectionId); ok {
-					return id == collection.Id()
-				}
-				return false
-			})
-
-			ss.DeleteMenu.AddItems(ss.Menu.GetItemById(decoItemId))
-
-			for _, group := range collection.PathGroups {
-				deleteItem := NewMenuItem()
-				deleteItem.Type = MenuItemToggle
-				deleteItem.Name = group.SongName
-
-				deleteItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-					ss.ShouldDeletePathGroup[group.Id()] = bValue
-				}
-
-				ss.DeleteMenu.AddItems(deleteItem)
-			}
-		}
+		ss.ShowDeleteMenu()
 	}
 
 	ss.Menu.AddItems(deleteSongsItem)
@@ -402,6 +285,140 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 	}
 }
 
+func (ss *SelectScreen) ShowDeleteMenu() {
+	if ss.DrawDeleteMenu {
+		return
+	}
+
+	ss.DrawDeleteMenu = true
+
+	ss.DeleteMenu.ClearItems()
+
+	ss.ShouldDeletePathGroup = make(map[FnfPathGroupId]bool)
+
+	deleteConfirm := NewMenuItem()
+	deleteConfirm.Name = "DELETE SONGS"
+	deleteConfirm.Type = MenuItemTrigger
+
+	deleteConfirm.OnValueChange = func(bValue bool, _ float32, _ string) {
+		if !bValue {
+			return
+		}
+
+		// count how many songs are going to be deleted
+		toBeDeletedCount := 0
+
+		for _, del := range ss.ShouldDeletePathGroup {
+			if del {
+				toBeDeletedCount += 1
+			}
+		}
+
+		if toBeDeletedCount <= 0 {
+			// just exit when there's nothing to delete
+			ss.HideDeleteMenu(false)
+			return
+		}
+
+		DisplayPopup(
+			fmt.Sprintf("Delete %d songs?", toBeDeletedCount),
+			[]string{"Yes", "No"},
+			func(selected string, isCanceled bool) {
+				// if it's canceled, then do nothing
+				if !isCanceled {
+					ss.HideDeleteMenu(selected == "Yes")
+				}
+			},
+		)
+	}
+
+	ss.DeleteMenu.AddItems(deleteConfirm)
+
+	// create delete check box for each song we have
+	for _, collection := range ss.Collections {
+		decoItemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
+			if id, ok := item.UserData.(PathGroupCollectionId); ok {
+				return id == collection.Id()
+			}
+			return false
+		})
+
+		ss.DeleteMenu.AddItems(ss.Menu.GetItemById(decoItemId))
+
+		for _, group := range collection.PathGroups {
+			deleteItem := NewMenuItem()
+			deleteItem.Type = MenuItemToggle
+			deleteItem.Name = group.SongName
+
+			deleteItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+				ss.ShouldDeletePathGroup[group.Id()] = bValue
+			}
+
+			ss.DeleteMenu.AddItems(deleteItem)
+		}
+	}
+}
+
+func (ss *SelectScreen) HideDeleteMenu(deleteMarked bool) {
+	if !ss.DrawDeleteMenu {
+		return
+	}
+
+	if deleteMarked {
+		var newCollections []PathGroupCollection
+
+		for _, collection := range ss.Collections {
+			newGroups := []FnfPathGroup{}
+
+			for _, group := range collection.PathGroups {
+				if _, del := ss.ShouldDeletePathGroup[group.Id()]; !del {
+					newGroups = append(newGroups, group)
+				}
+			}
+
+			if len(newGroups) > 0 {
+				collection.PathGroups = newGroups
+				newCollections = append(newCollections, collection)
+			} else {
+				toDelete := ss.Menu.SearchItem(func(item *MenuItem) bool {
+					if id, ok := item.UserData.(PathGroupCollectionId); ok {
+						return id == collection.Id()
+					}
+					return false
+				})
+				ss.Menu.DeleteItems(toDelete)
+			}
+		}
+
+		ss.Collections = newCollections
+
+		ss.Menu.DeleteFunc(
+			func(item *MenuItem) bool {
+				data := item.UserData
+
+				if id, ok := data.(FnfPathGroupId); ok {
+					return ss.ShouldDeletePathGroup[id]
+				}
+
+				return false
+			},
+		)
+
+		err := SaveCollections(ss.Collections)
+		if err != nil {
+			DisplayAlert("Failed to save song list")
+		}
+	}
+
+	ss.DrawDeleteMenu = false
+
+	// clear delete items
+	ss.DeleteMenu.ClearItems()
+	// clear marked to be deleted
+	ss.ShouldDeletePathGroup = nil
+
+}
+
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
 	if !ss.DrawDeleteMenu {
 		ss.Menu.Update(deltaTime)
@@ -440,12 +457,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 		ss.DeleteMenu.Update(deltaTime)
 
 		if AreKeysPressed(ss.DeleteMenu.InputId, EscapeKey) {
-			// clear delete items
-			ss.DeleteMenu.ClearItems()
-			// clear marked to be deleted
-			ss.ShouldDeletePathGroup = nil
-
-			ss.DrawDeleteMenu = false
+			ss.HideDeleteMenu(false)
 		}
 	}
 }
