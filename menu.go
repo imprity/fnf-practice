@@ -761,16 +761,6 @@ func (md *MenuDrawer) SearchItem(searchFunc func(item *MenuItem) bool) MenuItemI
 	return 0
 }
 
-func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
-	item := md.GetItemById(id)
-
-	if item != nil {
-		return item.bound, true
-	}
-
-	return rl.Rectangle{}, false
-}
-
 func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
 	for _, item := range md.items {
 		if item.Id == id {
@@ -787,6 +777,18 @@ func (md *MenuDrawer) AddItems(items ...*MenuItem) {
 			md.items = append(md.items, item)
 		}
 	}
+}
+
+func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
+	at = Clamp(at, 0, len(md.items))
+
+	var newItems []*MenuItem
+
+	newItems = append(newItems, md.items[0:at]...)
+	newItems = append(newItems, items...)
+	newItems = append(newItems, md.items[at:]...)
+
+	md.items = newItems
 }
 
 func (md *MenuDrawer) DeleteItems(ids ...MenuItemId) {
@@ -820,16 +822,31 @@ func (md *MenuDrawer) ClearItems() {
 	md.items = md.items[:0]
 }
 
-func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
-	at = Clamp(at, 0, len(md.items))
+func (md *MenuDrawer) IsItemHidden(id MenuItemId) bool {
+	item := md.GetItemById(id)
+	if item == nil {
+		// NOTE : I think returning false is better since it's the default value
+		return false
+	}
 
-	var newItems []*MenuItem
+	return item.IsHidden
+}
 
-	newItems = append(newItems, md.items[0:at]...)
-	newItems = append(newItems, items...)
-	newItems = append(newItems, md.items[at:]...)
+func (md *MenuDrawer) SetItemHidden(id MenuItemId, hidden bool) {
+	item := md.GetItemById(id)
+	if item != nil {
+		item.IsHidden = hidden
+	}
+}
 
-	md.items = newItems
+func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
+	item := md.GetItemById(id)
+
+	if item != nil {
+		return item.bound, true
+	}
+
+	return rl.Rectangle{}, false
 }
 
 func (md *MenuDrawer) ResetAnimation() {

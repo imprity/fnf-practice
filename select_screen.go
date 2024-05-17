@@ -23,6 +23,7 @@ type SelectScreen struct {
 
 	DirectoryOpenItemId MenuItemId
 	SongDecoItemId      MenuItemId
+	DeleteSongsItemId   MenuItemId
 
 	IdToGroup map[FnfPathGroupId]FnfPathGroup
 
@@ -128,19 +129,30 @@ func NewSelectScreen() *SelectScreen {
 
 	// init delete menu
 	ss.DeleteMenu = NewMenuDrawer()
-
 	deleteSongsItem := NewMenuItem()
 	deleteSongsItem.Name = "Delete Songs"
 	deleteSongsItem.Type = MenuItemTrigger
-
 	deleteSongsItem.OnValueChange = func(bValue bool, _ float32, _ string) {
 		if !bValue {
 			return
 		}
 		ss.ShowDeleteMenu()
 	}
-
 	ss.Menu.AddItems(deleteSongsItem)
+	ss.DeleteSongsItemId = deleteSongsItem.Id
+
+	// =====================
+	// add song deco
+	// =====================
+	songDeco := NewMenuItem()
+	songDeco.Type = MenuItemDeco
+	songDeco.Name = "Songs"
+	songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+	songDeco.FadeIfUnselected = false
+	songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
+	songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
+	ss.Menu.AddItems(songDeco)
+	ss.SongDecoItemId = songDeco.Id
 
 	return ss
 }
@@ -260,28 +272,6 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 			ss.IdToGroup[group.Id()] = group
 		}
-
-		// =====================
-		// add song deco
-		// =====================
-		if deco := ss.Menu.GetItemById(ss.SongDecoItemId); deco == nil {
-			songDeco := NewMenuItem()
-
-			songDeco.Type = MenuItemDeco
-
-			songDeco.Name = "Songs"
-
-			songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
-			songDeco.FadeIfUnselected = false
-
-			songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-			songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
-
-			ss.Menu.InsertAt(4, songDeco)
-
-			ss.SongDecoItemId = songDeco.Id
-		}
-		// =====================
 	}
 }
 
@@ -432,6 +422,10 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 		}
 
 		ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
+
+		// set song deco and delete songs visibility
+		ss.Menu.SetItemHidden(ss.SongDecoItemId, len(ss.Collections) <= 0)
+		ss.Menu.SetItemHidden(ss.DeleteSongsItemId, len(ss.Collections) <= 0)
 
 		// =========================
 		// update debug msg
