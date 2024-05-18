@@ -119,6 +119,8 @@ func loadAssets(isReload bool) {
 		imgsToUnload = append(imgsToUnload, img)
 
 		tex := rl.LoadTextureFromImage(img)
+		rl.GenTextureMipmaps(&tex)
+		rl.SetTextureFilter(tex, rl.FilterTrilinear)
 
 		if tex.ID == 0 {
 			ErrorLogger.Fatalf("failed to load texture from img : %v", path)
@@ -139,6 +141,9 @@ func loadAssets(isReload bool) {
 		if !rl.IsFontReady(font) {
 			ErrorLogger.Fatalf("failed to load font : %v", fontName)
 		}
+
+		rl.GenTextureMipmaps(&font.Texture)
+		rl.SetTextureFilter(font.Texture, rl.FilterTrilinear)
 
 		fontsToUnload = append(fontsToUnload, font)
 
