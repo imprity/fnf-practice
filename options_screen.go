@@ -8,7 +8,8 @@ import (
 type OptionsScreen struct {
 	Menu *MenuDrawer
 
-	FpsItemId MenuItemId
+	FpsItemId        MenuItemId
+	DownScrollItemId MenuItemId
 
 	InputId InputGroupId
 }
@@ -54,16 +55,25 @@ func NewOptionsScreen() *OptionsScreen {
 	fpsItem := NewMenuItem()
 	fpsItem.Name = "Target FPS"
 	fpsItem.Type = MenuItemNumber
-	fpsItem.NValue = float32(TargetFPS)
+	fpsItem.NValue = float32(TheOptions.TargetFPS)
 	fpsItem.NValueMin = 30
 	fpsItem.NValueMax = 500
 	fpsItem.NValueInterval = 10
 	fpsItem.NValueFmtString = "%1.f"
 	fpsItem.OnValueChange = func(_ bool, nValue float32, _ string) {
-		TargetFPS = int32(nValue)
+		TheOptions.TargetFPS = int32(nValue)
 	}
 	op.FpsItemId = fpsItem.Id
 	op.Menu.AddItems(fpsItem)
+
+	downScrollItem := NewMenuItem()
+	downScrollItem.Name = "Down Scroll"
+	downScrollItem.Type = MenuItemToggle
+	downScrollItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+		TheOptions.DownScroll = bValue
+	}
+	op.DownScrollItemId = downScrollItem.Id
+	op.Menu.AddItems(downScrollItem)
 
 	return op
 }
@@ -97,7 +107,8 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	op.Menu.ResetAnimation()
 	op.Menu.SelectedIndex = 1
 
-	op.Menu.SetItemNvalue(op.FpsItemId, float32(TargetFPS))
+	op.Menu.SetItemNvalue(op.FpsItemId, float32(TheOptions.TargetFPS))
+	op.Menu.SetItemBValue(op.DownScrollItemId, TheOptions.DownScroll)
 }
 
 func (op *OptionsScreen) Free() {

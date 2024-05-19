@@ -22,7 +22,7 @@ type SettingsJson struct {
 	MajorVersion int
 	MinorVersion int
 
-	TargetFPS int32
+	Options Options
 }
 
 const (
@@ -160,7 +160,7 @@ func SaveSettings() error {
 		MajorVersion: SettingsJsonMajorVersion,
 		MinorVersion: SettingsJsonMinorVersion,
 
-		TargetFPS: TargetFPS,
+		Options: TheOptions,
 	}
 
 	if err := encodeToJsonFile(path, sj); err != nil {
@@ -188,7 +188,7 @@ func LoadSettings() error {
 			return err
 		}
 
-		TargetFPS = js.TargetFPS
+		TheOptions = js.Options
 
 		return nil
 	} else {

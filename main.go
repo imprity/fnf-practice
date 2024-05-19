@@ -40,8 +40,6 @@ var FnfLogger *log.Logger = log.New(os.Stdout, "FNF__LOG : ", log.Lshortfile)
 
 var TheRenderTexture rl.RenderTexture2D
 
-var TargetFPS int32 = 60
-
 func GetScreenRect() rl.Rectangle {
 	screenW := float32(rl.GetScreenWidth())
 	screenH := float32(rl.GetScreenHeight())
@@ -137,7 +135,7 @@ func main() {
 	// https://medium.com/@tglaiel/how-to-make-your-game-run-at-60fps-24c61210fe75
 	// License is at below
 
-	desiredDelta := time.Duration(float64(time.Second) / float64(TargetFPS))
+	desiredDelta := time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS))
 
 	deltaHistory := CircularQueue[time.Duration]{
 		Data: make([]time.Duration, 4),
@@ -187,7 +185,7 @@ func main() {
 			deltaTime = desiredDelta
 		}
 
-		for timeAccumulator > time.Duration(float64(time.Second)/float64(TargetFPS+1)) {
+		for timeAccumulator > time.Duration(float64(time.Second)/float64(TheOptions.TargetFPS+1)) {
 			// ========================
 			// update routine
 			// ========================
@@ -201,11 +199,11 @@ func main() {
 				ReloadAssets()
 			}
 
-			UpdatePopup(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+			UpdatePopup(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 
 			UpdateTransitionTexture()
 
-			UpdateAlert(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+			UpdateAlert(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 
 			CallTransitionCallbackIfNeeded()
 
@@ -217,7 +215,7 @@ func main() {
 					NextScreen = nil
 				}
 
-				screen.Update(time.Duration(float64(time.Second) / float64(TargetFPS-1)))
+				screen.Update(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 			}
 
 			upsEstimateCounter += 1
@@ -267,7 +265,7 @@ func main() {
 
 			rl.SwapScreenBuffer()
 
-			timeAccumulator -= time.Duration(float64(time.Second) / float64(TargetFPS-1))
+			timeAccumulator -= time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1))
 
 			if timeAccumulator < 0 {
 				timeAccumulator = 0

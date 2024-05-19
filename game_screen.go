@@ -116,8 +116,6 @@ type GameScreen struct {
 	RewindOnMistakeMenuItemId MenuItemId
 
 	// variables about note rendering
-	UpScroll bool
-
 	NotesMarginLeft   float32
 	NotesMarginRight  float32
 	NotesMarginTop    float32
@@ -151,10 +149,6 @@ type GameScreen struct {
 func NewGameScreen() *GameScreen {
 	// set default various variables
 	gs := new(GameScreen)
-
-	// TEST TEST TEST TEST TEST TEST
-	gs.UpScroll = true
-	// TEST TEST TEST TEST TEST TEST
 
 	gs.zoom = 1.0
 
@@ -718,10 +712,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			pos := gs.AudioPosition()
 
 			var keyT time.Duration
-			if gs.UpScroll {
-				keyT = -gs.PixelsToTime(50)
-			} else {
+			if TheOptions.DownScroll {
 				keyT = gs.PixelsToTime(50)
+			} else {
+				keyT = -gs.PixelsToTime(50)
 			}
 
 			// NOTE : If we ever implement note up scroll
@@ -739,10 +733,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 
 			var wheelT time.Duration
-			if gs.UpScroll {
-				wheelT = gs.PixelsToTime(40)
-			} else {
+			if TheOptions.DownScroll {
 				wheelT = -gs.PixelsToTime(40)
+			} else {
+				wheelT = gs.PixelsToTime(40)
 			}
 
 			wheelmove := rl.GetMouseWheelMove()
@@ -1324,10 +1318,10 @@ func (gs *GameScreen) Draw() {
 				}
 				t = 1 - t
 
-				if gs.UpScroll {
-					statusOffsetY[p][dir] = 5 * t
-				} else {
+				if TheOptions.DownScroll {
 					statusOffsetY[p][dir] = -5 * t
+				} else {
+					statusOffsetY[p][dir] = 5 * t
 				}
 
 				statusScaleOffset[p][dir] += 0.1 * t
@@ -1343,10 +1337,10 @@ func (gs *GameScreen) Draw() {
 		var x, y float32
 
 		x = gs.NoteX(player, dir) + statusOffsetX[player][dir]
-		if gs.UpScroll {
-			y = gs.NotesMarginTop + statusOffsetY[player][dir]
-		} else {
+		if TheOptions.DownScroll {
 			y = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
+		} else {
+			y = gs.NotesMarginTop + statusOffsetY[player][dir]
 		}
 
 		scale := gs.NotesSize * statusScaleOffset[player][dir]
@@ -1414,10 +1408,10 @@ func (gs *GameScreen) Draw() {
 			var x, y float32
 
 			x = gs.NoteX(player, dir) + statusOffsetX[player][dir]
-			if gs.UpScroll {
-				y = gs.NotesMarginTop + statusOffsetY[player][dir]
-			} else {
+			if TheOptions.DownScroll {
 				y = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
+			} else {
+				y = gs.NotesMarginTop + statusOffsetY[player][dir]
 			}
 
 			scale := gs.NotesSize * statusScaleOffset[player][dir]
@@ -1695,10 +1689,10 @@ func (gs *GameScreen) NoteX(player int, dir NoteDir) float32 {
 func (gs *GameScreen) TimeToY(t time.Duration) float32 {
 	relativeTime := t - gs.AudioPosition()
 
-	if gs.UpScroll {
-		return gs.NotesMarginTop + gs.TimeToPixels(relativeTime)
-	} else {
+	if TheOptions.DownScroll {
 		return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
+	} else {
+		return gs.NotesMarginTop + gs.TimeToPixels(relativeTime)
 	}
 
 }
@@ -1717,6 +1711,7 @@ func (gs *GameScreen) DrawSustainBar(
 	otherColors []SustainColor,
 	fromOffset float32, toOffset float32,
 ) {
+	// check if line is in screen
 	// TODO : This function does not handle transparent colors
 	// also I would like this function to draw line with crayon like texture
 
@@ -1751,13 +1746,32 @@ func (gs *GameScreen) DrawSustainBar(
 		Y: gs.TimeToY(to) + toOffset,
 	}
 
-	if gs.UpScroll {
-		if toV.Y < fromV.Y {
+	if TheOptions.DownScroll {
+		if toV.Y > fromV.Y {
 			return
 		}
 	} else {
-		if toV.Y > fromV.Y {
+		if toV.Y < fromV.Y {
 			return
+		}
+	}
+
+	// check if line is in screen
+	{
+		minY := min(fromV.Y, toV.Y)
+		maxY := max(fromV.Y, toV.Y)
+
+		// make it longer just in case
+		minY -= gs.SustainBarWidth * 2
+		maxY += gs.SustainBarWidth * 2
+
+		minInScreen := 0 < minY && minY < SCREEN_HEIGHT
+		maxInScreen := 0 < maxY && maxY < SCREEN_HEIGHT
+
+		if !minInScreen && !maxInScreen {
+			if !(minY < 0 && maxY > SCREEN_HEIGHT) {
+				return
+			}
 		}
 	}
 
