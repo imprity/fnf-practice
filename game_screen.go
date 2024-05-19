@@ -507,6 +507,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	}
 
 	{
+		// debug print wether or not we are logging note event
 		tf := "false"
 		if gs.LogNoteEvent {
 			tf = "true"
@@ -715,7 +716,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			changedFromScroll := false
 
 			pos := gs.AudioPosition()
-			keyT := gs.PixelsToTime(50)
+
+			var keyT time.Duration
+			if gs.UpScroll {
+				keyT = -gs.PixelsToTime(50)
+			} else {
+				keyT = gs.PixelsToTime(50)
+			}
 
 			// NOTE : If we ever implement note up scroll
 			// this keybindings have to reversed
@@ -731,12 +738,18 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				gs.ClearRewind()
 			}
 
-			wheelT := gs.PixelsToTime(40)
+			var wheelT time.Duration
+			if gs.UpScroll {
+				wheelT = gs.PixelsToTime(40)
+			} else {
+				wheelT = -gs.PixelsToTime(40)
+			}
+
 			wheelmove := rl.GetMouseWheelMove()
 
 			if math.Abs(float64(wheelmove)) > 0.001 {
 				changedFromScroll = true
-				pos += time.Duration(wheelmove * float32(-wheelT))
+				pos += time.Duration(wheelmove * float32(wheelT))
 			}
 
 			pos = Clamp(pos, 0, gs.AudioDuration())
