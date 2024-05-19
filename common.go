@@ -235,6 +235,13 @@ func RectEnd(rect rl.Rectangle) rl.Vector2 {
 	}
 }
 
+func RectCenetered(rect rl.Rectangle, x, y float32) rl.Rectangle {
+	rect.X = x - rect.Width*0.5
+	rect.Y = y - rect.Height*0.5
+
+	return rect
+}
+
 // TODO : support rotation and scaling
 func DrawPatternBackground(
 	texture rl.Texture2D,
