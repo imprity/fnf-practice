@@ -43,7 +43,7 @@ func InitTransition() {
 	manager.DiamonHeight = 100
 
 	manager.AnimStartedAt = Years150
-	manager.AnimDuration = time.Millisecond * 300
+	manager.AnimDuration = time.Millisecond * 270
 
 	manager.MaskTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 	manager.TransitionTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -77,7 +77,9 @@ func FreeTransition() {
 func CallTransitionCallbackIfNeeded() {
 	manager := &TheTransitionManager
 
-	if manager.ShowTransition && TimeSinceNow(manager.AnimStartedAt) > manager.AnimDuration {
+	// NOTE : wait extra couple millisecond to ensure that callback is called after transition
+	// if fully shown
+	if manager.ShowTransition && TimeSinceNow(manager.AnimStartedAt) > manager.AnimDuration+time.Millisecond*50 {
 		if manager.Callback != nil {
 			manager.Callback()
 			manager.Callback = nil
@@ -92,13 +94,20 @@ func UpdateTransitionTexture() {
 		return
 	}
 
-	timeT := float32(GlobalTimerNow() - manager.AnimStartedAt)
+	timeT := float32(TimeSinceNow(manager.AnimStartedAt))
 	timeT /= float32(manager.AnimDuration)
 
 	if timeT < 0 || timeT > 1 {
 		if manager.ShowTransition {
+			FnfBeginTextureMode(manager.TransitionTexture)
 			DrawPatternBackground(manager.ImgTexture, 0, 0, rl.Color{255, 255, 255, 255})
+			FnfEndTextureMode()
+		} else {
+			FnfBeginTextureMode(manager.TransitionTexture)
+			rl.ClearBackground(rl.Color{0, 0, 0, 0})
+			FnfEndTextureMode()
 		}
+
 		return
 	}
 
