@@ -1936,12 +1936,18 @@ func (gs *GameScreen) DrawProgressBar() {
 	const barStroke = 4
 
 	const barMarginBottom = 10
+	const barMarginTop = 10
 
 	outRect := rl.Rectangle{Width: barW + barStroke*2, Height: barH + barStroke*2}
 	inRect := rl.Rectangle{Width: barW, Height: barH}
 
 	outRect.X = centerX - outRect.Width*0.5
-	outRect.Y = SCREEN_HEIGHT - barMarginBottom - outRect.Height
+
+	if TheOptions.DownScroll {
+		outRect.Y = SCREEN_HEIGHT - barMarginBottom - outRect.Height
+	} else {
+		outRect.Y = barMarginTop
+	}
 
 	inRect.X = centerX - inRect.Width*0.5
 	inRect.Y = outRect.Y + barStroke
