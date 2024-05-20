@@ -38,13 +38,23 @@ type HelpMessage struct {
 	DoShow bool
 }
 
+func (hm *HelpMessage) SetTextBoxMargin() {
+	hm.TextBoxMarginLeft = 20
+	hm.TextBoxMarginRight = 35
+
+	if TheOptions.DownScroll {
+		hm.TextBoxMarginTop = 15
+		hm.TextBoxMarginBottom = 35
+	} else {
+		hm.TextBoxMarginTop = 35
+		hm.TextBoxMarginBottom = 15
+	}
+}
+
 func NewHelpMessage(inputId InputGroupId) *HelpMessage {
 	hm := new(HelpMessage)
 
-	hm.TextBoxMarginLeft = 20
-	hm.TextBoxMarginRight = 35
-	hm.TextBoxMarginTop = 15
-	hm.TextBoxMarginBottom = 35
+	hm.SetTextBoxMargin()
 
 	hm.ButtonWidth = 180
 	hm.ButtonHeight = 75
@@ -185,9 +195,6 @@ func NewGameScreen() *GameScreen {
 	gs.InputId = NewInputGroupId()
 
 	gs.HelpMessage = NewHelpMessage(gs.InputId)
-
-	gs.HelpMessage.PosX = -5
-	gs.HelpMessage.PosY = -4
 
 	// set up menu
 	gs.Menu = NewMenuDrawer()
@@ -2298,19 +2305,39 @@ func (hm *HelpMessage) Draw() {
 
 	const lineThick = 8
 
+	var buttonRoundnessArray [4]float32
+	var buttonSegmentsArray [4]int32
+
+	var boxRoundnessArray [4]float32
+	var boxSegmentsArray [4]int32
+
+	if TheOptions.DownScroll {
+		buttonRoundnessArray[2] = buttonRoundness
+		buttonSegmentsArray[2] = buttonSegments
+
+		boxRoundnessArray[2] = boxRoundness
+		boxSegmentsArray[2] = boxSegments
+	} else {
+		buttonRoundnessArray[1] = buttonRoundness
+		buttonSegmentsArray[1] = buttonSegments
+
+		boxRoundnessArray[1] = boxRoundness
+		boxSegmentsArray[1] = boxSegments
+	}
+
 	// ==========================
 	// draw outline
 	// ==========================
 
 	DrawRectangleRoundedCornersLines(
 		buttonRect,
-		[4]float32{0, 0, buttonRoundness, 0}, [4]int32{0, 0, buttonSegments, 0},
+		buttonRoundnessArray, buttonSegmentsArray,
 		lineThick, rl.Color{0, 0, 0, 255},
 	)
 
 	DrawRectangleRoundedCornersLines(
 		textBoxRect,
-		[4]float32{0, 0, boxRoundness, 0}, [4]int32{0, 0, boxSegments, 0},
+		boxRoundnessArray, boxSegmentsArray,
 		lineThick, rl.Color{0, 0, 0, 255},
 	)
 
@@ -2321,7 +2348,7 @@ func (hm *HelpMessage) Draw() {
 	// draw background
 	DrawRectangleRoundedCorners(
 		textBoxRect,
-		[4]float32{0, 0, boxRoundness, 0}, [4]int32{0, 0, boxSegments, 0},
+		boxRoundnessArray, boxSegmentsArray,
 		rl.Color{255, 255, 255, 255},
 	)
 
@@ -2352,7 +2379,7 @@ func (hm *HelpMessage) Draw() {
 	// draw button background
 	DrawRectangleRoundedCorners(
 		buttonRect,
-		[4]float32{0, 0, buttonRoundness, 0}, [4]int32{0, 0, buttonSegments, 0},
+		buttonRoundnessArray, buttonSegmentsArray,
 		rl.Color{255, 255, 255, 255},
 	)
 
@@ -2388,10 +2415,18 @@ func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
 	w := hm.TextBoxMarginLeft + f32(hm.TextImage.Texture.Width) + hm.TextBoxMarginRight
 	h := hm.TextBoxMarginTop + f32(hm.TextImage.Texture.Height) + hm.TextBoxMarginBottom
 
-	return rl.Rectangle{
-		X:     hm.PosX,
-		Y:     hm.PosY + hm.offsetY,
-		Width: w, Height: h,
+	if TheOptions.DownScroll {
+		return rl.Rectangle{
+			X:     hm.PosX,
+			Y:     hm.PosY + hm.offsetY,
+			Width: w, Height: h,
+		}
+	} else {
+		return rl.Rectangle{
+			X:     hm.PosX,
+			Y:     hm.PosY + hm.offsetY - h,
+			Width: w, Height: h,
+		}
 	}
 }
 
@@ -2411,10 +2446,17 @@ func (hm *HelpMessage) ButtonRect() rl.Rectangle {
 	boxRect := hm.TextBoxRect()
 
 	rect := rl.Rectangle{}
-	rect.X = boxRect.X
-	rect.Y = boxRect.Y + boxRect.Height
+
 	rect.Width = hm.ButtonWidth
 	rect.Height = hm.ButtonHeight
+
+	rect.X = boxRect.X
+
+	if TheOptions.DownScroll {
+		rect.Y = boxRect.Y + boxRect.Height
+	} else {
+		rect.Y = boxRect.Y - rect.Height
+	}
 
 	return rect
 }
@@ -2439,23 +2481,49 @@ func (hm *HelpMessage) Update(deltaTime time.Duration) {
 	delta := float32(deltaTime.Seconds() * 1000)
 
 	if hm.DoShow {
-		hm.offsetY += delta
+		if TheOptions.DownScroll {
+			hm.offsetY += delta
+		} else {
+			hm.offsetY -= delta
+		}
 	} else {
-		hm.offsetY -= delta
+		if TheOptions.DownScroll {
+			hm.offsetY -= delta
+		} else {
+			hm.offsetY += delta
+		}
 	}
 
 	totalRect := hm.TotalRect()
 
-	hm.offsetY = Clamp(hm.offsetY, -totalRect.Height+buttonRect.Height, 0)
+	if TheOptions.DownScroll {
+		hm.offsetY = Clamp(hm.offsetY, -totalRect.Height+buttonRect.Height, 0)
+	} else {
+		hm.offsetY = Clamp(hm.offsetY, 0, totalRect.Height-buttonRect.Height)
+	}
 }
 
 func (hm *HelpMessage) BeforeScreenTransition() {
+	hm.SetTextBoxMargin()
+
 	hm.InitTextImage()
 
 	totalRect := hm.TotalRect()
 	buttonRect := hm.ButtonRect()
 
-	hm.offsetY = -totalRect.Height + buttonRect.Height
+	hm.PosX = -5
+	if TheOptions.DownScroll {
+		hm.PosY = -4
+	} else {
+		hm.PosY = SCREEN_HEIGHT + 4
+	}
+
+	if TheOptions.DownScroll {
+		hm.offsetY = -totalRect.Height + buttonRect.Height
+	} else {
+		hm.offsetY = (totalRect.Height - buttonRect.Height)
+	}
+
 	hm.DoShow = false
 }
 
