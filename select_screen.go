@@ -482,9 +482,32 @@ func (ss *SelectScreen) Draw() {
 	bgColor := Col(0.2, 0.2, 0.2, 1.0)
 	rl.ClearBackground(bgColor.ToImageRGBA())
 
+	drawPathText := func() {
+		for id, tex := range ss.PathDecoToPathTex {
+			bound, ok := ss.Menu.GetItemBound(id)
+			if ok {
+				// draw bg rectangle
+				bgRect := rl.Rectangle{
+					X: 0, Y: bound.Y,
+					Width: SCREEN_WIDTH, Height: bound.Height,
+				}
+
+				rl.DrawRectangleRec(bgRect, rl.Color{0, 0, 0, 100})
+
+				texX := 100
+				texY := bgRect.Y + (bgRect.Height-f32(tex.Height))*0.5
+
+				rl.DrawTexture(tex, i32(texX), i32(texY), rl.Color{255, 255, 255, 255})
+			}
+		}
+	}
+
 	if !ss.DrawDeleteMenu {
 		ss.Menu.Draw()
 
+		drawPathText()
+
+		// draw difficulty text at the top right corner
 		selected := ss.Menu.GetSelectedId()
 		data := ss.Menu.GetUserData(selected)
 
@@ -506,25 +529,8 @@ func (ss *SelectScreen) Draw() {
 		}
 	} else {
 		ss.DeleteMenu.Draw()
-	}
 
-	//draw path text
-	for id, tex := range ss.PathDecoToPathTex {
-		bound, ok := ss.Menu.GetItemBound(id)
-		if ok {
-			// draw bg rectangle
-			bgRect := rl.Rectangle{
-				X: 0, Y: bound.Y,
-				Width: SCREEN_WIDTH, Height: bound.Height,
-			}
-
-			rl.DrawRectangleRec(bgRect, rl.Color{0, 0, 0, 100})
-
-			texX := 100
-			texY := bgRect.Y + (bgRect.Height-f32(tex.Height))*0.5
-
-			rl.DrawTexture(tex, i32(texX), i32(texY), rl.Color{255, 255, 255, 255})
-		}
+		drawPathText()
 	}
 }
 
