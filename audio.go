@@ -1,15 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
-	"os"
-	"strings"
 
 	"github.com/ebitengine/oto/v3"
 )
@@ -221,8 +223,8 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		abs = vs.bytePosition + offset
 	case io.SeekEnd:
-		var totlaLen int64 = int64(len(vs.AudioBytes))
-		abs = totlaLen + offset
+		var totalLen int64 = int64(len(vs.AudioBytes))
+		abs = totalLen + offset
 
 	default:
 		return 0, errors.New("VaryingSpeedStream.Seek: invalid whence")
@@ -269,11 +271,13 @@ func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 }
 
 func LoadAudio(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	defer file.Close()
+	var fileBytes []byte
 
-	if err != nil {
-		return nil, err
+	{
+		var err error
+		if fileBytes, err = os.ReadFile(path); err != nil {
+			return nil, err
+		}
 	}
 
 	type audioStream interface {
@@ -281,21 +285,157 @@ func LoadAudio(path string) ([]byte, error) {
 		Length() int64
 	}
 
-	var stream audioStream
+	const streamCount = 16
+	var streams []audioStream
 
 	if strings.HasSuffix(strings.ToLower(path), ".mp3") {
-		stream, err = mp3.DecodeWithSampleRate(SampleRate, file)
+		for range streamCount {
+			bReader := bytes.NewReader(fileBytes)
+			if stream, err := mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+				return nil, err
+			} else {
+				streams = append(streams, stream)
+			}
+		}
 	} else {
-		stream, err = vorbis.DecodeWithSampleRate(SampleRate, file)
+		for range streamCount {
+			bReader := bytes.NewReader(fileBytes)
+			if stream, err := vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+				return nil, err
+			} else {
+				streams = append(streams, stream)
+			}
+		}
 	}
 
-	if err != nil {
-		return nil, err
+	// init audio bytes
+	var totalLen int64
+
+	{
+		totalLen = streams[0].Length()
+
+		// means audio file's total length is not available
+		// we have to just read it one by one
+		if totalLen <= 0 {
+			FnfLogger.Println("loading audio using single thread")
+
+			audioBytes, err := io.ReadAll(streams[0])
+			if err != nil {
+				return nil, err
+			}
+
+			return audioBytes, nil
+		}
+
+		FnfLogger.Println("loading audio using go routines")
 	}
 
-	audioBytes, err := io.ReadAll(stream)
-	if err != nil {
-		return nil, err
+	// divide and ceil
+	partLen := (totalLen + streamCount - 1) / streamCount
+
+	// closest multiple to bytes per sample (larger one)
+	partLen = (partLen/BytesPerSample)*BytesPerSample + BytesPerSample
+
+	var wg sync.WaitGroup
+
+	streamErrors := make([]error, streamCount)
+	streamBytes := make([][]byte, streamCount)
+
+	for i := range streamCount {
+		streamBytes[i] = make([]byte, 0, partLen)
+	}
+
+	for i := range int64(streamCount) {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			isLastPart := i == streamCount-1
+
+			var partStart, partEnd int64
+
+			partStart = i * partLen
+
+			if isLastPart {
+				partEnd = totalLen
+			} else {
+				partEnd = (i + 1) * partLen
+			}
+
+			// first seek to where we want to read
+			{
+				var err error
+				var offset int64
+
+				offset, err = streams[i].Seek(partStart, io.SeekStart)
+				if err != nil {
+					streamErrors[i] = err
+					return
+				}
+				if offset != partStart {
+					streamErrors[i] = fmt.Errorf("seek failed : expected: \"%v\" got: \"%v\"",
+						partStart, offset)
+					return
+				}
+			}
+
+			// we read the desired amount
+			amoutToRead := partEnd - partStart
+
+			for {
+				buf := streamBytes[i]
+
+				var err error
+				var read int
+
+				read, err = streams[i].Read(buf[len(buf):amoutToRead])
+				buf = buf[:len(buf)+read]
+
+				// some error occured
+				if err != nil && !(err == io.EOF && isLastPart) {
+					streamErrors[i] = err
+					return
+				}
+
+				// if we read 0 bytes, we stop just to be safe
+				if read <= 0 {
+					streamErrors[i] = fmt.Errorf("read 0 bytes while decoding")
+					return
+				}
+
+				// check if we stopped becaun of EOF before reading required amount
+				if err == io.EOF && int64(len(buf)) < amoutToRead {
+					streamErrors[i] = fmt.Errorf("supposed to read \"%v\" but only read \"%v\" because EOF",
+						amoutToRead, len(buf))
+					return
+				}
+
+				streamBytes[i] = buf
+				if int64(len(streamBytes[i])) >= amoutToRead {
+					break
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	for _, err := range streamErrors {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var audioBytes []byte
+
+	for _, bs := range streamBytes {
+		audioBytes = append(audioBytes, bs...)
+	}
+
+	if int64(len(audioBytes)) != totalLen {
+		return nil, fmt.Errorf("audio file size is different : expected: \"%v\", got: \"%v\"",
+			totalLen, len(audioBytes))
 	}
 
 	return audioBytes, nil
