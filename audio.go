@@ -271,8 +271,17 @@ func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 }
 
 func LoadAudio(path string) ([]byte, error) {
-	var fileBytes []byte
+	{
+		timer := MakeProfTimer("LoadAudio")
+		defer timer.Report()
+	}
 
+	const alwaysDecodeSingleThreaded bool = false
+	const checkIfDecodingWithGoroutinesIsCorrect bool = false
+
+	const jobCount = 16
+
+	var fileBytes []byte
 	{
 		var err error
 		if fileBytes, err = os.ReadFile(path); err != nil {
@@ -285,11 +294,10 @@ func LoadAudio(path string) ([]byte, error) {
 		Length() int64
 	}
 
-	const streamCount = 16
 	var streams []audioStream
 
 	if strings.HasSuffix(strings.ToLower(path), ".mp3") {
-		for range streamCount {
+		for range jobCount {
 			bReader := bytes.NewReader(fileBytes)
 			if stream, err := mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
 				return nil, err
@@ -298,7 +306,7 @@ func LoadAudio(path string) ([]byte, error) {
 			}
 		}
 	} else {
-		for range streamCount {
+		for range jobCount {
 			bReader := bytes.NewReader(fileBytes)
 			if stream, err := vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
 				return nil, err
@@ -314,9 +322,9 @@ func LoadAudio(path string) ([]byte, error) {
 	{
 		totalLen = streams[0].Length()
 
-		// means audio file's total length is not available
-		// we have to just read it one by one
-		if totalLen <= 0 {
+		// audio file's total length is not available
+		// we have to just read it until we encounter EOF
+		if totalLen <= 0 || alwaysDecodeSingleThreaded {
 			FnfLogger.Println("loading audio using single thread")
 
 			audioBytes, err := io.ReadAll(streams[0])
@@ -331,27 +339,27 @@ func LoadAudio(path string) ([]byte, error) {
 	}
 
 	// divide and ceil
-	partLen := (totalLen + streamCount - 1) / streamCount
+	partLen := (totalLen + jobCount - 1) / jobCount
 
 	// closest multiple to bytes per sample (larger one)
 	partLen = (partLen/BytesPerSample)*BytesPerSample + BytesPerSample
 
 	var wg sync.WaitGroup
 
-	streamErrors := make([]error, streamCount)
-	streamBytes := make([][]byte, streamCount)
+	decodeErrors := make([]error, jobCount)
+	decodedBytes := make([][]byte, jobCount)
 
-	for i := range streamCount {
-		streamBytes[i] = make([]byte, 0, partLen)
+	for i := range jobCount {
+		decodedBytes[i] = make([]byte, 0, partLen)
 	}
 
-	for i := range int64(streamCount) {
+	for i := range int64(jobCount) {
 		wg.Add(1)
 
 		go func() {
 			defer wg.Done()
 
-			isLastPart := i == streamCount-1
+			isLastPart := i == jobCount-1
 
 			var partStart, partEnd int64
 
@@ -370,11 +378,11 @@ func LoadAudio(path string) ([]byte, error) {
 
 				offset, err = streams[i].Seek(partStart, io.SeekStart)
 				if err != nil {
-					streamErrors[i] = err
+					decodeErrors[i] = err
 					return
 				}
 				if offset != partStart {
-					streamErrors[i] = fmt.Errorf("seek failed : expected: \"%v\" got: \"%v\"",
+					decodeErrors[i] = fmt.Errorf("seek failed : expected: \"%v\" got: \"%v\"",
 						partStart, offset)
 					return
 				}
@@ -384,7 +392,7 @@ func LoadAudio(path string) ([]byte, error) {
 			amoutToRead := partEnd - partStart
 
 			for {
-				buf := streamBytes[i]
+				buf := decodedBytes[i]
 
 				var err error
 				var read int
@@ -394,25 +402,25 @@ func LoadAudio(path string) ([]byte, error) {
 
 				// some error occured
 				if err != nil && !(err == io.EOF && isLastPart) {
-					streamErrors[i] = err
+					decodeErrors[i] = err
 					return
 				}
 
 				// if we read 0 bytes, we stop just to be safe
 				if read <= 0 {
-					streamErrors[i] = fmt.Errorf("read 0 bytes while decoding")
+					decodeErrors[i] = fmt.Errorf("read 0 bytes while decoding")
 					return
 				}
 
 				// check if we stopped becaun of EOF before reading required amount
 				if err == io.EOF && int64(len(buf)) < amoutToRead {
-					streamErrors[i] = fmt.Errorf("supposed to read \"%v\" but only read \"%v\" because EOF",
+					decodeErrors[i] = fmt.Errorf("supposed to read \"%v\" but only read \"%v\" because EOF",
 						amoutToRead, len(buf))
 					return
 				}
 
-				streamBytes[i] = buf
-				if int64(len(streamBytes[i])) >= amoutToRead {
+				decodedBytes[i] = buf
+				if int64(len(decodedBytes[i])) >= amoutToRead {
 					break
 				}
 			}
@@ -421,7 +429,7 @@ func LoadAudio(path string) ([]byte, error) {
 
 	wg.Wait()
 
-	for _, err := range streamErrors {
+	for _, err := range decodeErrors {
 		if err != nil {
 			return nil, err
 		}
@@ -429,13 +437,50 @@ func LoadAudio(path string) ([]byte, error) {
 
 	var audioBytes []byte
 
-	for _, bs := range streamBytes {
+	for _, bs := range decodedBytes {
 		audioBytes = append(audioBytes, bs...)
 	}
 
 	if int64(len(audioBytes)) != totalLen {
 		return nil, fmt.Errorf("audio file size is different : expected: \"%v\", got: \"%v\"",
 			totalLen, len(audioBytes))
+	}
+
+	// debug check to see if it matches reading it single threaded
+	if checkIfDecodingWithGoroutinesIsCorrect {
+		var stream audioStream
+		var err error
+
+		if strings.HasSuffix(strings.ToLower(path), ".mp3") {
+			bReader := bytes.NewReader(fileBytes)
+			if stream, err = mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+				return nil, err
+			}
+		} else {
+			bReader := bytes.NewReader(fileBytes)
+			if stream, err = vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+				return nil, err
+			}
+		}
+
+		var toCompare []byte
+
+		toCompare, err = io.ReadAll(stream)
+		if err != nil {
+			return nil, err
+		}
+
+		// check length
+		if len(toCompare) != len(audioBytes) {
+			return nil, fmt.Errorf("audio decoded with multiple goroutines have different length: expected: \"%v\" got: \"%v\"",
+				len(toCompare), len(audioBytes))
+		}
+
+		for i := range len(toCompare) {
+			if toCompare[i] != audioBytes[i] {
+				return nil, fmt.Errorf("audio decoded with multiple goroutines has different value")
+			}
+		}
 	}
 
 	return audioBytes, nil

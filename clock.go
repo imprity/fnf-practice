@@ -19,3 +19,28 @@ func GlobalTimerNow() time.Duration {
 func TimeSinceNow(t time.Duration) time.Duration {
 	return GlobalTimerNow() - t
 }
+
+// Timer for profiling.
+// Usage :
+//
+//	{
+//		timer := MakeProfTimer("some function")
+//		defer timer.Report()
+//		// reports some function took 10ms
+//	}
+type ProfTimer struct {
+	Start time.Time
+	Name  string
+}
+
+func MakeProfTimer(name string) ProfTimer {
+	return ProfTimer{
+		Start: time.Now(),
+		Name:  name,
+	}
+}
+
+func (p ProfTimer) Report() {
+	now := time.Now()
+	FnfLogger.Printf("\"%v\" took %v\n", p.Name, now.Sub(p.Start))
+}
