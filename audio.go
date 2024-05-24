@@ -55,7 +55,7 @@ func NewVaryingSpeedPlayer() *VaryingSpeedPlayer {
 
 func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte) {
 	if !vp.IsReady {
-		vp.Stream = NewVaryingSpeedStream(audioBytes, SampleRate)
+		vp.Stream = NewVaryingSpeedStream(audioBytes)
 
 		player := TheContext.NewPlayer(vp.Stream)
 
@@ -156,8 +156,6 @@ type VaryingSpeedStream struct {
 	Speed      float64
 	AudioBytes []byte
 
-	SampleRate int
-
 	bytePosition int64
 	mu           sync.Mutex
 }
@@ -168,11 +166,9 @@ func (vs *VaryingSpeedStream) BytePosition() int64 {
 	return vs.bytePosition
 }
 
-func NewVaryingSpeedStream(audioBytes []byte, sampleRate int) *VaryingSpeedStream {
+func NewVaryingSpeedStream(audioBytes []byte) *VaryingSpeedStream {
 	vs := new(VaryingSpeedStream)
 	vs.Speed = 1.0
-
-	vs.SampleRate = sampleRate
 
 	vs.AudioBytes = audioBytes
 
@@ -240,7 +236,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
-	return ByteLengthToTimeDuration(int64(len(vs.AudioBytes)), vs.SampleRate)
+	return ByteLengthToTimeDuration(int64(len(vs.AudioBytes)), SampleRate)
 }
 
 func (vs *VaryingSpeedStream) ChangeAudio(audioBytes []byte) {
