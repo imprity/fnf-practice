@@ -8,8 +8,9 @@ import (
 type OptionsScreen struct {
 	Menu *MenuDrawer
 
-	FpsItemId        MenuItemId
-	DownScrollItemId MenuItemId
+	FpsItemId               MenuItemId
+	DownScrollItemId        MenuItemId
+	LoadAudioDuringGpItemId MenuItemId
 
 	InputId InputGroupId
 }
@@ -75,6 +76,15 @@ func NewOptionsScreen() *OptionsScreen {
 	op.DownScrollItemId = downScrollItem.Id
 	op.Menu.AddItems(downScrollItem)
 
+	loadAudioDuringGpItem := NewMenuItem()
+	loadAudioDuringGpItem.Name = "Load Audio During Game Play"
+	loadAudioDuringGpItem.Type = MenuItemToggle
+	loadAudioDuringGpItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+		TheOptions.LoadAudioDuringGamePlay = bValue
+	}
+	op.LoadAudioDuringGpItemId = loadAudioDuringGpItem.Id
+	op.Menu.AddItems(loadAudioDuringGpItem)
+
 	return op
 }
 
@@ -109,6 +119,7 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 
 	op.Menu.SetItemNvalue(op.FpsItemId, float32(TheOptions.TargetFPS))
 	op.Menu.SetItemBValue(op.DownScrollItemId, TheOptions.DownScroll)
+	op.Menu.SetItemBValue(op.LoadAudioDuringGpItemId, TheOptions.LoadAudioDuringGamePlay)
 }
 
 func (op *OptionsScreen) Free() {

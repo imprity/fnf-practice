@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -44,6 +45,26 @@ func InitAudio() error {
 type AudioDecoder interface {
 	io.ReadSeeker
 	Length() int64
+}
+
+func NewAudioDeocoder(rawFile []byte, fileType string) (AudioDecoder, error) {
+	bReader := bytes.NewReader(rawFile)
+
+	if strings.HasSuffix(strings.ToLower(fileType), "mp3") {
+		if decoder, err := mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+			return nil, err
+		} else {
+			return decoder, nil
+		}
+	} else if strings.HasSuffix(strings.ToLower(fileType), "ogg") {
+		if decoder, err := vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+			return nil, err
+		} else {
+			return decoder, nil
+		}
+	} else {
+		return nil, fmt.Errorf("can't decode audio format %v", fileType)
+	}
 }
 
 type VaryingSpeedPlayer struct {
@@ -309,83 +330,89 @@ func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
-	startBgDecoding := func(decoder AudioDecoder) chan byte {
-		length := decoder.Length()
-		queue := make(chan byte, length)
+	if TheOptions.LoadAudioDuringGamePlay {
+		startBgDecoding := func(decoder AudioDecoder) chan byte {
+			length := decoder.Length()
+			queue := make(chan byte, length)
 
-		go func() {
-			buffer := make([]byte, 0, BytesPerSample*16)
-			sent := int64(0)
+			go func() {
+				buffer := make([]byte, 0, BytesPerSample*16)
+				sent := int64(0)
 
-			for {
-				buff := buffer[:cap(buffer)]
+				for {
+					buff := buffer[:cap(buffer)]
 
-				n, err := decoder.Read(buff)
+					n, err := decoder.Read(buff)
 
-				sent += int64(n)
+					sent += int64(n)
 
-				buff = buff[:n]
+					buff = buff[:n]
 
-				for _, b := range buff {
-					queue <- b
+					for _, b := range buff {
+						queue <- b
+					}
+
+					if err != nil {
+						break
+					}
 				}
 
-				if err != nil {
-					break
+				// if error happens, we don't care.
+				// we will just fill the rest of the queue with zero
+				toSend := length - sent
+
+				for i := int64(0); i < toSend; i++ {
+					queue <- 0
 				}
-			}
+			}()
 
-			// if error happens, we don't care.
-			// we will just fill the rest of the queue with zero
-			toSend := length - sent
+			return queue
+		}
 
-			for i := int64(0); i < toSend; i++ {
-				queue <- 0
-			}
-		}()
-
-		return queue
-	}
-
-	var decoder AudioDecoder
-	var err error
-
-	if strings.HasSuffix(strings.ToLower(fileType), "mp3") {
-		bReader := bytes.NewReader(rawFile)
-		if decoder, err = mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+		decoder, err := NewAudioDeocoder(rawFile, fileType)
+		if err != nil {
 			return err
 		}
+
+		vs.length = decoder.Length()
+
+		if vs.length > 0 {
+			vs.usingBgDecoding = true
+
+			vs.buffer = make([]byte, 0, vs.length)
+			vs.decoderQueue = startBgDecoding(decoder)
+		} else { // when getting the known length is impossible
+			vs.usingBgDecoding = false
+			vs.buffer = nil
+			vs.decoderQueue = nil
+
+			var buffer []byte
+
+			buffer, err = io.ReadAll(decoder)
+			if err != nil {
+				return err
+			}
+
+			vs.buffer = buffer
+			vs.length = int64(len(vs.buffer))
+		}
+
+		return nil
 	} else {
-		bReader := bytes.NewReader(rawFile)
-		if decoder, err = vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
-			return err
-		}
-	}
-
-	vs.length = decoder.Length()
-
-	if vs.length > 0 {
-		vs.usingBgDecoding = true
-
-		vs.buffer = make([]byte, 0, vs.length)
-		vs.decoderQueue = startBgDecoding(decoder)
-	} else { // when getting the known length is impossible
 		vs.usingBgDecoding = false
 		vs.buffer = nil
 		vs.decoderQueue = nil
 
-		var buffer []byte
-
-		buffer, err = io.ReadAll(decoder)
+		buffer, err := DecodeWholeAudio(rawFile, fileType)
 		if err != nil {
 			return err
 		}
 
 		vs.buffer = buffer
 		vs.length = int64(len(vs.buffer))
-	}
 
-	return nil
+		return nil
+	}
 }
 
 // This is directly copied from ebiten's Time stream struct
@@ -406,4 +433,184 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 	t := time.Duration(byteLength) / BytesPerSample
 	return t * time.Second / time.Duration(sampleRate)
+}
+
+func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
+	{
+		timer := MakeProfTimer("DecodeWholeAudio")
+		defer timer.Report()
+	}
+
+	const alwaysDecodeSingleThreaded bool = false
+	const checkIfDecodingWithGoroutinesIsCorrect bool = false
+
+	const jobCount = 16
+
+	var decoders []AudioDecoder
+
+	for range jobCount {
+		if decoder, err := NewAudioDeocoder(rawFile, fileType); err != nil {
+			return nil, err
+		} else {
+			decoders = append(decoders, decoder)
+		}
+	}
+
+	// init audio bytes
+	var totalLen int64
+	{
+		totalLen = decoders[0].Length()
+
+		// audio file's total length is not available
+		// we have to just read it until we encounter EOF
+		if totalLen <= 0 || alwaysDecodeSingleThreaded {
+			FnfLogger.Println("loading audio using single thread")
+
+			audioBytes, err := io.ReadAll(decoders[0])
+			if err != nil {
+				return nil, err
+			}
+
+			return audioBytes, nil
+		}
+
+		FnfLogger.Println("loading audio using go routines")
+	}
+
+	// divide and ceil
+	partLen := (totalLen + jobCount - 1) / jobCount
+
+	// closest multiple to bytes per sample (larger one)
+	partLen = (partLen/BytesPerSample)*BytesPerSample + BytesPerSample
+
+	var wg sync.WaitGroup
+
+	decodeErrors := make([]error, jobCount)
+	decodedBytes := make([][]byte, jobCount)
+
+	for i := range jobCount {
+		decodedBytes[i] = make([]byte, 0, partLen)
+	}
+
+	for i := range int64(jobCount) {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			isLastPart := i == jobCount-1
+
+			var partStart, partEnd int64
+
+			partStart = i * partLen
+
+			if isLastPart {
+				partEnd = totalLen
+			} else {
+				partEnd = (i + 1) * partLen
+			}
+
+			// first seek to where we want to read
+			{
+				var err error
+				var offset int64
+
+				offset, err = decoders[i].Seek(partStart, io.SeekStart)
+				if err != nil {
+					decodeErrors[i] = err
+					return
+				}
+				if offset != partStart {
+					decodeErrors[i] = fmt.Errorf("seek failed : expected: \"%v\" got: \"%v\"",
+						partStart, offset)
+					return
+				}
+			}
+
+			// we read the desired amount
+			amoutToRead := partEnd - partStart
+
+			for {
+				buf := decodedBytes[i]
+
+				var err error
+				var read int
+
+				read, err = decoders[i].Read(buf[len(buf):amoutToRead])
+				buf = buf[:len(buf)+read]
+
+				// some error occured
+				if err != nil && !(err == io.EOF && isLastPart) {
+					decodeErrors[i] = err
+					return
+				}
+
+				// if we read 0 bytes, we stop just to be safe
+				if read <= 0 {
+					decodeErrors[i] = fmt.Errorf("read 0 bytes while decoding")
+					return
+				}
+
+				// check if we stopped becaun of EOF before reading required amount
+				if err == io.EOF && int64(len(buf)) < amoutToRead {
+					decodeErrors[i] = fmt.Errorf("supposed to read \"%v\" but only read \"%v\" because EOF",
+						amoutToRead, len(buf))
+					return
+				}
+
+				decodedBytes[i] = buf
+				if int64(len(decodedBytes[i])) >= amoutToRead {
+					break
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	for _, err := range decodeErrors {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var audioBytes []byte
+
+	for _, bs := range decodedBytes {
+		audioBytes = append(audioBytes, bs...)
+	}
+
+	if int64(len(audioBytes)) != totalLen {
+		return nil, fmt.Errorf("audio file size is different : expected: \"%v\", got: \"%v\"",
+			totalLen, len(audioBytes))
+	}
+
+	// debug check to see if it matches reading it single threaded
+	if checkIfDecodingWithGoroutinesIsCorrect {
+		var decoder AudioDecoder
+		var err error
+
+		decoder, err = NewAudioDeocoder(rawFile, fileType)
+
+		var toCompare []byte
+
+		toCompare, err = io.ReadAll(decoder)
+		if err != nil {
+			return nil, err
+		}
+
+		// check length
+		if len(toCompare) != len(audioBytes) {
+			return nil, fmt.Errorf("audio decoded with multiple goroutines have different length: expected: \"%v\" got: \"%v\"",
+				len(toCompare), len(audioBytes))
+		}
+
+		for i := range len(toCompare) {
+			if toCompare[i] != audioBytes[i] {
+				return nil, fmt.Errorf("audio decoded with multiple goroutines has different value")
+			}
+		}
+	}
+
+	return audioBytes, nil
 }
