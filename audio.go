@@ -10,7 +10,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 
 	"github.com/ebitengine/oto/v3"
 )
@@ -51,6 +50,8 @@ type VaryingSpeedPlayer struct {
 	IsReady bool
 	Stream  *VaryingSpeedStream
 	Player  *oto.Player
+
+	isPlaying bool
 }
 
 func NewVaryingSpeedPlayer() *VaryingSpeedPlayer {
@@ -70,7 +71,8 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error{
 		// we need the ability to change the playback speed in real time
 		// so we need to make the buffer size smaller
 		// TODO : is this really the right size?
-		const buffSizeTime = time.Second / 20
+		//const buffSizeTime = time.Second / 20
+		const buffSizeTime = time.Second / 5
 		buffSizeBytes := int(buffSizeTime) * SampleRate / int(time.Second) * BytesPerSample
 		player.SetBufferSize(int(buffSizeBytes))
 
@@ -84,6 +86,8 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error{
 		}
 		vp.Player.Seek(0, io.SeekStart)
 	}
+
+	vp.isPlaying = false
 
 	return nil
 }
@@ -124,11 +128,15 @@ func (vp *VaryingSpeedPlayer) IsPlaying() bool {
 }
 
 func (vp *VaryingSpeedPlayer) Pause() {
-	vp.Player.Pause()
+	if vp.Player.IsPlaying(){
+		vp.Player.Pause()
+	}
 }
 
 func (vp *VaryingSpeedPlayer) Play() {
-	vp.Player.Play()
+	if !vp.Player.IsPlaying(){
+		vp.Player.Play()
+	}
 }
 
 func (vp *VaryingSpeedPlayer) Rewind() {
@@ -166,7 +174,8 @@ type VaryingSpeedStream struct {
 	io.ReadSeeker
 
 	decoder AudioDecoder
-	resampled io.ReadSeeker
+
+	buffer []byte
 
 	speed float64
 
@@ -185,16 +194,49 @@ func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream
 	return vs, nil
 }
 
+func (vs *VaryingSpeedStream) readSrc(at int) byte{
+	if at < len(vs.buffer){
+		return vs.buffer[at]
+	}
+
+	for at >= len(vs.buffer){
+		buff := vs.buffer[len(vs.buffer):min(cap(vs.buffer), len(vs.buffer) + BytesPerSample)]
+		n, _ := vs.decoder.Read(buff)
+		vs.buffer = vs.buffer[:len(vs.buffer) + n]
+	}
+
+	return vs.buffer[at]
+}
+
 func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
-	n, err := vs.resampled.Read(p) 
+	wCursor := 0
+	wCursorLimit := (len(p) / BytesPerSample) * BytesPerSample
 
-	vs.bytePosition += int64(n)
-	//vs.bytePosition += int64(float64(n) * vs.speed)
+	floatPosition := float64(vs.bytePosition)
 
-	return n, err
+	for {
+		if vs.bytePosition+BytesPerSample >= int64(vs.decoder.Length()) {
+			return len(p), io.EOF
+		}
+
+		if wCursor+BytesPerSample >= wCursorLimit {
+			return wCursor, nil
+		}
+
+		p[wCursor+0] = vs.readSrc(int(vs.bytePosition) + 0)
+		p[wCursor+1] = vs.readSrc(int(vs.bytePosition) + 1)
+		p[wCursor+2] = vs.readSrc(int(vs.bytePosition) + 2)
+		p[wCursor+3] = vs.readSrc(int(vs.bytePosition) + 3)
+
+		wCursor += BytesPerSample
+
+		floatPosition += vs.speed * BytesPerSample
+
+		vs.bytePosition = (int64(floatPosition) / BytesPerSample) * BytesPerSample
+	}
 }
 
 func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
@@ -223,7 +265,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 
 	vs.bytePosition = abs
 
-	return vs.resampled.Seek(offset, whence)
+	return vs.bytePosition, nil
 }
 
 func (vs *VaryingSpeedStream) Speed() float64{
@@ -238,20 +280,24 @@ func (vs *VaryingSpeedStream) SetSpeed(speed float64) {
 	defer vs.mu.Unlock()
 
 	vs.speed = speed
-	vs.resampled = audio.Resample(vs.decoder, vs.decoder.Length(), SampleRate, int(f64(SampleRate) / vs.speed))
 }
 
 func (vs *VaryingSpeedStream) BytePosition() int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
+
 	return vs.bytePosition
 }
 
 func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
 	return vs.decoder.Length()
 }
 
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
 	return ByteLengthToTimeDuration(vs.decoder.Length(), SampleRate)
 }
 
@@ -274,8 +320,11 @@ func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error
 		}
 	}
 
+	// TODO : there are times when getting known audio size is impossble
+	// handle that
+	vs.buffer = make([]byte, 0, decoder.Length())
+
 	vs.decoder = decoder
-	vs.resampled = audio.Resample(vs.decoder, vs.decoder.Length(), SampleRate, int(f64(SampleRate) / vs.speed))
 
 	return nil
 }
