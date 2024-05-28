@@ -122,6 +122,7 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 //	}
 //
 //	position will change
+
 func (vp *VaryingSpeedPlayer) Position() time.Duration {
 	streamPos := vp.Stream.BytePosition()
 	buffSize := vp.Player.BufferedSize()
@@ -330,80 +331,53 @@ func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
-	if TheOptions.LoadAudioDuringGamePlay {
-		startBgDecoding := func(decoder AudioDecoder) chan byte {
-			length := decoder.Length()
-			queue := make(chan byte, length)
+	startBgDecoding := func(decoder AudioDecoder) chan byte {
+		length := decoder.Length()
+		queue := make(chan byte, length)
 
-			go func() {
-				buffer := make([]byte, 0, BytesPerSample*16)
-				sent := int64(0)
+		go func() {
+			buffer := make([]byte, 0, BytesPerSample*16)
+			sent := int64(0)
 
-				for {
-					buff := buffer[:cap(buffer)]
+			for {
+				buff := buffer[:cap(buffer)]
 
-					n, err := decoder.Read(buff)
+				n, err := decoder.Read(buff)
 
-					sent += int64(n)
+				sent += int64(n)
 
-					buff = buff[:n]
+				buff = buff[:n]
 
-					for _, b := range buff {
-						queue <- b
-					}
-
-					if err != nil {
-						break
-					}
+				for _, b := range buff {
+					queue <- b
 				}
 
-				// if error happens, we don't care.
-				// we will just fill the rest of the queue with zero
-				toSend := length - sent
-
-				for i := int64(0); i < toSend; i++ {
-					queue <- 0
+				if err != nil {
+					break
 				}
-			}()
-
-			return queue
-		}
-
-		decoder, err := NewAudioDeocoder(rawFile, fileType)
-		if err != nil {
-			return err
-		}
-
-		vs.length = decoder.Length()
-
-		if vs.length > 0 {
-			vs.usingBgDecoding = true
-
-			vs.buffer = make([]byte, 0, vs.length)
-			vs.decoderQueue = startBgDecoding(decoder)
-		} else { // when getting the known length is impossible
-			vs.usingBgDecoding = false
-			vs.buffer = nil
-			vs.decoderQueue = nil
-
-			var buffer []byte
-
-			buffer, err = io.ReadAll(decoder)
-			if err != nil {
-				return err
 			}
 
-			vs.buffer = buffer
-			vs.length = int64(len(vs.buffer))
-		}
+			// if error happens, we don't care.
+			// we will just fill the rest of the queue with zero
+			toSend := length - sent
 
-		return nil
-	} else {
+			for i := int64(0); i < toSend; i++ {
+				queue <- 0
+			}
+		}()
+
+		return queue
+	}
+
+	decodeWholeAudio := func() error {
 		vs.usingBgDecoding = false
 		vs.buffer = nil
 		vs.decoderQueue = nil
 
-		buffer, err := DecodeWholeAudio(rawFile, fileType)
+		var buffer []byte
+		var err error
+
+		buffer, err = DecodeWholeAudio(rawFile, fileType)
 		if err != nil {
 			return err
 		}
@@ -411,6 +385,42 @@ func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error
 		vs.buffer = buffer
 		vs.length = int64(len(vs.buffer))
 
+		return nil
+	}
+
+	if TheOptions.LoadAudioDuringGamePlay {
+		var decoder AudioDecoder
+
+		{
+			var err error
+			decoder, err = NewAudioDeocoder(rawFile, fileType)
+			if err != nil {
+				return err
+			}
+		}
+
+		vs.length = decoder.Length()
+
+		if vs.length > 0 {
+			FnfLogger.Println("decoding audio in background")
+			vs.usingBgDecoding = true
+
+			vs.buffer = make([]byte, 0, vs.length)
+			vs.decoderQueue = startBgDecoding(decoder)
+		} else { // when getting the known length is impossible
+			FnfLogger.Println("couldn't get known audio length, decoding the whole audio")
+
+			if err := decodeWholeAudio(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	} else {
+		FnfLogger.Println("decoding the whole audio")
+		if err := decodeWholeAudio(); err != nil {
+			return err
+		}
 		return nil
 	}
 }
@@ -464,7 +474,7 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 		// audio file's total length is not available
 		// we have to just read it until we encounter EOF
 		if totalLen <= 0 || alwaysDecodeSingleThreaded {
-			FnfLogger.Println("loading audio using single thread")
+			FnfLogger.Println("decoding audio using single thread")
 
 			audioBytes, err := io.ReadAll(decoders[0])
 			if err != nil {
@@ -474,7 +484,7 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 			return audioBytes, nil
 		}
 
-		FnfLogger.Println("loading audio using go routines")
+		FnfLogger.Println("decoding audio using go routines")
 	}
 
 	// divide and ceil
