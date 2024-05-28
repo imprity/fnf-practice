@@ -3,15 +3,14 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+	"github.com/hajimehoshi/ebiten/v2/audio"
 
 	"github.com/ebitengine/oto/v3"
 )
@@ -43,6 +42,11 @@ func InitAudio() error {
 	return nil
 }
 
+type AudioDecoder interface {
+	io.ReadSeeker
+	Length() int64
+}
+
 type VaryingSpeedPlayer struct {
 	IsReady bool
 	Stream  *VaryingSpeedStream
@@ -53,9 +57,13 @@ func NewVaryingSpeedPlayer() *VaryingSpeedPlayer {
 	return new(VaryingSpeedPlayer)
 }
 
-func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte) {
+func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error{
 	if !vp.IsReady {
-		vp.Stream = NewVaryingSpeedStream(audioBytes)
+		var err error
+		vp.Stream, err = NewVaryingSpeedStream(rawFile, fileType)
+		if err != nil{
+			return err
+		}
 
 		player := TheContext.NewPlayer(vp.Stream)
 
@@ -71,9 +79,13 @@ func (vp *VaryingSpeedPlayer) LoadAudio(audioBytes []byte) {
 		vp.IsReady = true
 	} else {
 		vp.Player.Pause()
-		vp.Stream.ChangeAudio(audioBytes)
+		if err := vp.Stream.ChangeAudio(rawFile, fileType); err != nil{
+			return err
+		}
 		vp.Player.Seek(0, io.SeekStart)
 	}
+
+	return nil
 }
 
 // TODO : Position and SetPosition is fucked
@@ -132,14 +144,14 @@ func (vp *VaryingSpeedPlayer) Volume() float64 {
 }
 
 func (vp *VaryingSpeedPlayer) Speed() float64 {
-	return vp.Stream.Speed
+	return vp.Stream.Speed()
 }
 
 func (vp *VaryingSpeedPlayer) SetSpeed(speed float64) {
 	if speed <= 0 {
 		panic("VaryingSpeedStream: speed should be bigger than 0")
 	}
-	vp.Stream.Speed = speed
+	vp.Stream.SetSpeed(speed)
 }
 
 func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
@@ -147,63 +159,42 @@ func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
 }
 
 func (vp *VaryingSpeedPlayer) AudioBytesSize() int64 {
-	return int64(len(vp.Stream.AudioBytes))
+	return vp.Stream.AudioBytesSize()
 }
 
 type VaryingSpeedStream struct {
 	io.ReadSeeker
 
-	Speed      float64
-	AudioBytes []byte
+	decoder AudioDecoder
+	resampled io.ReadSeeker
+
+	speed float64
 
 	bytePosition int64
 	mu           sync.Mutex
 }
 
-func (vs *VaryingSpeedStream) BytePosition() int64 {
-	vs.mu.Lock()
-	defer vs.mu.Unlock()
-	return vs.bytePosition
-}
-
-func NewVaryingSpeedStream(audioBytes []byte) *VaryingSpeedStream {
+func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream, error){
 	vs := new(VaryingSpeedStream)
-	vs.Speed = 1.0
+	vs.speed = 1.0
 
-	vs.AudioBytes = audioBytes
+	if err := vs.ChangeAudio(rawFile, fileType); err != nil{
+		return nil, err
+	}
 
-	return vs
+	return vs, nil
 }
 
 func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
-	wCursor := 0
-	wCursorLimit := (len(p) / BytesPerSample) * BytesPerSample
+	n, err := vs.resampled.Read(p) 
 
-	floatPosition := float64(vs.bytePosition)
+	vs.bytePosition += int64(n)
+	//vs.bytePosition += int64(float64(n) * vs.speed)
 
-	for {
-		if vs.bytePosition+BytesPerSample >= int64(len(vs.AudioBytes)) {
-			return len(p), io.EOF
-		}
-
-		if wCursor+BytesPerSample >= wCursorLimit {
-			return wCursor, nil
-		}
-
-		p[wCursor+0] = vs.AudioBytes[vs.bytePosition+0]
-		p[wCursor+1] = vs.AudioBytes[vs.bytePosition+1]
-		p[wCursor+2] = vs.AudioBytes[vs.bytePosition+2]
-		p[wCursor+3] = vs.AudioBytes[vs.bytePosition+3]
-
-		wCursor += BytesPerSample
-
-		floatPosition += vs.Speed * BytesPerSample
-
-		vs.bytePosition = (int64(floatPosition) / BytesPerSample) * BytesPerSample
-	}
+	return n, err
 }
 
 func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
@@ -219,7 +210,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		abs = vs.bytePosition + offset
 	case io.SeekEnd:
-		var totalLen int64 = int64(len(vs.AudioBytes))
+		var totalLen int64 = int64(vs.decoder.Length())
 		abs = totalLen + offset
 
 	default:
@@ -232,18 +223,61 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 
 	vs.bytePosition = abs
 
-	return abs, nil
+	return vs.resampled.Seek(offset, whence)
+}
+
+func (vs *VaryingSpeedStream) Speed() float64{
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
+
+	return vs.speed
+}
+
+func (vs *VaryingSpeedStream) SetSpeed(speed float64) {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
+
+	vs.speed = speed
+	vs.resampled = audio.Resample(vs.decoder, vs.decoder.Length(), SampleRate, int(f64(SampleRate) / vs.speed))
+}
+
+func (vs *VaryingSpeedStream) BytePosition() int64 {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
+	return vs.bytePosition
+}
+
+func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
+	return vs.decoder.Length()
 }
 
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
-	return ByteLengthToTimeDuration(int64(len(vs.AudioBytes)), SampleRate)
+	return ByteLengthToTimeDuration(vs.decoder.Length(), SampleRate)
 }
 
-func (vs *VaryingSpeedStream) ChangeAudio(audioBytes []byte) {
+func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error{
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	vs.bytePosition = 0
-	vs.AudioBytes = audioBytes
+
+	var decoder AudioDecoder
+	var err error
+
+	if strings.HasSuffix(strings.ToLower(fileType), "mp3") {
+		bReader := bytes.NewReader(rawFile)
+		if decoder, err = mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+			return err
+		}
+	} else {
+		bReader := bytes.NewReader(rawFile)
+		if decoder, err = vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+			return err
+		}
+	}
+
+	vs.decoder = decoder
+	vs.resampled = audio.Resample(vs.decoder, vs.decoder.Length(), SampleRate, int(f64(SampleRate) / vs.speed))
+
+	return nil
 }
 
 // This is directly copied from ebiten's Time stream struct
@@ -266,218 +300,3 @@ func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 	return t * time.Second / time.Duration(sampleRate)
 }
 
-func LoadAudio(path string) ([]byte, error) {
-	{
-		timer := MakeProfTimer("LoadAudio")
-		defer timer.Report()
-	}
-
-	const alwaysDecodeSingleThreaded bool = false
-	const checkIfDecodingWithGoroutinesIsCorrect bool = false
-
-	const jobCount = 16
-
-	var fileBytes []byte
-	{
-		var err error
-		if fileBytes, err = os.ReadFile(path); err != nil {
-			return nil, err
-		}
-	}
-
-	type audioStream interface {
-		io.ReadSeeker
-		Length() int64
-	}
-
-	var streams []audioStream
-
-	if strings.HasSuffix(strings.ToLower(path), ".mp3") {
-		for range jobCount {
-			bReader := bytes.NewReader(fileBytes)
-			if stream, err := mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
-				return nil, err
-			} else {
-				streams = append(streams, stream)
-			}
-		}
-	} else {
-		for range jobCount {
-			bReader := bytes.NewReader(fileBytes)
-			if stream, err := vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
-				return nil, err
-			} else {
-				streams = append(streams, stream)
-			}
-		}
-	}
-
-	// init audio bytes
-	var totalLen int64
-
-	{
-		totalLen = streams[0].Length()
-
-		// audio file's total length is not available
-		// we have to just read it until we encounter EOF
-		if totalLen <= 0 || alwaysDecodeSingleThreaded {
-			FnfLogger.Println("loading audio using single thread")
-
-			audioBytes, err := io.ReadAll(streams[0])
-			if err != nil {
-				return nil, err
-			}
-
-			return audioBytes, nil
-		}
-
-		FnfLogger.Println("loading audio using go routines")
-	}
-
-	// divide and ceil
-	partLen := (totalLen + jobCount - 1) / jobCount
-
-	// closest multiple to bytes per sample (larger one)
-	partLen = (partLen/BytesPerSample)*BytesPerSample + BytesPerSample
-
-	var wg sync.WaitGroup
-
-	decodeErrors := make([]error, jobCount)
-	decodedBytes := make([][]byte, jobCount)
-
-	for i := range jobCount {
-		decodedBytes[i] = make([]byte, 0, partLen)
-	}
-
-	for i := range int64(jobCount) {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			isLastPart := i == jobCount-1
-
-			var partStart, partEnd int64
-
-			partStart = i * partLen
-
-			if isLastPart {
-				partEnd = totalLen
-			} else {
-				partEnd = (i + 1) * partLen
-			}
-
-			// first seek to where we want to read
-			{
-				var err error
-				var offset int64
-
-				offset, err = streams[i].Seek(partStart, io.SeekStart)
-				if err != nil {
-					decodeErrors[i] = err
-					return
-				}
-				if offset != partStart {
-					decodeErrors[i] = fmt.Errorf("seek failed : expected: \"%v\" got: \"%v\"",
-						partStart, offset)
-					return
-				}
-			}
-
-			// we read the desired amount
-			amoutToRead := partEnd - partStart
-
-			for {
-				buf := decodedBytes[i]
-
-				var err error
-				var read int
-
-				read, err = streams[i].Read(buf[len(buf):amoutToRead])
-				buf = buf[:len(buf)+read]
-
-				// some error occured
-				if err != nil && !(err == io.EOF && isLastPart) {
-					decodeErrors[i] = err
-					return
-				}
-
-				// if we read 0 bytes, we stop just to be safe
-				if read <= 0 {
-					decodeErrors[i] = fmt.Errorf("read 0 bytes while decoding")
-					return
-				}
-
-				// check if we stopped becaun of EOF before reading required amount
-				if err == io.EOF && int64(len(buf)) < amoutToRead {
-					decodeErrors[i] = fmt.Errorf("supposed to read \"%v\" but only read \"%v\" because EOF",
-						amoutToRead, len(buf))
-					return
-				}
-
-				decodedBytes[i] = buf
-				if int64(len(decodedBytes[i])) >= amoutToRead {
-					break
-				}
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	for _, err := range decodeErrors {
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var audioBytes []byte
-
-	for _, bs := range decodedBytes {
-		audioBytes = append(audioBytes, bs...)
-	}
-
-	if int64(len(audioBytes)) != totalLen {
-		return nil, fmt.Errorf("audio file size is different : expected: \"%v\", got: \"%v\"",
-			totalLen, len(audioBytes))
-	}
-
-	// debug check to see if it matches reading it single threaded
-	if checkIfDecodingWithGoroutinesIsCorrect {
-		var stream audioStream
-		var err error
-
-		if strings.HasSuffix(strings.ToLower(path), ".mp3") {
-			bReader := bytes.NewReader(fileBytes)
-			if stream, err = mp3.DecodeWithSampleRate(SampleRate, bReader); err != nil {
-				return nil, err
-			}
-		} else {
-			bReader := bytes.NewReader(fileBytes)
-			if stream, err = vorbis.DecodeWithSampleRate(SampleRate, bReader); err != nil {
-				return nil, err
-			}
-		}
-
-		var toCompare []byte
-
-		toCompare, err = io.ReadAll(stream)
-		if err != nil {
-			return nil, err
-		}
-
-		// check length
-		if len(toCompare) != len(audioBytes) {
-			return nil, fmt.Errorf("audio decoded with multiple goroutines have different length: expected: \"%v\" got: \"%v\"",
-				len(toCompare), len(audioBytes))
-		}
-
-		for i := range len(toCompare) {
-			if toCompare[i] != audioBytes[i] {
-				return nil, fmt.Errorf("audio decoded with multiple goroutines has different value")
-			}
-		}
-	}
-
-	return audioBytes, nil
-}

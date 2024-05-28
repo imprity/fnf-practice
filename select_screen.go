@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"path/filepath"
 
 	"github.com/sqweek/dialog"
 
@@ -209,14 +210,14 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 				var songs [DifficultySize]FnfSong
 
-				instBytes, err = LoadAudio(group.InstPath)
+				instBytes, err = os.ReadFile(group.InstPath)
 				if err != nil {
 					ErrorLogger.Println(err)
 					goto SONG_ERROR
 				}
 
 				if group.VoicePath != "" {
-					voiceBytes, err = LoadAudio(group.VoicePath)
+					voiceBytes, err = os.ReadFile(group.VoicePath)
 					if err != nil {
 						ErrorLogger.Println(err)
 						goto SONG_ERROR
@@ -243,7 +244,16 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 					}
 				}
 
-				TheGameScreen.LoadSongs(songs, group.HasSong, difficulty, instBytes, voiceBytes)
+				err = TheGameScreen.LoadSongs(songs, group.HasSong, difficulty,
+					instBytes, voiceBytes,
+					filepath.Ext(group.InstPath), filepath.Ext(group.VoicePath),
+				)
+
+				if err != nil{
+					ErrorLogger.Println(err)
+					goto SONG_ERROR
+				}
+
 				SetNextScreen(TheGameScreen)
 
 				goto TRANSITION_END
