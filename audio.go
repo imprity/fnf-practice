@@ -173,14 +173,17 @@ func (vp *VaryingSpeedPlayer) AudioBytesSize() int64 {
 type VaryingSpeedStream struct {
 	io.ReadSeeker
 
-	bgDecoder *BackgourndDecoder
-
-	buffer []byte
-
 	speed float64
 
+	length int64
+
+	buffer       []byte
 	bytePosition int64
-	mu           sync.Mutex
+
+	decoderQueue    chan byte
+	usingBgDecoding bool
+
+	mu sync.Mutex
 }
 
 func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream, error) {
@@ -199,8 +202,11 @@ func (vs *VaryingSpeedStream) readSrc(at int) byte {
 		return vs.buffer[at]
 	}
 
-	for at >= len(vs.buffer) {
-		vs.buffer = append(vs.buffer, vs.bgDecoder.Read())
+	if vs.usingBgDecoding {
+		for at >= len(vs.buffer) {
+			b := <-vs.decoderQueue
+			vs.buffer = append(vs.buffer, b)
+		}
 	}
 
 	return vs.buffer[at]
@@ -216,7 +222,7 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	floatPosition := float64(vs.bytePosition)
 
 	for {
-		if vs.bytePosition+BytesPerSample >= int64(vs.bgDecoder.Length()) {
+		if vs.bytePosition+BytesPerSample >= int64(vs.length) {
 			return len(p), io.EOF
 		}
 
@@ -250,7 +256,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		abs = vs.bytePosition + offset
 	case io.SeekEnd:
-		var totalLen int64 = int64(vs.bgDecoder.Length())
+		var totalLen int64 = int64(vs.length)
 		abs = totalLen + offset
 
 	default:
@@ -290,18 +296,56 @@ func (vs *VaryingSpeedStream) BytePosition() int64 {
 func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return vs.bgDecoder.Length()
+	return vs.length
 }
 
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return ByteLengthToTimeDuration(vs.bgDecoder.Length(), SampleRate)
+	return ByteLengthToTimeDuration(vs.length, SampleRate)
 }
 
 func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
+
+	startBgDecoding := func(decoder AudioDecoder) chan byte {
+		length := decoder.Length()
+		queue := make(chan byte, length)
+
+		go func() {
+			buffer := make([]byte, 0, BytesPerSample*16)
+			sent := int64(0)
+
+			for {
+				buff := buffer[:cap(buffer)]
+
+				n, err := decoder.Read(buff)
+
+				sent += int64(n)
+
+				buff = buff[:n]
+
+				for _, b := range buff {
+					queue <- b
+				}
+
+				if err != nil {
+					break
+				}
+			}
+
+			// if error happens, we don't care.
+			// we will just fill the rest of the queue with zero
+			toSend := length - sent
+
+			for i := int64(0); i < toSend; i++ {
+				queue <- 0
+			}
+		}()
+
+		return queue
+	}
 
 	var decoder AudioDecoder
 	var err error
@@ -318,12 +362,28 @@ func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error
 		}
 	}
 
-	// TODO : there are times when getting known audio size is impossble
-	// handle that
-	vs.buffer = make([]byte, 0, decoder.Length())
+	vs.length = decoder.Length()
 
-	//vs.decoder = decoder
-	vs.bgDecoder = NewBackgroundDeocder(decoder)
+	if vs.length > 0 {
+		vs.usingBgDecoding = true
+
+		vs.buffer = make([]byte, 0, vs.length)
+		vs.decoderQueue = startBgDecoding(decoder)
+	} else { // when getting the known length is impossible
+		vs.usingBgDecoding = false
+		vs.buffer = nil
+		vs.decoderQueue = nil
+
+		var buffer []byte
+
+		buffer, err = io.ReadAll(decoder)
+		if err != nil {
+			return err
+		}
+
+		vs.buffer = buffer
+		vs.length = int64(len(vs.buffer))
+	}
 
 	return nil
 }
@@ -346,48 +406,4 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 	t := time.Duration(byteLength) / BytesPerSample
 	return t * time.Second / time.Duration(sampleRate)
-}
-
-type BackgourndDecoder struct {
-	length    int64
-	byteQueue chan byte
-}
-
-func NewBackgroundDeocder(decoder AudioDecoder) *BackgourndDecoder {
-	bg := BackgourndDecoder{}
-
-	// TODO : handle -1 length
-	bg.length = decoder.Length()
-
-	bg.byteQueue = make(chan byte, decoder.Length())
-
-	go func() {
-		buffer := make([]byte, 0, BytesPerSample*16)
-
-		for {
-			buff := buffer[:cap(buffer)]
-
-			n, err := decoder.Read(buff)
-
-			buff = buff[:n]
-
-			for _, b := range buff {
-				bg.byteQueue <- b
-			}
-
-			if err != nil {
-				break
-			}
-		}
-	}()
-
-	return &bg
-}
-
-func (bg *BackgourndDecoder) Read() byte {
-	return <-bg.byteQueue
-}
-
-func (bg *BackgourndDecoder) Length() int64 {
-	return bg.length
 }
