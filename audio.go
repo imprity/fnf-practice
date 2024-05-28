@@ -58,11 +58,11 @@ func NewVaryingSpeedPlayer() *VaryingSpeedPlayer {
 	return new(VaryingSpeedPlayer)
 }
 
-func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error{
+func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 	if !vp.IsReady {
 		var err error
 		vp.Stream, err = NewVaryingSpeedStream(rawFile, fileType)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 
@@ -81,7 +81,7 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error{
 		vp.IsReady = true
 	} else {
 		vp.Player.Pause()
-		if err := vp.Stream.ChangeAudio(rawFile, fileType); err != nil{
+		if err := vp.Stream.ChangeAudio(rawFile, fileType); err != nil {
 			return err
 		}
 		vp.Player.Seek(0, io.SeekStart)
@@ -128,13 +128,13 @@ func (vp *VaryingSpeedPlayer) IsPlaying() bool {
 }
 
 func (vp *VaryingSpeedPlayer) Pause() {
-	if vp.Player.IsPlaying(){
+	if vp.Player.IsPlaying() {
 		vp.Player.Pause()
 	}
 }
 
 func (vp *VaryingSpeedPlayer) Play() {
-	if !vp.Player.IsPlaying(){
+	if !vp.Player.IsPlaying() {
 		vp.Player.Play()
 	}
 }
@@ -173,7 +173,7 @@ func (vp *VaryingSpeedPlayer) AudioBytesSize() int64 {
 type VaryingSpeedStream struct {
 	io.ReadSeeker
 
-	decoder AudioDecoder
+	bgDecoder *BackgourndDecoder
 
 	buffer []byte
 
@@ -183,26 +183,24 @@ type VaryingSpeedStream struct {
 	mu           sync.Mutex
 }
 
-func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream, error){
+func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream, error) {
 	vs := new(VaryingSpeedStream)
 	vs.speed = 1.0
 
-	if err := vs.ChangeAudio(rawFile, fileType); err != nil{
+	if err := vs.ChangeAudio(rawFile, fileType); err != nil {
 		return nil, err
 	}
 
 	return vs, nil
 }
 
-func (vs *VaryingSpeedStream) readSrc(at int) byte{
-	if at < len(vs.buffer){
+func (vs *VaryingSpeedStream) readSrc(at int) byte {
+	if at < len(vs.buffer) {
 		return vs.buffer[at]
 	}
 
-	for at >= len(vs.buffer){
-		buff := vs.buffer[len(vs.buffer):min(cap(vs.buffer), len(vs.buffer) + BytesPerSample)]
-		n, _ := vs.decoder.Read(buff)
-		vs.buffer = vs.buffer[:len(vs.buffer) + n]
+	for at >= len(vs.buffer) {
+		vs.buffer = append(vs.buffer, vs.bgDecoder.Read())
 	}
 
 	return vs.buffer[at]
@@ -218,7 +216,7 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	floatPosition := float64(vs.bytePosition)
 
 	for {
-		if vs.bytePosition+BytesPerSample >= int64(vs.decoder.Length()) {
+		if vs.bytePosition+BytesPerSample >= int64(vs.bgDecoder.Length()) {
 			return len(p), io.EOF
 		}
 
@@ -252,7 +250,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		abs = vs.bytePosition + offset
 	case io.SeekEnd:
-		var totalLen int64 = int64(vs.decoder.Length())
+		var totalLen int64 = int64(vs.bgDecoder.Length())
 		abs = totalLen + offset
 
 	default:
@@ -268,7 +266,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	return vs.bytePosition, nil
 }
 
-func (vs *VaryingSpeedStream) Speed() float64{
+func (vs *VaryingSpeedStream) Speed() float64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
@@ -292,16 +290,16 @@ func (vs *VaryingSpeedStream) BytePosition() int64 {
 func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return vs.decoder.Length()
+	return vs.bgDecoder.Length()
 }
 
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return ByteLengthToTimeDuration(vs.decoder.Length(), SampleRate)
+	return ByteLengthToTimeDuration(vs.bgDecoder.Length(), SampleRate)
 }
 
-func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error{
+func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 
@@ -324,7 +322,8 @@ func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error
 	// handle that
 	vs.buffer = make([]byte, 0, decoder.Length())
 
-	vs.decoder = decoder
+	//vs.decoder = decoder
+	vs.bgDecoder = NewBackgroundDeocder(decoder)
 
 	return nil
 }
@@ -349,3 +348,46 @@ func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 	return t * time.Second / time.Duration(sampleRate)
 }
 
+type BackgourndDecoder struct {
+	length    int64
+	byteQueue chan byte
+}
+
+func NewBackgroundDeocder(decoder AudioDecoder) *BackgourndDecoder {
+	bg := BackgourndDecoder{}
+
+	// TODO : handle -1 length
+	bg.length = decoder.Length()
+
+	bg.byteQueue = make(chan byte, decoder.Length())
+
+	go func() {
+		buffer := make([]byte, 0, BytesPerSample*16)
+
+		for {
+			buff := buffer[:cap(buffer)]
+
+			n, err := decoder.Read(buff)
+
+			buff = buff[:n]
+
+			for _, b := range buff {
+				bg.byteQueue <- b
+			}
+
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	return &bg
+}
+
+func (bg *BackgourndDecoder) Read() byte {
+	return <-bg.byteQueue
+}
+
+func (bg *BackgourndDecoder) Length() int64 {
+	return bg.length
+}

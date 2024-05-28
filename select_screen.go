@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 	"path/filepath"
+	"time"
 
 	"github.com/sqweek/dialog"
 
@@ -249,7 +249,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 					filepath.Ext(group.InstPath), filepath.Ext(group.VoicePath),
 				)
 
-				if err != nil{
+				if err != nil {
 					ErrorLogger.Println(err)
 					goto SONG_ERROR
 				}

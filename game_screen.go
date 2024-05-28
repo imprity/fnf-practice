@@ -256,7 +256,7 @@ func (gs *GameScreen) LoadSongs(
 	startingDifficulty FnfDifficulty,
 	instBytes, voiceBytes []byte,
 	instType, voiceType string,
-) error{
+) error {
 	gs.IsSongLoaded = true
 
 	gs.HasSong = hasSong
@@ -280,11 +280,11 @@ func (gs *GameScreen) LoadSongs(
 		gs.VoicePlayer.Pause()
 	}
 
-	if err := gs.InstPlayer.LoadAudio(instBytes, instType); err != nil{
+	if err := gs.InstPlayer.LoadAudio(instBytes, instType); err != nil {
 		return err
 	}
 	if gs.Song.NeedsVoices {
-		if err := gs.VoicePlayer.LoadAudio(voiceBytes, voiceType); err != nil{
+		if err := gs.VoicePlayer.LoadAudio(voiceBytes, voiceType); err != nil {
 			return err
 		}
 	}
