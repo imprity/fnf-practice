@@ -151,9 +151,8 @@ func main() {
 	// variables for estimating fps and ups
 	estimateTimer := time.Now()
 	fpsEstimate := float64(0)
-	upsEstimate := float64(0)
 	fpsEstimateCounter := 0
-	upsEstimateCounter := 0
+	fpsEstimateValueStr := "?"
 
 	for !rl.WindowShouldClose() {
 		currentTime := time.Now()
@@ -218,8 +217,6 @@ func main() {
 				screen.Update(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 			}
 
-			upsEstimateCounter += 1
-
 			// ========================
 			// draw routine
 			// ========================
@@ -265,6 +262,23 @@ func main() {
 
 			rl.SwapScreenBuffer()
 
+			ClearDebugMsgs()
+
+			{
+				now := time.Now()
+				delta := now.Sub(estimateTimer)
+				if delta > time.Second {
+					fpsEstimate = float64(fpsEstimateCounter) / delta.Seconds()
+					fpsEstimateCounter = 0
+					estimateTimer = now
+					fpsEstimateValueStr = fmt.Sprintf("%.3f", fpsEstimate)
+
+					rl.SetWindowTitle(fmt.Sprintf("fnf-practice FPS : %.3f", fpsEstimate))
+				}
+
+				DebugPrint("estimate fps", fpsEstimateValueStr)
+			}
+
 			timeAccumulator -= time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1))
 
 			if timeAccumulator < 0 {
@@ -272,22 +286,6 @@ func main() {
 			}
 		}
 
-		ClearDebugMsgs()
-
-		{
-			now := time.Now()
-			delta := now.Sub(estimateTimer)
-			if delta > time.Second {
-				fpsEstimate = float64(fpsEstimateCounter) / delta.Seconds()
-				upsEstimate = float64(upsEstimateCounter) / delta.Seconds()
-				fpsEstimateCounter = 0
-				upsEstimateCounter = 0
-				estimateTimer = now
-			}
-
-			DebugPrint("estimate fps", fmt.Sprintf("%.3f", fpsEstimate))
-			DebugPrint("estimate ups", fmt.Sprintf("%.3f", upsEstimate))
-		}
 	}
 }
 
