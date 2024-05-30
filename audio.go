@@ -72,17 +72,38 @@ type VaryingSpeedPlayer struct {
 	Stream  *VaryingSpeedStream
 	Player  *oto.Player
 
+	padStart time.Duration
+	padEnd   time.Duration
+
 	isPlaying bool
 }
 
-func NewVaryingSpeedPlayer() *VaryingSpeedPlayer {
-	return new(VaryingSpeedPlayer)
+func NewVaryingSpeedPlayer(padStart, padEnd time.Duration) *VaryingSpeedPlayer {
+	vp := new(VaryingSpeedPlayer)
+	vp.padStart = padStart
+	vp.padEnd = padEnd
+
+	return vp
 }
 
 func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 	if !vp.IsReady {
+		// NOTE : this isn't a seperate function because I have a strong feeling that
+		// this is not an exact inverse to ByteLengthToTimeDuration
+		// nor it needs to be
+		timeToBytes := func(t time.Duration) int64 {
+			var b int64
+			b = int64(t) * SampleRate / int64(time.Second) * BytesPerSample
+			b = (b / BytesPerSample) * BytesPerSample
+			b += BytesPerSample
+			return b
+		}
+
+		padStartBytes := timeToBytes(vp.padStart)
+		padEndBytes := timeToBytes(vp.padEnd)
+
 		var err error
-		vp.Stream, err = NewVaryingSpeedStream(rawFile, fileType)
+		vp.Stream, err = NewVaryingSpeedStream(rawFile, fileType, padStartBytes, padEndBytes)
 		if err != nil {
 			return err
 		}
@@ -188,16 +209,15 @@ func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
 	return vp.Stream.AudioDuration()
 }
 
-func (vp *VaryingSpeedPlayer) AudioBytesSize() int64 {
-	return vp.Stream.AudioBytesSize()
-}
-
 type VaryingSpeedStream struct {
 	io.ReadSeeker
 
 	speed float64
 
 	length int64
+
+	padStart int64
+	padEnd   int64
 
 	buffer       []byte
 	bytePosition int64
@@ -208,9 +228,20 @@ type VaryingSpeedStream struct {
 	mu sync.Mutex
 }
 
-func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream, error) {
+func NewVaryingSpeedStream(rawFile []byte, fileType string, padStart, padEnd int64) (*VaryingSpeedStream, error) {
 	vs := new(VaryingSpeedStream)
 	vs.speed = 1.0
+
+	if padStart%BytesPerSample != 0 {
+		ErrorLogger.Fatal("padStart is not divisible by BytesPerSample")
+	}
+
+	if padEnd%BytesPerSample != 0 {
+		ErrorLogger.Fatal("padEnd is not divisible by BytesPerSample")
+	}
+
+	vs.padStart = padStart
+	vs.padEnd = padEnd
 
 	if err := vs.ChangeAudio(rawFile, fileType); err != nil {
 		return nil, err
@@ -219,13 +250,23 @@ func NewVaryingSpeedStream(rawFile []byte, fileType string) (*VaryingSpeedStream
 	return vs, nil
 }
 
-func (vs *VaryingSpeedStream) readSrc(at int) byte {
-	if at < len(vs.buffer) {
+func (vs *VaryingSpeedStream) readSrc(at int64) byte {
+	if at < vs.padStart {
+		return 0
+	}
+
+	if at >= vs.padStart+vs.length {
+		return 0
+	}
+
+	at -= vs.padStart
+
+	if at < int64(len(vs.buffer)) {
 		return vs.buffer[at]
 	}
 
 	if vs.usingBgDecoding {
-		for at >= len(vs.buffer) {
+		for at >= int64(len(vs.buffer)) {
 			b := <-vs.decoderQueue
 			vs.buffer = append(vs.buffer, b)
 		}
@@ -244,18 +285,18 @@ func (vs *VaryingSpeedStream) Read(p []byte) (int, error) {
 	floatPosition := float64(vs.bytePosition)
 
 	for {
-		if vs.bytePosition+BytesPerSample >= int64(vs.length) {
-			return len(p), io.EOF
+		if vs.bytePosition+BytesPerSample >= vs.audioBytesSize() {
+			return wCursor, io.EOF
 		}
 
 		if wCursor+BytesPerSample >= wCursorLimit {
 			return wCursor, nil
 		}
 
-		p[wCursor+0] = vs.readSrc(int(vs.bytePosition) + 0)
-		p[wCursor+1] = vs.readSrc(int(vs.bytePosition) + 1)
-		p[wCursor+2] = vs.readSrc(int(vs.bytePosition) + 2)
-		p[wCursor+3] = vs.readSrc(int(vs.bytePosition) + 3)
+		p[wCursor+0] = vs.readSrc(vs.bytePosition + 0)
+		p[wCursor+1] = vs.readSrc(vs.bytePosition + 1)
+		p[wCursor+2] = vs.readSrc(vs.bytePosition + 2)
+		p[wCursor+3] = vs.readSrc(vs.bytePosition + 3)
 
 		wCursor += BytesPerSample
 
@@ -278,7 +319,7 @@ func (vs *VaryingSpeedStream) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		abs = vs.bytePosition + offset
 	case io.SeekEnd:
-		var totalLen int64 = int64(vs.length)
+		var totalLen int64 = vs.audioBytesSize()
 		abs = totalLen + offset
 
 	default:
@@ -315,16 +356,21 @@ func (vs *VaryingSpeedStream) BytePosition() int64 {
 	return vs.bytePosition
 }
 
+func (vs *VaryingSpeedStream) audioBytesSize() int64 {
+	total := vs.padStart + vs.length + vs.padEnd
+	return total
+}
+
 func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return vs.length
+	return vs.audioBytesSize()
 }
 
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return ByteLengthToTimeDuration(vs.length, SampleRate)
+	return ByteLengthToTimeDuration(vs.audioBytesSize(), SampleRate)
 }
 
 func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error {

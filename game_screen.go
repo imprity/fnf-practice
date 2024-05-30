@@ -85,6 +85,12 @@ type GameScreen struct {
 	Song         FnfSong
 	IsSongLoaded bool
 
+	// constant for padding at the begin and end of the audio
+	// some songs and game logic depends on song to have a padding
+	// at the end so we will put them in
+	PadStart time.Duration
+	PadEnd   time.Duration
+
 	InstPlayer  *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
 
@@ -177,8 +183,11 @@ func NewGameScreen() *GameScreen {
 
 	gs.HitWindow = time.Millisecond * 135 * 2
 
-	gs.InstPlayer = NewVaryingSpeedPlayer()
-	gs.VoicePlayer = NewVaryingSpeedPlayer()
+	gs.PadStart = time.Millisecond * 500 // 0.5 seconds
+	gs.PadEnd = time.Millisecond * 100   // 0.1 seconds
+
+	gs.InstPlayer = NewVaryingSpeedPlayer(gs.PadStart, gs.PadEnd)
+	gs.VoicePlayer = NewVaryingSpeedPlayer(gs.PadStart, gs.PadEnd)
 
 	gs.PixelsPerMillis = 0.5
 
@@ -268,9 +277,14 @@ func (gs *GameScreen) LoadSongs(
 		}
 	}
 
-	startingSong := songs[startingDifficulty].Copy()
+	// insert start padding
+	for i := FnfDifficulty(0); i < DifficultySize; i++ {
+		for j := 0; j < len(gs.Songs[i].Notes); j++ {
+			gs.Songs[i].Notes[j].StartsAt += gs.PadStart
+		}
+	}
 
-	gs.Song = startingSong.Copy()
+	gs.Song = gs.Songs[startingDifficulty].Copy()
 
 	if gs.InstPlayer.IsReady {
 		gs.InstPlayer.Pause()
