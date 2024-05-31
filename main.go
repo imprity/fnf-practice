@@ -190,11 +190,11 @@ func main() {
 			// ========================
 			rl.PollInputEvents()
 
-			if rl.IsKeyPressed(ToggleDebugKey) {
+			if rl.IsKeyPressed(TheKM.ToggleDebugKey) {
 				printDebugMsg = !printDebugMsg
 			}
 
-			if rl.IsKeyPressed(ReloadAssetsKey) {
+			if rl.IsKeyPressed(TheKM.ReloadAssetsKey) {
 				ReloadAssets()
 			}
 

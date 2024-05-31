@@ -35,6 +35,7 @@ func MouseV() rl.Vector2 {
 // key map
 // ========================================
 
+/*
 var (
 	NoteKeysLeft  = []int32{rl.KeyA, rl.KeyLeft}
 	NoteKeysDown  = []int32{rl.KeyS, rl.KeyDown}
@@ -78,6 +79,7 @@ var (
 	ZoomOutKey int32 = rl.KeyLeftBracket
 	ZoomInKey  int32 = rl.KeyRightBracket
 )
+*/
 
 // ========================================
 // end of key map

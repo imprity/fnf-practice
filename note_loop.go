@@ -390,7 +390,7 @@ func GetKeyPressState(
 		notes, noteIndexStart, isPlayingAudio, prevAudioPos, audioPos, isBotPlay, hitWindow)
 
 	if !isBotPlay {
-		for dir, keys := range NoteKeys {
+		for dir, keys := range NoteKeysArr() {
 			if AreKeysDown(inputId, keys...) {
 				keyPressState[0][dir] = true
 			}

@@ -91,7 +91,7 @@ func NewOptionsScreen() *OptionsScreen {
 func (op *OptionsScreen) Update(deltaTime time.Duration) {
 	op.Menu.Update(deltaTime)
 
-	if AreKeysPressed(op.InputId, EscapeKey) {
+	if AreKeysPressed(op.InputId, TheKM.EscapeKey) {
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
 		err := SaveSettings()

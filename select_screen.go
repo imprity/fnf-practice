@@ -445,11 +445,11 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 	if !ss.DrawDeleteMenu {
 		ss.Menu.Update(deltaTime)
 
-		if AreKeysPressed(ss.InputId, NoteKeysLeft...) {
+		if AreKeysPressed(ss.InputId, NoteKeys(NoteDirLeft)...) {
 			ss.PreferredDifficulty -= 1
 		}
 
-		if AreKeysPressed(ss.InputId, NoteKeysRight...) {
+		if AreKeysPressed(ss.InputId, NoteKeys(NoteDirRight)...) {
 			ss.PreferredDifficulty += 1
 		}
 
@@ -482,7 +482,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 	} else {
 		ss.DeleteMenu.Update(deltaTime)
 
-		if AreKeysPressed(ss.DeleteMenu.InputId, EscapeKey) {
+		if AreKeysPressed(ss.DeleteMenu.InputId, TheKM.EscapeKey) {
 			ss.HideDeleteMenu(false)
 		}
 	}

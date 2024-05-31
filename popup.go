@@ -119,25 +119,25 @@ func UpdatePopup(deltaTime time.Duration) {
 	}
 
 	if len(current.Options) > 0 {
-		if AreKeysPressed(pdm.InputId, NoteKeysLeft...) {
+		if AreKeysPressed(pdm.InputId, NoteKeys(NoteDirLeft)...) {
 			pdm.SelectedOption -= 1
 			pdm.SelectAnimT = 0
 		}
 
-		if AreKeysPressed(pdm.InputId, NoteKeysRight...) {
+		if AreKeysPressed(pdm.InputId, NoteKeys(NoteDirRight)...) {
 			pdm.SelectedOption += 1
 			pdm.SelectAnimT = 0
 		}
 
 		pdm.SelectedOption = Clamp(pdm.SelectedOption, 0, len(current.Options)-1)
 
-		if AreKeysPressed(pdm.InputId, SelectKey) {
+		if AreKeysPressed(pdm.InputId, TheKM.SelectKey) {
 			if current.Callback != nil {
 				current.Callback(current.Options[pdm.SelectedOption], false)
 			}
 
 			afterResolve()
-		} else if AreKeysPressed(pdm.InputId, EscapeKey) {
+		} else if AreKeysPressed(pdm.InputId, TheKM.EscapeKey) {
 			if current.Callback != nil {
 				current.Callback("", true)
 			}
@@ -145,7 +145,7 @@ func UpdatePopup(deltaTime time.Duration) {
 			afterResolve()
 		}
 	} else {
-		if AreKeysPressed(pdm.InputId, SelectKey, EscapeKey) {
+		if AreKeysPressed(pdm.InputId, TheKM.SelectKey, TheKM.EscapeKey) {
 			if current.Callback != nil {
 				current.Callback("", true)
 			}

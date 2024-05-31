@@ -264,12 +264,12 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			}
 		}
 
-		if AreKeysDown(md.InputId, NoteKeysUp...) {
+		if AreKeysDown(md.InputId, NoteKeys(NoteDirUp)...) {
 			tryingToMove = true
 			tryingToMoveUp = true
 		}
 
-		if AreKeysDown(md.InputId, NoteKeysDown...) {
+		if AreKeysDown(md.InputId, NoteKeys(NoteDirDown)...) {
 			tryingToMove = true
 			tryingToMoveUp = false
 		}
@@ -278,13 +278,13 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		const scrollFirstRate = time.Millisecond * 200
 		const scrollRepeatRate = time.Millisecond * 110
 
-		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeysUp...) {
+		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeys(NoteDirUp)...) {
 			if !noSelectable {
 				scrollUntilSelectable(false)
 			}
 		}
 
-		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeysDown...) {
+		if HandleKeyRepeat(md.InputId, scrollFirstRate, scrollRepeatRate, NoteKeys(NoteDirDown)...) {
 			if !noSelectable {
 				scrollUntilSelectable(true)
 			}
@@ -293,7 +293,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		if !noSelectable {
 			selected := md.items[md.SelectedIndex]
 
-			if AreKeysPressed(md.InputId, SelectKey) {
+			if AreKeysPressed(md.InputId, TheKM.SelectKey) {
 				switch selected.Type {
 				case MenuItemTrigger:
 					selected.BValue = true
@@ -323,11 +323,11 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 					canGoRight = !selected.ToggleStyleCheckBox
 				}
 
-				if AreKeysDown(md.InputId, NoteKeysLeft...) && canGoLeft {
+				if AreKeysDown(md.InputId, NoteKeys(NoteDirLeft)...) && canGoLeft {
 					selected.LeftArrowClickTimer = GlobalTimerNow()
 				}
 
-				if AreKeysDown(md.InputId, NoteKeysRight...) && canGoRight {
+				if AreKeysDown(md.InputId, NoteKeys(NoteDirRight)...) && canGoRight {
 					selected.RightArrowClickTimer = GlobalTimerNow()
 				}
 
@@ -337,8 +337,8 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				const firstRate = time.Millisecond * 200
 				const repeateRate = time.Millisecond * 110
 
-				goLeft = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysLeft...) && canGoLeft
-				goRight = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeysRight...) && canGoRight
+				goLeft = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirLeft)...) && canGoLeft
+				goRight = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirRight)...) && canGoRight
 
 				switch selected.Type {
 				case MenuItemToggle:
