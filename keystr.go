@@ -1,10 +1,11 @@
 package main
 
 import (
+	"slices"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var keyNameMap = map[int32]string{
+var KeyNameMap = map[int32]string{
 	rl.KeySpace:        "Space",
 	rl.KeyEscape:       "Escape",
 	rl.KeyEnter:        "Enter",
@@ -117,11 +118,25 @@ var keyNameMap = map[int32]string{
 }
 
 func GetKeyName(key int32) string {
-	keyName, ok := keyNameMap[key]
+	keyName, ok := KeyNameMap[key]
 
 	if !ok {
 		return "?"
 	}
 
 	return keyName
+}
+
+var keyList []int32
+
+func init(){
+	for k, _ := range KeyNameMap{
+		keyList = append(keyList, k)
+	}
+
+	slices.Sort(keyList)
+}
+
+func ListOfKeys() []int32{
+	return keyList
 }
