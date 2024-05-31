@@ -286,11 +286,11 @@ func (gs *GameScreen) LoadSongs(
 
 	gs.Song = gs.Songs[startingDifficulty].Copy()
 
-	if gs.InstPlayer.IsReady {
+	if gs.InstPlayer.IsReady() {
 		gs.InstPlayer.Pause()
 	}
 
-	if gs.VoicePlayer.IsReady {
+	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.Pause()
 	}
 
@@ -329,7 +329,7 @@ func (gs *GameScreen) PlayAudio() {
 	}
 
 	gs.InstPlayer.Play()
-	if gs.VoicePlayer.IsReady && gs.Song.NeedsVoices {
+	if gs.VoicePlayer.IsReady() && gs.Song.NeedsVoices {
 		gs.VoicePlayer.Play()
 	}
 }
@@ -340,10 +340,10 @@ func (gs *GameScreen) PauseAudio() {
 		return
 	}
 
-	if gs.InstPlayer.IsReady {
+	if gs.InstPlayer.IsReady() {
 		gs.InstPlayer.Pause()
 	}
-	if gs.VoicePlayer.IsReady {
+	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.Pause()
 	}
 }
@@ -394,10 +394,10 @@ func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 	gs.audioPosition = at
 	gs.prevPlayerPosition = at
 
-	if gs.InstPlayer.IsReady {
+	if gs.InstPlayer.IsReady() {
 		gs.InstPlayer.SetPosition(at)
 	}
-	if gs.VoicePlayer.IsReady {
+	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.SetPosition(at)
 	}
 }
@@ -408,11 +408,11 @@ func (gs *GameScreen) AudioDuration() time.Duration {
 		return 0
 	}
 
-	if gs.InstPlayer.IsReady {
+	if gs.InstPlayer.IsReady() {
 		return gs.InstPlayer.AudioDuration()
 	}
 
-	if gs.VoicePlayer.IsReady {
+	if gs.VoicePlayer.IsReady() {
 		return gs.VoicePlayer.AudioDuration()
 	}
 
@@ -435,10 +435,10 @@ func (gs *GameScreen) SetAudioSpeed(speed float64) {
 		return
 	}
 
-	if gs.InstPlayer.IsReady {
+	if gs.InstPlayer.IsReady() {
 		gs.InstPlayer.SetSpeed(speed)
 	}
-	if gs.VoicePlayer.IsReady {
+	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.SetSpeed(speed)
 	}
 
@@ -876,6 +876,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.isKeyPressed,
 		prevAudioPos,
 		audioPos,
+		gs.AudioDuration(),
 		gs.IsPlayingAudio(),
 		gs.HitWindow,
 		gs.botPlay,

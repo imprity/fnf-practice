@@ -68,9 +68,9 @@ func NewAudioDeocoder(rawFile []byte, fileType string) (AudioDecoder, error) {
 }
 
 type VaryingSpeedPlayer struct {
-	IsReady bool
-	Stream  *VaryingSpeedStream
-	Player  *oto.Player
+	isReady bool
+	stream  *VaryingSpeedStream
+	player  *oto.Player
 
 	padStart time.Duration
 	padEnd   time.Duration
@@ -86,8 +86,12 @@ func NewVaryingSpeedPlayer(padStart, padEnd time.Duration) *VaryingSpeedPlayer {
 	return vp
 }
 
+func (vp *VaryingSpeedPlayer) IsReady() bool {
+	return vp.isReady
+}
+
 func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
-	if !vp.IsReady {
+	if !vp.isReady {
 		// NOTE : this isn't a seperate function because I have a strong feeling that
 		// this is not an exact inverse to ByteLengthToTimeDuration
 		// nor it needs to be
@@ -103,12 +107,12 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 		padEndBytes := timeToBytes(vp.padEnd)
 
 		var err error
-		vp.Stream, err = NewVaryingSpeedStream(rawFile, fileType, padStartBytes, padEndBytes)
+		vp.stream, err = NewVaryingSpeedStream(rawFile, fileType, padStartBytes, padEndBytes)
 		if err != nil {
 			return err
 		}
 
-		player := TheContext.NewPlayer(vp.Stream)
+		player := TheContext.NewPlayer(vp.stream)
 
 		// we need the ability to change the playback speed in real time
 		// so we need to make the buffer size smaller
@@ -118,15 +122,15 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 		buffSizeBytes := int(buffSizeTime) * SampleRate / int(time.Second) * BytesPerSample
 		player.SetBufferSize(int(buffSizeBytes))
 
-		vp.Player = player
+		vp.player = player
 
-		vp.IsReady = true
+		vp.isReady = true
 	} else {
-		vp.Player.Pause()
-		if err := vp.Stream.ChangeAudio(rawFile, fileType); err != nil {
+		vp.player.Pause()
+		if err := vp.stream.ChangeAudio(rawFile, fileType); err != nil {
 			return err
 		}
-		vp.Player.Seek(0, io.SeekStart)
+		vp.player.Seek(0, io.SeekStart)
 	}
 
 	vp.isPlaying = false
@@ -145,8 +149,8 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 //	position will change
 
 func (vp *VaryingSpeedPlayer) Position() time.Duration {
-	streamPos := vp.Stream.BytePosition()
-	buffSize := vp.Player.BufferedSize()
+	streamPos := vp.stream.BytePosition()
+	buffSize := vp.player.BufferedSize()
 
 	pos := float64(streamPos) - float64(buffSize)*vp.Speed()
 
@@ -162,51 +166,51 @@ func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration) {
 		offset = 0
 	}
 
-	bytePos := vp.Stream.TimeDurationToPos(offset)
-	vp.Player.Seek(bytePos, io.SeekStart)
+	bytePos := vp.stream.TimeDurationToPos(offset)
+	vp.player.Seek(bytePos, io.SeekStart)
 }
 
 func (vp *VaryingSpeedPlayer) IsPlaying() bool {
-	return vp.Player.IsPlaying()
+	return vp.player.IsPlaying()
 }
 
 func (vp *VaryingSpeedPlayer) Pause() {
-	if vp.Player.IsPlaying() {
-		vp.Player.Pause()
+	if vp.player.IsPlaying() {
+		vp.player.Pause()
 	}
 }
 
 func (vp *VaryingSpeedPlayer) Play() {
-	if !vp.Player.IsPlaying() {
-		vp.Player.Play()
+	if !vp.player.IsPlaying() {
+		vp.player.Play()
 	}
 }
 
 func (vp *VaryingSpeedPlayer) Rewind() {
-	vp.Stream.Seek(0, io.SeekStart)
+	vp.stream.Seek(0, io.SeekStart)
 }
 
 func (vp *VaryingSpeedPlayer) SetVolume(volume float64) {
-	vp.Player.SetVolume(volume)
+	vp.player.SetVolume(volume)
 }
 
 func (vp *VaryingSpeedPlayer) Volume() float64 {
-	return vp.Player.Volume()
+	return vp.player.Volume()
 }
 
 func (vp *VaryingSpeedPlayer) Speed() float64 {
-	return vp.Stream.Speed()
+	return vp.stream.Speed()
 }
 
 func (vp *VaryingSpeedPlayer) SetSpeed(speed float64) {
 	if speed <= 0 {
 		panic("VaryingSpeedStream: speed should be bigger than 0")
 	}
-	vp.Stream.SetSpeed(speed)
+	vp.stream.SetSpeed(speed)
 }
 
 func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
-	return vp.Stream.AudioDuration()
+	return vp.stream.AudioDuration()
 }
 
 type VaryingSpeedStream struct {

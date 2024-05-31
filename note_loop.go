@@ -2,7 +2,6 @@ package main
 
 import (
 	"time"
-	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type PlayerState struct {
@@ -131,6 +130,7 @@ func UpdateNotesAndStates(
 	isKeyPressed [2][NoteDirSize]bool,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
+	audioDuration time.Duration,
 	isPlayingAudio bool,
 	hitWindow time.Duration,
 	botPlay bool,
@@ -140,28 +140,28 @@ func UpdateNotesAndStates(
 
 	var noteEvents []NoteEvent
 
-	var isKeyJustPressed [2][NoteDirSize]bool
-	var isKeyJustReleased [2][NoteDirSize]bool
-
-	for player := 0; player <= 1; player++ {
-		for dir := range NoteDirSize {
-			if !wasKeyPressed[player][dir] && isKeyPressed[player][dir] {
-				isKeyJustPressed[player][dir] = true
-			}
-
-			if wasKeyPressed[player][dir] && !isKeyPressed[player][dir] {
-				isKeyJustReleased[player][dir] = true
-			}
-		}
-	}
-
-	for player := 0; player <= 1; player++ {
-		pStates[player].IsKeyJustPressed = isKeyJustPressed[player]
-		pStates[player].IsKeyJustReleased = isKeyJustReleased[player]
-	}
+	avgPos := (audioPos + prevAudioPos) / 2
 
 	if isPlayingAudio {
-		avgPos := (audioPos + prevAudioPos) / 2
+		var isKeyJustPressed [2][NoteDirSize]bool
+		var isKeyJustReleased [2][NoteDirSize]bool
+
+		for player := 0; player <= 1; player++ {
+			for dir := range NoteDirSize {
+				if !wasKeyPressed[player][dir] && isKeyPressed[player][dir] {
+					isKeyJustPressed[player][dir] = true
+				}
+
+				if wasKeyPressed[player][dir] && !isKeyPressed[player][dir] {
+					isKeyJustReleased[player][dir] = true
+				}
+			}
+		}
+
+		for player := 0; player <= 1; player++ {
+			pStates[player].IsKeyJustPressed = isKeyJustPressed[player]
+			pStates[player].IsKeyJustReleased = isKeyJustReleased[player]
+		}
 
 		//clear note miss state
 		for player := 0; player <= 1; player++ {
@@ -338,6 +338,40 @@ func UpdateNotesAndStates(
 		noteIndexStart = newNoteIndexStart
 	}
 
+	if !isPlayingAudio && AbsI(audioDuration-audioPos) < time.Millisecond { // when song is done
+		for player := 0; player <= 1; player++ {
+			for dir := range NoteDirSize {
+				// release notes that are being held
+				if pStates[player].IsHoldingNote[dir] {
+					note := pStates[player].HoldingNote[dir]
+					notes[note.Index].HoldReleaseAt = audioPos
+
+					pStates[player].IsHoldingNote[dir] = false
+
+					event := NoteEvent{
+						Time:  avgPos,
+						Index: note.Index,
+					}
+					event.SetRelease()
+
+					noteEvents = append(noteEvents, event)
+				}
+
+				// update key release stuff
+				if pStates[player].IsHoldingKey[dir] {
+					pStates[player].IsHoldingKey[dir] = false
+					pStates[player].IsKeyJustReleased[dir] = true
+					pStates[player].KeyReleasedAt[dir] = GlobalTimerNow()
+
+					if pStates[player].IsHoldingBadKey[dir] {
+						pStates[player].IsHoldingBadKey[dir] = false
+						pStates[player].DidReleaseBadKey[dir] = true
+					}
+				}
+			}
+		}
+	}
+
 	return pStates, noteEvents, newNoteIndexStart
 }
 
@@ -385,10 +419,6 @@ func GetBotKeyPresseState(
 ) [2][NoteDirSize]bool {
 
 	var keyPressed [2][NoteDirSize]bool
-
-	if !isPlayingAudio {
-		return keyPressed
-	}
 
 	const tinyWindow = time.Millisecond * 10
 
