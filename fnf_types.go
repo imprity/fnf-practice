@@ -64,7 +64,7 @@ func (n FnfNote) IsSustain() bool {
 	return n.Duration >= time.Microsecond*500
 }
 
-func (n FnfNote) IsInWindow(audioPos, windowSize time.Duration) bool {
+func (n FnfNote) IsStartInWindow(audioPos, windowSize time.Duration) bool {
 	start := audioPos - windowSize/2
 	end := audioPos + windowSize/2
 	return start <= n.StartsAt && n.StartsAt <= end
@@ -77,11 +77,15 @@ func (n FnfNote) IsAudioPositionInDuration(audioPos, windowSize time.Duration) b
 	return start <= audioPos && audioPos <= end
 }
 
-func (n FnfNote) NotReachedHitWindow(audioPos, windowSize time.Duration) bool {
+func (n FnfNote) NotReachedWindow(audioPos, windowSize time.Duration) bool {
 	return n.StartsAt > audioPos+windowSize/2
 }
 
-func (n FnfNote) StartPassedHitWindow(audioPos, windowSize time.Duration) bool {
+func (n FnfNote) PassedWindow(audioPos, windowSize time.Duration) bool {
+	return n.End() < audioPos-windowSize/2
+}
+
+func (n FnfNote) StartPassedWindow(audioPos, windowSize time.Duration) bool {
 	return n.StartsAt < audioPos-windowSize/2
 }
 

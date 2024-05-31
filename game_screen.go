@@ -876,7 +876,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.isKeyPressed,
 		prevAudioPos,
 		audioPos,
-		gs.InstPlayer.IsPlaying(),
+		gs.IsPlayingAudio(),
 		gs.HitWindow,
 		gs.botPlay,
 		gs.noteIndexStart,
@@ -1525,7 +1525,7 @@ func (gs *GameScreen) Draw() {
 				arrowStroke := noteStroke[note.Direction]
 
 				// if we are not holding note and it passed the hit window, grey it out
-				if !isHoldingNote && note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow) {
+				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), gs.HitWindow) {
 					arrowFill = noteFillGrey[note.Direction]
 					arrowStroke = noteStrokeGrey[note.Direction]
 				}
@@ -1545,7 +1545,7 @@ func (gs *GameScreen) Draw() {
 			arrowFill := noteFill[note.Direction]
 			arrowStroke := noteStroke[note.Direction]
 
-			if note.StartPassedHitWindow(gs.AudioPosition(), gs.HitWindow) {
+			if note.StartPassedWindow(gs.AudioPosition(), gs.HitWindow) {
 				arrowFill = noteFillGrey[note.Direction]
 				arrowStroke = noteStrokeGrey[note.Direction]
 			}

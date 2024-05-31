@@ -108,8 +108,8 @@ func NoteStartTunneled(
 	audioPos time.Duration,
 	hitWindow time.Duration,
 ) bool {
-	tunneled := note.StartPassedHitWindow(audioPos, hitWindow)
-	tunneled = tunneled && note.NotReachedHitWindow(prevAudioPos, hitWindow)
+	tunneled := note.StartPassedWindow(audioPos, hitWindow)
+	tunneled = tunneled && note.NotReachedWindow(prevAudioPos, hitWindow)
 	return tunneled
 }
 
@@ -119,8 +119,8 @@ func SustainNoteTunneled(
 	audioPos time.Duration,
 	hitWindow time.Duration,
 ) bool {
-	tunneled := note.StartsAt+note.Duration < prevAudioPos-hitWindow/2
-	tunneled = tunneled && note.NotReachedHitWindow(audioPos, hitWindow)
+	tunneled := note.PassedWindow(audioPos, hitWindow)
+	tunneled = tunneled && note.NotReachedWindow(prevAudioPos, hitWindow)
 	return tunneled
 }
 
@@ -270,7 +270,7 @@ func UpdateNotesAndStates(
 					hit = hit || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
 				} else {
 					hit = !note.IsHit
-					hit = hit && note.IsInWindow(audioPos, hitWindow)
+					hit = hit && note.IsStartInWindow(audioPos, hitWindow)
 					hit = hit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 				}
 
@@ -290,7 +290,7 @@ func UpdateNotesAndStates(
 			// just treat it as good enough
 			if note.IsSustain() &&
 				!note.IsHit &&
-				note.StartPassedHitWindow(audioPos, hitWindow) &&
+				note.StartPassedWindow(audioPos, hitWindow) &&
 				note.IsAudioPositionInDuration(audioPos, hitWindow) {
 				if isKeyPressed[np][nd] {
 					onNoteHold(note, &event)
@@ -301,7 +301,7 @@ func UpdateNotesAndStates(
 			if note.IsSustain() {
 				missed := !pStates[np].IsHoldingNote[nd]
 				missed = missed || (pStates[np].IsHoldingNote[nd] && !pStates[np].HoldingNote[nd].Equals(note))
-				missed = missed && note.StartPassedHitWindow(audioPos, hitWindow)
+				missed = missed && note.StartPassedWindow(audioPos, hitWindow)
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
 				missed = missed && note.HoldReleaseAt < note.StartsAt+note.Duration
 				if missed {
@@ -311,8 +311,8 @@ func UpdateNotesAndStates(
 				wasInHitWindow := false
 				isInHitWindow := false
 
-				wasInHitWindow = note.IsInWindow(prevAudioPos, hitWindow)
-				isInHitWindow = note.IsInWindow(audioPos, hitWindow)
+				wasInHitWindow = note.IsStartInWindow(prevAudioPos, hitWindow)
+				isInHitWindow = note.IsStartInWindow(audioPos, hitWindow)
 
 				if wasInHitWindow && !isInHitWindow {
 					onNoteMiss(note, &event)
@@ -324,7 +324,7 @@ func UpdateNotesAndStates(
 			}
 
 			if !newNoteIndexSet &&
-				(note.IsInWindow(audioPos, hitWindow) ||
+				(note.IsStartInWindow(audioPos, hitWindow) ||
 					note.IsAudioPositionInDuration(audioPos, hitWindow)) {
 
 				newNoteIndexSet = true
