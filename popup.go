@@ -8,26 +8,42 @@ import (
 
 var _ = fmt.Sprintf
 
-type PopupDialogCallback = func(selected string, isCanceled bool)
+type PopupDialogOptionsCallback = func(selectedOption string, isCanceled bool)
+type PopupDialogKeyCallback = func(prevKey, newKey int32)
 
 type PopupDialog struct {
+	Resolved    bool
+	LingerTimer time.Duration
+
 	Message string
 
-	Options []string
+	IsKeyDialog bool
 
-	Callback PopupDialogCallback
+	// variables about select dialog
+	Options         []string
+	SelectedOption  int
+	IsCanceled      bool
+	OptionsCallback PopupDialogOptionsCallback
+
+	// variables about key dialog
+	PrevKey     int32
+	NewKey      int32
+	KeyCallback PopupDialogKeyCallback
 }
 
 type PopupDialogManager struct {
-	PopupRect   rl.Rectangle
+	PopupRect rl.Rectangle
+
+	// variables about select dialog
 	TextBoxRect rl.Rectangle
 	OptionsRect rl.Rectangle
 
+	// variables about select dialog
+	KeyRect rl.Rectangle
+
 	// NOTE : This does not use circular queue because
 	// I don't want to have size limitaion on queue
-	PopupDialogQueue Queue[PopupDialog]
-
-	SelectedOption int
+	PopupDialogQueue Queue[*PopupDialog]
 
 	InputId InputGroupId
 
@@ -64,6 +80,17 @@ func InitPopupDialog() {
 	pdm.OptionsRect.Width = pdm.PopupRect.Width - optionsMarginSide*2
 	pdm.OptionsRect.Height = RectEnd(pdm.PopupRect).Y - pdm.OptionsRect.Y - optionsMarginBottom
 
+	const keyRectHeight = 300
+	const keyMarginSide = 75
+
+	pdm.KeyRect.Width = pdm.PopupRect.Width - keyMarginSide*2
+	pdm.KeyRect.Height = keyRectHeight
+
+	{
+		cv := RectCenter(pdm.PopupRect)
+		pdm.KeyRect = RectCenetered(pdm.KeyRect, cv.X, cv.Y)
+	}
+
 	pdm.SelectAnimT = 1
 }
 
@@ -71,24 +98,42 @@ func FreePopupDialog() {
 	// pass
 }
 
-func DisplayPopup(
-	msg string,
-	options []string,
-	callback PopupDialogCallback,
-) {
+func displayPopupImpl(dialog *PopupDialog) {
 	pdm := &ThePopupDialogManager
-
-	dialog := PopupDialog{
-		Message:  msg,
-		Options:  options,
-		Callback: callback,
-	}
 
 	pdm.PopupDialogQueue.Enqueue(dialog)
 
-	pdm.SelectedOption = 0
-
 	SetSoloInput(pdm.InputId)
+}
+
+func DisplayOptionsPopup(
+	msg string,
+	options []string,
+	callback PopupDialogOptionsCallback,
+) {
+	dialog := PopupDialog{
+		Message:         msg,
+		Options:         options,
+		OptionsCallback: callback,
+	}
+
+	displayPopupImpl(&dialog)
+}
+
+func DisplayKeyPopup(
+	msg string,
+	keyToModifiy int32,
+	callback PopupDialogKeyCallback,
+) {
+	dialog := PopupDialog{
+		IsKeyDialog: true,
+		Message:     msg,
+		PrevKey:     keyToModifiy,
+		KeyCallback: callback,
+		LingerTimer: time.Millisecond * 600,
+	}
+
+	displayPopupImpl(&dialog)
 }
 
 func UpdatePopup(deltaTime time.Duration) {
@@ -111,46 +156,61 @@ func UpdatePopup(deltaTime time.Duration) {
 
 	current := pdm.PopupDialogQueue.PeekFirst()
 
-	afterResolve := func() {
-		pdm.PopupDialogQueue.Dequeue()
-		pdm.SelectedOption = 0
+	if current.Resolved {
+		current.LingerTimer -= deltaTime
+		if current.LingerTimer < 0 {
+			// call the callback
+			if current.IsKeyDialog {
+				if current.KeyCallback != nil {
+					current.KeyCallback(current.PrevKey, current.NewKey)
+				}
+			} else {
+				selected := ""
+				if len(current.Options) > 0 && !current.IsCanceled {
+					selected = current.Options[current.SelectedOption]
+				}
 
-		pdm.SelectAnimT = 1
+				if current.OptionsCallback != nil {
+					current.OptionsCallback(selected, current.IsCanceled)
+				}
+			}
+			pdm.PopupDialogQueue.Dequeue()
+		}
+		return
 	}
 
-	if len(current.Options) > 0 {
-		if AreKeysPressed(pdm.InputId, NoteKeys(NoteDirLeft)...) {
-			pdm.SelectedOption -= 1
-			pdm.SelectAnimT = 0
+	if current.IsKeyDialog {
+		for _, key := range ListOfKeys() {
+			if AreKeysPressed(pdm.InputId, key) {
+				current.NewKey = key
+				current.Resolved = true
+			}
 		}
-
-		if AreKeysPressed(pdm.InputId, NoteKeys(NoteDirRight)...) {
-			pdm.SelectedOption += 1
-			pdm.SelectAnimT = 0
-		}
-
-		pdm.SelectedOption = Clamp(pdm.SelectedOption, 0, len(current.Options)-1)
-
-		if AreKeysPressed(pdm.InputId, TheKM.SelectKey) {
-			if current.Callback != nil {
-				current.Callback(current.Options[pdm.SelectedOption], false)
+	} else { // options dialog
+		if len(current.Options) > 0 {
+			if AreKeysPressed(pdm.InputId, NoteKeys(NoteDirLeft)...) {
+				current.SelectedOption -= 1
+				pdm.SelectAnimT = 0
 			}
 
-			afterResolve()
-		} else if AreKeysPressed(pdm.InputId, TheKM.EscapeKey) {
-			if current.Callback != nil {
-				current.Callback("", true)
+			if AreKeysPressed(pdm.InputId, NoteKeys(NoteDirRight)...) {
+				current.SelectedOption += 1
+				pdm.SelectAnimT = 0
 			}
 
-			afterResolve()
-		}
-	} else {
-		if AreKeysPressed(pdm.InputId, TheKM.SelectKey, TheKM.EscapeKey) {
-			if current.Callback != nil {
-				current.Callback("", true)
-			}
+			current.SelectedOption = Clamp(current.SelectedOption, 0, len(current.Options)-1)
 
-			afterResolve()
+			if AreKeysPressed(pdm.InputId, TheKM.SelectKey) {
+				current.Resolved = true
+			} else if AreKeysPressed(pdm.InputId, TheKM.EscapeKey) {
+				current.IsCanceled = true
+				current.Resolved = true
+			}
+		} else {
+			if AreKeysPressed(pdm.InputId, TheKM.SelectKey, TheKM.EscapeKey) {
+				current.IsCanceled = true
+				current.Resolved = true
+			}
 		}
 	}
 }
@@ -162,99 +222,183 @@ func DrawPopup() {
 		return
 	}
 
+	// draw semi-transparent background
 	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
 
+	// draw popup background
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 	rl.DrawTexture(PopupBg, 0, 0, rl.Color{255, 255, 255, 255})
 	rl.EndBlendMode()
 
+	fitTextInBox := func(
+		font rl.Font,
+		text string,
+		box rl.Rectangle,
+		desiredSize float32,
+		color rl.Color,
+	) rl.Rectangle {
+		rl.SetTextLineSpacing(int(desiredSize)) // text can be multilined, so we have to set line spacing
+
+		textSize := rl.MeasureTextEx(font, text, desiredSize, 0)
+
+		overFlowX := textSize.X > box.Width
+		overFlowY := textSize.Y > box.Height
+
+		scale := float32(1.0)
+
+		if overFlowX && !overFlowY {
+			scale = box.Width / textSize.X
+		} else if !overFlowX && overFlowY {
+			scale = box.Height / textSize.Y
+		} else if overFlowX && overFlowY {
+			scale = min(
+				box.Height/textSize.Y,
+				box.Width/textSize.X)
+		}
+
+		desiredSize *= scale
+		textSize.X *= scale
+		textSize.Y *= scale
+
+		textPos := rl.Vector2{
+			X: box.X + (box.Width-textSize.X)*0.5,
+			Y: box.Y + (box.Height-textSize.Y)*0.5,
+		}
+
+		rl.SetTextLineSpacing(int(desiredSize))
+		rl.DrawTextEx(font, text,
+			textPos, desiredSize, 0, color)
+
+		textBox := rl.Rectangle{
+			X: textPos.X, Y: textPos.Y,
+			Width: textSize.X, Height: textSize.Y,
+		}
+
+		return textBox
+	}
+
 	current := pdm.PopupDialogQueue.PeekFirst()
 
-	// draw current msg
-	msgFontSize := float32(70)
+	if current.IsKeyDialog {
+		keyFontSize := pdm.KeyRect.Height
 
-	rl.SetTextLineSpacing(int(msgFontSize)) // msg can be multilined, so we have to set line spacing
-
-	msgSize := rl.MeasureTextEx(FontRegular, current.Message, msgFontSize, 0)
-
-	overFlowX := msgSize.X > pdm.TextBoxRect.Width
-	overFlowY := msgSize.Y > pdm.TextBoxRect.Height
-
-	scale := float32(1.0)
-
-	if overFlowX || overFlowY {
-		if !overFlowX {
-			scale = pdm.TextBoxRect.Height / msgSize.Y
-		} else if !overFlowY {
-			scale = pdm.TextBoxRect.Width / msgSize.X
-		} else {
-			scale = min(
-				pdm.TextBoxRect.Height/msgSize.Y,
-				pdm.TextBoxRect.Width/msgSize.X)
-		}
-	}
-
-	msgFontSize *= scale
-	msgSize.X *= scale
-	msgSize.Y *= scale
-
-	textPos := rl.Vector2{
-		X: pdm.TextBoxRect.X + (pdm.TextBoxRect.Width-msgSize.X)*0.5,
-		Y: pdm.TextBoxRect.Y + (pdm.TextBoxRect.Height-msgSize.Y)*0.5,
-	}
-
-	rl.SetTextLineSpacing(int(msgFontSize))
-
-	rl.DrawTextEx(FontRegular, current.Message,
-		textPos, msgFontSize, 0,
-		rl.Color{0, 0, 0, 255})
-
-	// draw options
-	if len(current.Options) > 0 {
-		opMargin := float32(80)
-		opFontSize := float32(85)
-
-		opWidth := float32(0)
-
-		//calculate options width
-		for i, op := range current.Options {
-			opWidth += rl.MeasureTextEx(FontBold, op, opFontSize, 0).X
-			if i != len(current.Options)-1 {
-				opWidth += opMargin
-			}
+		keyText := GetKeyName(current.PrevKey)
+		if current.Resolved {
+			keyText = GetKeyName(current.NewKey)
 		}
 
-		if opWidth > pdm.OptionsRect.Width {
-			scale := pdm.OptionsRect.Width / opWidth
+		// draw the key name
+		textBox := fitTextInBox(
+			KeySelectFont,
+			keyText,
+			pdm.KeyRect,
+			keyFontSize,
+			rl.Color{0, 0, 0, 255},
+		)
+		_ = textBox
+		// draw the bottom line
+		{
+			underlineRect := rl.Rectangle{}
+			underlineRect.Width = pdm.KeyRect.Width * 0.85
+			underlineRect.Height = 12
 
-			opWidth *= scale
-			opFontSize *= scale
-			opMargin *= scale
+			cv := RectCenter(pdm.KeyRect)
+			underlineRect = RectCenetered(underlineRect, cv.X, cv.Y)
+			underlineRect.Y = RectEnd(pdm.KeyRect).Y - 20
+
+			rl.DrawRectangleRounded(
+				underlineRect, 1.0, 5, rl.Color{18, 18, 18, 255},
+			)
+		}
+		// draw the message
+		{
+			const msgSize = 75
+			const msgMarginTop = 20
+
+			msgRect := rl.Rectangle{}
+
+			msgRect.Width = pdm.PopupRect.Width
+			msgRect.Height = msgSize
+
+			cv := RectCenter(pdm.PopupRect)
+			msgRect = RectCenetered(msgRect, cv.X, cv.Y)
+			msgRect.Y = pdm.PopupRect.Y + msgMarginTop
+
+			fitTextInBox(FontBold, current.Message, msgRect,
+				msgSize, rl.Color{0, 0, 0, 255})
 		}
 
-		offsetX := pdm.OptionsRect.X + (pdm.OptionsRect.Width-opWidth)*0.5
-		offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height-opFontSize)*0.5
+		// draw the prompt
+		{
+			const promptSize = 60
+			const promptMarginBottom = 20
 
-		for i, op := range current.Options {
-			col := rl.Color{120, 120, 120, 255}
-			pos := rl.Vector2{X: offsetX, Y: offsetY}
-			scale := float32(1.0)
+			promptRect := rl.Rectangle{}
 
-			size := rl.MeasureTextEx(FontBold, op, opFontSize, 0)
+			promptRect.Width = pdm.PopupRect.Width
+			promptRect.Height = promptSize
 
-			if i == pdm.SelectedOption {
-				col = rl.Color{0, 0, 0, 255}
-				scale = Lerp(1.0, 1.2, pdm.SelectAnimT)
+			cv := RectCenter(pdm.PopupRect)
+			promptRect = RectCenetered(promptRect, cv.X, cv.Y)
+			promptRect.Y = RectEnd(pdm.PopupRect).Y - promptMarginBottom - promptRect.Height
 
-				pos = rl.Vector2{
-					X: offsetX - size.X*(scale-1)*0.5,
-					Y: offsetY - size.Y*(scale-1)*0.5,
+			fitTextInBox(FontBold, "press any key", promptRect,
+				promptSize, rl.Color{77, 77, 77, 255})
+		}
+
+	} else {
+		// draw current msg
+		msgFontSize := float32(70)
+
+		fitTextInBox(FontRegular, current.Message, pdm.TextBoxRect, msgFontSize, rl.Color{0, 0, 0, 255})
+
+		// draw options
+		if len(current.Options) > 0 {
+			opMargin := float32(80)
+			opFontSize := float32(85)
+
+			opWidth := float32(0)
+
+			//calculate options width
+			for i, op := range current.Options {
+				opWidth += rl.MeasureTextEx(FontBold, op, opFontSize, 0).X
+				if i != len(current.Options)-1 {
+					opWidth += opMargin
 				}
 			}
 
-			rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, col)
+			if opWidth > pdm.OptionsRect.Width {
+				scale := pdm.OptionsRect.Width / opWidth
 
-			offsetX += size.X + opMargin
+				opWidth *= scale
+				opFontSize *= scale
+				opMargin *= scale
+			}
+
+			offsetX := pdm.OptionsRect.X + (pdm.OptionsRect.Width-opWidth)*0.5
+			offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height-opFontSize)*0.5
+
+			for i, op := range current.Options {
+				col := rl.Color{120, 120, 120, 255}
+				pos := rl.Vector2{X: offsetX, Y: offsetY}
+				scale := float32(1.0)
+
+				size := rl.MeasureTextEx(FontBold, op, opFontSize, 0)
+
+				if i == current.SelectedOption {
+					col = rl.Color{0, 0, 0, 255}
+					scale = Lerp(1.0, 1.2, pdm.SelectAnimT)
+
+					pos = rl.Vector2{
+						X: offsetX - size.X*(scale-1)*0.5,
+						Y: offsetY - size.Y*(scale-1)*0.5,
+					}
+				}
+
+				rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, col)
+
+				offsetX += size.X + opMargin
+			}
 		}
 	}
 }

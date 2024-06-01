@@ -1,8 +1,8 @@
 package main
 
 import (
-	"slices"
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"slices"
 )
 
 var KeyNameMap = map[int32]string{
@@ -129,14 +129,14 @@ func GetKeyName(key int32) string {
 
 var keyList []int32
 
-func init(){
-	for k, _ := range KeyNameMap{
+func init() {
+	for k := range KeyNameMap {
 		keyList = append(keyList, k)
 	}
 
 	slices.Sort(keyList)
 }
 
-func ListOfKeys() []int32{
+func ListOfKeys() []int32 {
 	return keyList
 }

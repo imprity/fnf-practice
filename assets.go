@@ -53,8 +53,9 @@ var (
 	FontRegular     rl.Font
 
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
-	fontBoldData []byte
-	FontBold     rl.Font
+	fontBoldData  []byte
+	FontBold      rl.Font
+	KeySelectFont rl.Font
 
 	//go:embed fonts/Pangolin/Pangolin-Regular.ttf
 	helpMsgFontData []byte
@@ -249,6 +250,7 @@ func loadAssets(isReload bool) {
 	if !isReload {
 		FontRegular = loadFont(fontRegularData, "FontRegular", 128, ".ttf")
 		FontBold = loadFont(fontBoldData, "FontBold", 128, ".ttf")
+		KeySelectFont = loadFont(fontBoldData, "KeySelectFont", 240, ".ttf")
 
 		HelpMsgFont = loadFont(helpMsgFontData, "HelpMsgFont", 30, ".ttf")
 	}

@@ -31,60 +31,6 @@ func MouseV() rl.Vector2 {
 	}
 }
 
-// ========================================
-// key map
-// ========================================
-
-/*
-var (
-	NoteKeysLeft  = []int32{rl.KeyA, rl.KeyLeft}
-	NoteKeysDown  = []int32{rl.KeyS, rl.KeyDown}
-	NoteKeysUp    = []int32{rl.KeySemicolon, rl.KeyUp}
-	NoteKeysRight = []int32{rl.KeyApostrophe, rl.KeyRight}
-)
-
-var NoteKeys = [NoteDirSize][]int32{
-	NoteKeysLeft,
-	NoteKeysDown,
-	NoteKeysUp,
-	NoteKeysRight,
-}
-
-var SelectKey int32 = rl.KeyEnter
-var PauseKey int32 = rl.KeySpace
-var EscapeKey int32 = rl.KeyEscape
-
-var (
-	NoteScrollUpKey   int32 = rl.KeyPageUp
-	NoteScrollDownKey int32 = rl.KeyPageDown
-)
-
-var (
-	AudioSpeedUpKey   int32 = rl.KeyEqual
-	AudioSpeedDownKey int32 = rl.KeyMinus
-)
-
-var SongResetKey int32 = rl.KeyR
-
-var SetBookMarkKey int32 = rl.KeyB
-var JumpToBookMarkKey int32 = rl.KeyBackspace
-
-var (
-	ToggleDebugKey     int32 = rl.KeyF1
-	ToggleLogNoteEvent int32 = rl.KeyF2
-	ReloadAssetsKey    int32 = rl.KeyF5
-)
-
-var (
-	ZoomOutKey int32 = rl.KeyLeftBracket
-	ZoomInKey  int32 = rl.KeyRightBracket
-)
-*/
-
-// ========================================
-// end of key map
-// ========================================
-
 type InputGroupId int64
 
 var (

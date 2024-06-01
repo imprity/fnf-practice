@@ -342,7 +342,7 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 			return
 		}
 
-		DisplayPopup(
+		DisplayOptionsPopup(
 			fmt.Sprintf("Delete %d songs?", toBeDeletedCount),
 			[]string{"Yes", "No"},
 			func(selected string, isCanceled bool) {

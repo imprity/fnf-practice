@@ -88,6 +88,9 @@ func main() {
 
 	InitUnitext()
 
+	LoadAssets()
+	defer UnloadAssets()
+
 	InitTransition()
 	defer FreeTransition()
 	InitPopupDialog()
@@ -123,9 +126,6 @@ func main() {
 
 	// set the first screen
 	var screen Screen = TheSelectScreen
-
-	LoadAssets()
-	defer UnloadAssets()
 
 	GlobalTimerStart()
 

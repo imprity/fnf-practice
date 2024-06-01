@@ -228,6 +228,13 @@ func RectIntersect(r1, r2 rl.Rectangle) rl.Rectangle {
 	return newR
 }
 
+func RectCenter(rect rl.Rectangle) rl.Vector2 {
+	return rl.Vector2{
+		X: rect.X + rect.Width*0.5,
+		Y: rect.Y + rect.Height*0.5,
+	}
+}
+
 func RectEnd(rect rl.Rectangle) rl.Vector2 {
 	return rl.Vector2{
 		X: rect.X + rect.Width,
