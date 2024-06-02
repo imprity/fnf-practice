@@ -92,6 +92,19 @@ func NewMenuTestScreen() *MenuTestScreen {
 	}
 	mt.Menu.AddItems(testKeyMany)
 
+	{
+		testKeyMany := NewMenuItem()
+		testKeyMany.Name = "key item many2"
+		testKeyMany.Type = MenuItemKey
+		testKeyMany.AddKeys(rl.KeyLeft)
+		testKeyMany.AddKeys(rl.KeyRight)
+		testKeyMany.AddKeys(rl.KeyUp)
+		testKeyMany.KeyCallback = func(index int, prevKey, newKey int32) {
+			FnfLogger.Printf("%vth key changed from %v to %v", index, GetKeyName(prevKey), GetKeyName(newKey))
+		}
+		mt.Menu.AddItems(testKeyMany)
+	}
+
 	return mt
 }
 

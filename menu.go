@@ -67,8 +67,7 @@ type MenuItem struct {
 	ListSelected int
 	List         []string
 
-	KeySelected int
-	KeyValues   []int32
+	KeyValues []int32
 
 	TriggerCallback func()
 	ToggleCallback  func(bool)
@@ -136,7 +135,7 @@ func NewMenuItem() *MenuItem {
 
 	item.CheckmarkColor = Color255(0xFF, 0xFF, 0xFF, 0xFF)
 
-	item.KeyColorRegular = Color255(0xFF, 0xFF, 0xFF, 100)
+	item.KeyColorRegular = Color255(0xFF, 0xFF, 0xFF, 200)
 	item.KeyColorSelected = Color255(10, 250, 114, 0xFF)
 
 	return item
@@ -193,6 +192,8 @@ type MenuDrawer struct {
 
 	InputId InputGroupId
 
+	keySelectedIndex int
+
 	items []*MenuItem
 }
 
@@ -222,6 +223,17 @@ func (md *MenuDrawer) DisableInput() {
 
 func (md *MenuDrawer) EnableInput() {
 	EnableInput(md.InputId)
+}
+
+func (md *MenuDrawer) keySelected() int {
+	item := md.GetSelectedItem()
+	if item == nil {
+		return 0
+	} else if len(item.KeyValues) <= 0 {
+		return 0
+	} else {
+		return Clamp(md.keySelectedIndex, 0, len(item.KeyValues)-1)
+	}
 }
 
 func (md *MenuDrawer) Update(deltaTime time.Duration) {
@@ -292,16 +304,15 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			selected := md.items[md.SelectedIndex]
 
 			if selected.Type == MenuItemKey {
+				keySelected := md.keySelected()
 				if len(selected.KeyValues) > 0 && selected.KeyCallback != nil {
-					prevKey := selected.KeyValues[selected.KeySelected]
+					prevKey := selected.KeyValues[keySelected]
 					newKey := key
-
 					itemCallback = func() {
-						selected.KeyCallback(selected.KeySelected, prevKey, newKey)
+						selected.KeyCallback(keySelected, prevKey, newKey)
 					}
 				}
-
-				selected.KeyValues[selected.KeySelected] = key
+				selected.KeyValues[keySelected] = key
 			} else {
 				ErrorLogger.Fatalf("wrong type of MenuItem : %v", MenuItemTypeName(selected.Type))
 			}
@@ -429,8 +440,9 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 					canGoLeft = !selected.ToggleStyleCheckBox
 					canGoRight = !selected.ToggleStyleCheckBox
 				case MenuItemKey:
-					canGoLeft = selected.KeySelected > 0
-					canGoRight = selected.KeySelected+1 < len(selected.KeyValues)
+					keySelected := md.keySelected()
+					canGoLeft = keySelected > 0
+					canGoRight = keySelected+1 < len(selected.KeyValues)
 				}
 
 				// check if item actually has to go left and right
@@ -500,10 +512,11 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 						callItemCallback(selected)
 					}
 				case MenuItemKey:
+					prevKeySelected := md.keySelected()
 					if goLeft {
-						selected.KeySelected -= 1
+						md.keySelectedIndex = prevKeySelected - 1
 					} else if goRight {
-						selected.KeySelected += 1
+						md.keySelectedIndex = prevKeySelected + 1
 					}
 
 					if wantGoLeft || wantGoRight {
@@ -805,7 +818,7 @@ func (md *MenuDrawer) Draw() {
 				keyScale := float32(0.9)
 				keyColor := item.KeyColorRegular
 
-				if i == item.KeySelected {
+				if i == md.keySelected() && index == md.SelectedIndex {
 					const animDuration = time.Millisecond * 70
 					t := f32(TimeSinceNow(item.KeySelectTimer)) / f32(animDuration)
 					t = Clamp(t, 0, 1)
@@ -819,7 +832,7 @@ func (md *MenuDrawer) Draw() {
 				keyName := GetKeyName(key)
 
 				drawStrikeThrough := md.InputState == MenuInputStateWaitingKeyPress
-				drawStrikeThrough = drawStrikeThrough && i == item.KeySelected
+				drawStrikeThrough = drawStrikeThrough && i == md.keySelected()
 				drawStrikeThrough = drawStrikeThrough && index == md.SelectedIndex
 
 				if drawStrikeThrough {
