@@ -3,6 +3,7 @@ package main
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"math"
+	"slices"
 	"time"
 )
 
@@ -186,6 +187,24 @@ func HandleKeyRepeat(
 	}
 
 	return false
+}
+
+func AnyKeyPressed(id InputGroupId, except ...int32) (bool, int32) {
+	if IsInputDisabled(id) {
+		return false, rl.KeyNull
+	}
+
+	for _, key := range ListOfKeys() {
+		if slices.Contains(except, key) {
+			continue
+		}
+
+		if rl.IsKeyPressed(key) {
+			return true, key
+		}
+	}
+
+	return false, rl.KeyNull
 }
 
 func IsMouseButtonDown(id InputGroupId, button int32) bool {

@@ -23,15 +23,22 @@ const (
 	MenuItemTypeSize
 )
 
-var MenuItemTypeStrs [MenuItemTypeSize]string
+var menuItemTypeStrs [MenuItemTypeSize]string
 
 func init() {
-	MenuItemTypeStrs[MenuItemTrigger] = "Trigger"
-	MenuItemTypeStrs[MenuItemToggle] = "Toggle"
-	MenuItemTypeStrs[MenuItemNumber] = "Number"
-	MenuItemTypeStrs[MenuItemList] = "List"
-	MenuItemTypeStrs[MenuItemKey] = "Key"
-	MenuItemTypeStrs[MenuItemDeco] = "Deco"
+	menuItemTypeStrs[MenuItemTrigger] = "Trigger"
+	menuItemTypeStrs[MenuItemToggle] = "Toggle"
+	menuItemTypeStrs[MenuItemNumber] = "Number"
+	menuItemTypeStrs[MenuItemList] = "List"
+	menuItemTypeStrs[MenuItemKey] = "Key"
+	menuItemTypeStrs[MenuItemDeco] = "Deco"
+}
+
+func MenuItemTypeName(t MenuItemType) string {
+	if 0 <= t && t < MenuItemTypeSize {
+		return menuItemTypeStrs[t]
+	}
+	return fmt.Sprintf("invalid(%v)", t)
 }
 
 type MenuItemId int64
@@ -60,10 +67,14 @@ type MenuItem struct {
 	ListSelected int
 	List         []string
 
+	KeySelected int
+	KeyValues   []int32
+
 	TriggerCallback func()
 	ToggleCallback  func(bool)
 	NumberCallback  func(float32)
 	ListCallback    func(selected int, list []string)
+	KeyCallback     func(index int, prevKey int32, newKey int32)
 
 	UserData any
 
@@ -80,11 +91,15 @@ type MenuItem struct {
 
 	CheckmarkColor Color // default is 0xFF FF FF FF
 
+	KeyColorRegular  Color
+	KeyColorSelected Color
+
 	// variables for animations
 	NameClickTimer       time.Duration
 	ValueClickTimer      time.Duration
 	LeftArrowClickTimer  time.Duration
 	RightArrowClickTimer time.Duration
+	KeySelectTimer       time.Duration
 
 	bound rl.Rectangle
 }
@@ -108,6 +123,7 @@ func NewMenuItem() *MenuItem {
 	item.ValueClickTimer = -Years150
 	item.LeftArrowClickTimer = -Years150
 	item.RightArrowClickTimer = -Years150
+	item.KeySelectTimer = -Years150
 
 	item.Color = Col(1, 1, 1, 1)
 
@@ -120,34 +136,15 @@ func NewMenuItem() *MenuItem {
 
 	item.CheckmarkColor = Color255(0xFF, 0xFF, 0xFF, 0xFF)
 
+	item.KeyColorRegular = Color255(0xFF, 0xFF, 0xFF, 100)
+	item.KeyColorSelected = Color255(10, 250, 114, 0xFF)
+
 	return item
 }
 
-func (mi *MenuItem) CallCallback() {
-	switch mi.Type {
-	case MenuItemTrigger:
-		if mi.TriggerCallback != nil {
-			mi.TriggerCallback()
-		}
-	case MenuItemToggle:
-		if mi.ToggleCallback != nil {
-			mi.ToggleCallback(mi.BValue)
-		}
-	case MenuItemNumber:
-		if mi.NumberCallback != nil {
-			mi.NumberCallback(mi.NValue)
-		}
-	case MenuItemList:
-		if mi.ListCallback != nil {
-			selected := Clamp(mi.ListSelected, 0, len(mi.List))
-			mi.ListCallback(selected, mi.List)
-		}
-	case MenuItemKey:
-		ErrorLogger.Fatal("TODO : NOT IMPLEMENTED")
-	case MenuItemDeco:
-		// pass
-	default:
-		ErrorLogger.Fatalf("unknow item type : %v\n", mi.Type)
+func (mi *MenuItem) AddKeys(keys ...int32) {
+	for _, key := range keys {
+		mi.KeyValues = append(mi.KeyValues, key)
 	}
 }
 
@@ -177,6 +174,12 @@ func (mi *MenuItem) IsSelectable() bool {
 	return !mi.IsHidden && mi.Type != MenuItemDeco
 }
 
+const (
+	MenuInputStateNotSelectingKey = iota
+	MenuInputStateWaitingKeyPress
+	MenuInputStateWaitingKeyRelease
+)
+
 type MenuDrawer struct {
 	SelectedIndex int
 
@@ -185,6 +188,8 @@ type MenuDrawer struct {
 	Yoffset float32
 
 	ScrollAnimT float32
+
+	InputState int
 
 	InputId InputGroupId
 
@@ -281,12 +286,69 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// ==========================
 	// handling input
 	// ==========================
-	{
+	if md.InputState == MenuInputStateWaitingKeyPress {
+		SetSoloInput(md.InputId)
+		if pressed, key := AnyKeyPressed(md.InputId); pressed {
+			selected := md.items[md.SelectedIndex]
+
+			if selected.Type == MenuItemKey {
+				if len(selected.KeyValues) > 0 && selected.KeyCallback != nil {
+					prevKey := selected.KeyValues[selected.KeySelected]
+					newKey := key
+
+					itemCallback = func() {
+						selected.KeyCallback(selected.KeySelected, prevKey, newKey)
+					}
+				}
+
+				selected.KeyValues[selected.KeySelected] = key
+			} else {
+				ErrorLogger.Fatalf("wrong type of MenuItem : %v", MenuItemTypeName(selected.Type))
+			}
+
+			md.InputState = MenuInputStateWaitingKeyRelease
+		}
+	} else if md.InputState == MenuInputStateWaitingKeyRelease {
+		var menuKeys []int32
+		menuKeys = append(menuKeys, TheKM.SelectKey, TheKM.EscapeKey)
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			menuKeys = append(menuKeys, NoteKeys(dir)...)
+		}
+
+		if !AreKeysDown(md.InputId, menuKeys...) {
+			if IsInputSoloEnabled(md.InputId) {
+				ClearSoloInput()
+			}
+			md.InputState = MenuInputStateNotSelectingKey
+		}
+	} else {
 		callItemCallback := func(item *MenuItem) {
-			// NOTE : we don't actually wanna call item callback now
-			// we will call it when update is over
 			itemCallback = func() {
-				item.CallCallback()
+				switch item.Type {
+				case MenuItemTrigger:
+					if item.TriggerCallback != nil {
+						item.TriggerCallback()
+					}
+				case MenuItemToggle:
+					if item.ToggleCallback != nil {
+						item.ToggleCallback(item.BValue)
+					}
+				case MenuItemNumber:
+					if item.NumberCallback != nil {
+						item.NumberCallback(item.NValue)
+					}
+				case MenuItemList:
+					if item.ListCallback != nil {
+						selected := Clamp(item.ListSelected, 0, len(item.List))
+						item.ListCallback(selected, item.List)
+					}
+				case MenuItemKey:
+					ErrorLogger.Fatal("MenuItemKey should not be called here")
+				case MenuItemDeco:
+					// pass
+				default:
+					ErrorLogger.Fatalf("unknow item type : %v\n", item.Type)
+				}
 			}
 		}
 
@@ -319,21 +381,40 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		if !noSelectable {
 			selected := md.items[md.SelectedIndex]
 
+			// ===================================
+			// handle select key interaction
+			// ===================================
 			if AreKeysPressed(md.InputId, TheKM.SelectKey) {
 				switch selected.Type {
 				case MenuItemTrigger:
 					selected.BValue = true
 					selected.NameClickTimer = GlobalTimerNow()
+					callItemCallback(selected)
 				case MenuItemToggle:
 					selected.BValue = !selected.BValue
 					selected.ValueClickTimer = GlobalTimerNow()
+					callItemCallback(selected)
+				case MenuItemKey:
+					selected.ValueClickTimer = GlobalTimerNow()
+					if len(selected.KeyValues) > 0 {
+						md.InputState = MenuInputStateWaitingKeyPress
+					}
 				}
-
-				callItemCallback(selected)
 			}
 
+			// ===================================
+			// 'left' and 'right' key interaction
+			// ===================================
 			switch selected.Type {
-			case MenuItemList, MenuItemNumber, MenuItemToggle:
+			case MenuItemList, MenuItemNumber, MenuItemToggle, MenuItemKey:
+				// check if user wants to go left or right
+				const firstRate = time.Millisecond * 200
+				const repeateRate = time.Millisecond * 110
+
+				wantGoLeft := HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirLeft)...)
+				wantGoRight := HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirRight)...)
+
+				// check if item can go left or right
 				canGoLeft := true
 				canGoRight := true
 
@@ -347,38 +428,48 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				case MenuItemToggle:
 					canGoLeft = !selected.ToggleStyleCheckBox
 					canGoRight = !selected.ToggleStyleCheckBox
+				case MenuItemKey:
+					canGoLeft = selected.KeySelected > 0
+					canGoRight = selected.KeySelected+1 < len(selected.KeyValues)
 				}
 
-				if AreKeysDown(md.InputId, NoteKeys(NoteDirLeft)...) && canGoLeft {
-					selected.LeftArrowClickTimer = GlobalTimerNow()
-				}
-
-				if AreKeysDown(md.InputId, NoteKeys(NoteDirRight)...) && canGoRight {
-					selected.RightArrowClickTimer = GlobalTimerNow()
-				}
-
+				// check if item actually has to go left and right
 				goLeft := false
 				goRight := false
 
-				const firstRate = time.Millisecond * 200
-				const repeateRate = time.Millisecond * 110
+				goLeft = wantGoLeft && canGoLeft
+				goRight = wantGoRight && canGoRight
 
-				goLeft = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirLeft)...) && canGoLeft
-				goRight = HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirRight)...) && canGoRight
-
+				// handle different item interaction based on left and right
 				switch selected.Type {
 				case MenuItemToggle:
+					if !selected.ToggleStyleCheckBox {
+						if wantGoLeft {
+							selected.LeftArrowClickTimer = GlobalTimerNow()
+						}
+						if wantGoRight {
+							selected.RightArrowClickTimer = GlobalTimerNow()
+						}
+					}
+
 					if goLeft || goRight {
 						selected.BValue = !selected.BValue
 						callItemCallback(selected)
 					}
 				case MenuItemList:
+					if wantGoLeft {
+						selected.LeftArrowClickTimer = GlobalTimerNow()
+					}
+					if wantGoRight {
+						selected.RightArrowClickTimer = GlobalTimerNow()
+					}
+
 					if len(selected.List) > 0 {
 						listSelected := selected.ListSelected
 
-						if goLeft && canGoLeft {
+						if goLeft {
 							listSelected -= 1
-						} else if goRight && canGoRight {
+						} else if goRight {
 							listSelected += 1
 						}
 
@@ -394,12 +485,33 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 						}
 					}
 				case MenuItemNumber:
+					if wantGoLeft {
+						selected.LeftArrowClickTimer = GlobalTimerNow()
+					}
+					if wantGoRight {
+						selected.RightArrowClickTimer = GlobalTimerNow()
+					}
+
 					if goLeft {
 						selected.NValue -= selected.NValueInterval
 						callItemCallback(selected)
 					} else if goRight {
 						selected.NValue += selected.NValueInterval
 						callItemCallback(selected)
+					}
+				case MenuItemKey:
+					if goLeft {
+						selected.KeySelected -= 1
+					} else if goRight {
+						selected.KeySelected += 1
+					}
+
+					if wantGoLeft || wantGoRight {
+						if (wantGoLeft && !canGoLeft) || (wantGoRight && !canGoRight) {
+							selected.ValueClickTimer = GlobalTimerNow()
+						} else {
+							selected.KeySelectTimer = GlobalTimerNow()
+						}
 					}
 				}
 			}
@@ -515,8 +627,8 @@ func (md *MenuDrawer) Draw() {
 	xDrawOffset := float32(0)
 	yDrawOffset := float32(0)
 
-	drawText := func(text string, fontSize, scale float32, col Color) float32 {
-		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
+	drawText := func(text string, font rl.Font, fontSize, scale float32, col Color) float32 {
+		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
 
 		pos := rl.Vector2{
 			X: xAdvance,
@@ -526,7 +638,7 @@ func (md *MenuDrawer) Draw() {
 		pos.X += xDrawOffset
 		pos.Y += yDrawOffset
 
-		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
+		rl.DrawTextEx(font, text, pos, fontSize*scale, 0, col.ToRlColor())
 
 		bound := rl.Rectangle{
 			X: pos.X, Y: pos.Y,
@@ -537,8 +649,8 @@ func (md *MenuDrawer) Draw() {
 		return textSize.X
 	}
 
-	drawTextCentered := func(text string, fontSize, scale, width float32, col Color) float32 {
-		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
+	drawTextCentered := func(text string, font rl.Font, fontSize, scale, width float32, col Color) float32 {
+		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
 
 		pos := rl.Vector2{
 			X: (width-textSize.X)*0.5 + xAdvance,
@@ -548,7 +660,7 @@ func (md *MenuDrawer) Draw() {
 		pos.X += xDrawOffset
 		pos.Y += yDrawOffset
 
-		rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, col.ToRlColor())
+		rl.DrawTextEx(font, text, pos, fontSize*scale, 0, col.ToRlColor())
 
 		bound := rl.Rectangle{
 			X: pos.X, Y: pos.Y,
@@ -646,7 +758,7 @@ func (md *MenuDrawer) Draw() {
 		leftArrowScale := calcArrowClick(item.LeftArrowClickTimer)
 		rightArrowScale := calcArrowClick(item.RightArrowClickTimer)
 
-		xAdvance += drawText(item.Name, size, nameScale, fadeC(item.Color, fade))
+		xAdvance += drawText(item.Name, FontBold, size, nameScale, fadeC(item.Color, fade))
 		xAdvance += 40
 
 		if item.Type == MenuItemToggle && item.ToggleStyleCheckBox {
@@ -688,6 +800,55 @@ func (md *MenuDrawer) Draw() {
 
 			xDrawOffset = 0
 			yDrawOffset = 0
+		} else if item.Type == MenuItemKey {
+			for i, key := range item.KeyValues {
+				keyScale := float32(0.9)
+				keyColor := item.KeyColorRegular
+
+				if i == item.KeySelected {
+					const animDuration = time.Millisecond * 70
+					t := f32(TimeSinceNow(item.KeySelectTimer)) / f32(animDuration)
+					t = Clamp(t, 0, 1)
+
+					keyScale = Lerp(0.9, 1, t)
+					keyColor = LerpRGBA(item.KeyColorRegular, item.KeyColorSelected, f64(t))
+
+					keyScale *= calcClick(item.ValueClickTimer)
+				}
+
+				keyName := GetKeyName(key)
+
+				drawStrikeThrough := md.InputState == MenuInputStateWaitingKeyPress
+				drawStrikeThrough = drawStrikeThrough && i == item.KeySelected
+				drawStrikeThrough = drawStrikeThrough && index == md.SelectedIndex
+
+				if drawStrikeThrough {
+					keyNameSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
+					keyNameRect := rl.Rectangle{
+						Width:  keyNameSize.X,
+						Height: keyNameSize.Y,
+					}
+					keyNameRect.X = xAdvance
+					keyNameRect.Y = yCenter - keyNameRect.Height*0.5
+
+					keyNameCenter := RectCenter(keyNameRect)
+
+					strikeRect := rl.Rectangle{}
+					strikeRect.Width = keyNameSize.X * 0.8 * keyScale
+					strikeRect.Height = size * 0.1 * keyScale
+					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
+
+					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor.ToRlColor())
+
+					xAdvance += keyNameSize.X
+				} else {
+					keyColor = fadeC(keyColor, fade)
+
+					xAdvance += drawText(keyName, FontBold, size, keyScale, keyColor)
+				}
+
+				xAdvance += 30
+			}
 		} else {
 			switch item.Type {
 			case MenuItemToggle, MenuItemList, MenuItemNumber:
@@ -721,15 +882,15 @@ func (md *MenuDrawer) Draw() {
 				switch item.Type {
 				case MenuItemToggle:
 					if item.BValue {
-						drawTextCentered("Yes", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+						drawTextCentered("Yes", FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
 					} else {
-						drawTextCentered("No", size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+						drawTextCentered("No", FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
 					}
 				case MenuItemList:
-					drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+					drawTextCentered(item.List[item.ListSelected], FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
 				case MenuItemNumber:
 					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
-					drawTextCentered(toDraw, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+					drawTextCentered(toDraw, FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
 				}
 
 				xAdvance += valueWidthMax
