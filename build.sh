@@ -1,3 +1,3 @@
 #!/bin/bash
 
-go build -tags=noaudio
+go build -tags=noaudio -gcflags="-e"

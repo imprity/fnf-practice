@@ -211,17 +211,15 @@ func NewGameScreen() *GameScreen {
 		resumeItem := NewMenuItem()
 		resumeItem.Type = MenuItemTrigger
 		resumeItem.Name = "Resume"
-		resumeItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-			if bValue {
-				gs.DrawMenu = false
-			}
+		resumeItem.TriggerCallback = func() {
+			gs.DrawMenu = false
 		}
 		gs.Menu.AddItems(resumeItem)
 
 		rewindItem := NewMenuItem()
 		rewindItem.Type = MenuItemToggle
 		rewindItem.Name = "Rewind On Mistake"
-		rewindItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+		rewindItem.ToggleCallback = func(bValue bool) {
 			gs.RewindOnMistake = bValue
 		}
 		gs.RewindOnMistakeMenuItemId = rewindItem.Id
@@ -242,16 +240,14 @@ func NewGameScreen() *GameScreen {
 		quitItem := NewMenuItem()
 		quitItem.Type = MenuItemTrigger
 		quitItem.Name = "Return To Menu"
-		quitItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-			if bValue {
-				if gs.IsSongLoaded {
-					gs.PauseAudio()
-				}
-				ShowTransition(BlackPixel, func() {
-					SetNextScreen(TheSelectScreen)
-					HideTransition()
-				})
+		quitItem.TriggerCallback = func() {
+			if gs.IsSongLoaded {
+				gs.PauseAudio()
 			}
+			ShowTransition(BlackPixel, func() {
+				SetNextScreen(TheSelectScreen)
+				HideTransition()
+			})
 		}
 		gs.Menu.AddItems(quitItem)
 	}

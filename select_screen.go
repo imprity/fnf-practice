@@ -78,10 +78,7 @@ func NewSelectScreen() *SelectScreen {
 	directoryOpen := NewMenuItem()
 	directoryOpen.Name = "Search Directory"
 	directoryOpen.Type = MenuItemTrigger
-	directoryOpen.OnValueChange = func(bValue bool, _ float32, _ string) {
-		if !bValue {
-			return
-		}
+	directoryOpen.TriggerCallback = func() {
 		ShowTransition(DirSelectScreen, func() {
 			defer HideTransition()
 
@@ -113,11 +110,7 @@ func NewSelectScreen() *SelectScreen {
 	optionsItem := NewMenuItem()
 	optionsItem.Name = "Options"
 	optionsItem.Type = MenuItemTrigger
-	optionsItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-		if !bValue {
-			return
-		}
-
+	optionsItem.TriggerCallback = func() {
 		ShowTransition(BlackPixel, func() {
 			SetNextScreen(TheOptionsScreen)
 			HideTransition()
@@ -134,10 +127,7 @@ func NewSelectScreen() *SelectScreen {
 	deleteSongsItem := NewMenuItem()
 	deleteSongsItem.Name = "Delete Songs"
 	deleteSongsItem.Type = MenuItemTrigger
-	deleteSongsItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-		if !bValue {
-			return
-		}
+	deleteSongsItem.TriggerCallback = func() {
 		ss.ShowDeleteMenu()
 	}
 	ss.Menu.AddItems(deleteSongsItem)
@@ -196,10 +186,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		menuItem.UserData = group.Id()
 
-		menuItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-			if !bValue {
-				return
-			}
+		menuItem.TriggerCallback = func() {
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 			ShowTransition(SongLoadingScreen, func() {
@@ -322,11 +309,7 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 	deleteConfirm.Name = "DELETE SONGS"
 	deleteConfirm.Type = MenuItemTrigger
 
-	deleteConfirm.OnValueChange = func(bValue bool, _ float32, _ string) {
-		if !bValue {
-			return
-		}
-
+	deleteConfirm.TriggerCallback = func() {
 		// count how many songs are going to be deleted
 		toBeDeletedCount := 0
 
@@ -372,7 +355,7 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 			deleteItem.Type = MenuItemToggle
 			deleteItem.Name = group.SongName
 
-			deleteItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+			deleteItem.ToggleCallback = func(bValue bool) {
 				ss.ShouldDeletePathGroup[group.Id()] = bValue
 			}
 

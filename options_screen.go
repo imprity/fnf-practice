@@ -34,11 +34,7 @@ func NewOptionsScreen() *OptionsScreen {
 	backItem := NewMenuItem()
 	backItem.Name = "Back To Menu"
 	backItem.Type = MenuItemTrigger
-	backItem.OnValueChange = func(bValue bool, _ float32, _ string) {
-		if !bValue {
-			return
-		}
-
+	backItem.TriggerCallback = func() {
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
 		err := SaveSettings()
@@ -61,7 +57,7 @@ func NewOptionsScreen() *OptionsScreen {
 	fpsItem.NValueMax = 500
 	fpsItem.NValueInterval = 10
 	fpsItem.NValueFmtString = "%1.f"
-	fpsItem.OnValueChange = func(_ bool, nValue float32, _ string) {
+	fpsItem.NumberCallback = func(nValue float32) {
 		TheOptions.TargetFPS = int32(nValue)
 	}
 	op.FpsItemId = fpsItem.Id
@@ -70,7 +66,7 @@ func NewOptionsScreen() *OptionsScreen {
 	downScrollItem := NewMenuItem()
 	downScrollItem.Name = "Down Scroll"
 	downScrollItem.Type = MenuItemToggle
-	downScrollItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+	downScrollItem.ToggleCallback = func(bValue bool) {
 		TheOptions.DownScroll = bValue
 	}
 	op.DownScrollItemId = downScrollItem.Id
@@ -79,7 +75,7 @@ func NewOptionsScreen() *OptionsScreen {
 	loadAudioDuringGpItem := NewMenuItem()
 	loadAudioDuringGpItem.Name = "Load Audio During Game Play"
 	loadAudioDuringGpItem.Type = MenuItemToggle
-	loadAudioDuringGpItem.OnValueChange = func(bValue bool, _ float32, _ string) {
+	loadAudioDuringGpItem.ToggleCallback = func(bValue bool) {
 		TheOptions.LoadAudioDuringGamePlay = bValue
 	}
 	op.LoadAudioDuringGpItemId = loadAudioDuringGpItem.Id

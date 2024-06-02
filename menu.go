@@ -18,6 +18,7 @@ const (
 	MenuItemToggle
 	MenuItemNumber
 	MenuItemList
+	MenuItemKey
 	MenuItemDeco
 	MenuItemTypeSize
 )
@@ -29,6 +30,7 @@ func init() {
 	MenuItemTypeStrs[MenuItemToggle] = "Toggle"
 	MenuItemTypeStrs[MenuItemNumber] = "Number"
 	MenuItemTypeStrs[MenuItemList] = "List"
+	MenuItemTypeStrs[MenuItemKey] = "Key"
 	MenuItemTypeStrs[MenuItemDeco] = "Deco"
 }
 
@@ -58,7 +60,10 @@ type MenuItem struct {
 	ListSelected int
 	List         []string
 
-	OnValueChange func(bValue bool, nValue float32, listSelection string)
+	TriggerCallback func()
+	ToggleCallback  func(bool)
+	NumberCallback  func(float32)
+	ListCallback    func(selected int, list []string)
 
 	UserData any
 
@@ -116,6 +121,34 @@ func NewMenuItem() *MenuItem {
 	item.CheckmarkColor = Color255(0xFF, 0xFF, 0xFF, 0xFF)
 
 	return item
+}
+
+func (mi *MenuItem) CallCallback() {
+	switch mi.Type {
+	case MenuItemTrigger:
+		if mi.TriggerCallback != nil {
+			mi.TriggerCallback()
+		}
+	case MenuItemToggle:
+		if mi.ToggleCallback != nil {
+			mi.ToggleCallback(mi.BValue)
+		}
+	case MenuItemNumber:
+		if mi.NumberCallback != nil {
+			mi.NumberCallback(mi.NValue)
+		}
+	case MenuItemList:
+		if mi.ListCallback != nil {
+			selected := Clamp(mi.ListSelected, 0, len(mi.List))
+			mi.ListCallback(selected, mi.List)
+		}
+	case MenuItemKey:
+		ErrorLogger.Fatal("TODO : NOT IMPLEMENTED")
+	case MenuItemDeco:
+		// pass
+	default:
+		ErrorLogger.Fatalf("unknow item type : %v\n", mi.Type)
+	}
 }
 
 // creates deco item with " " as it's name
@@ -250,17 +283,10 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// ==========================
 	{
 		callItemCallback := func(item *MenuItem) {
-			if item.OnValueChange != nil {
-
-				// NOTE : we don't actually wanna call item callback now
-				// we will call it when update is over
-				itemCallback = func() {
-					listSelection := ""
-					if 0 <= item.ListSelected && item.ListSelected < len(item.List) {
-						listSelection = item.List[item.ListSelected]
-					}
-					item.OnValueChange(item.BValue, item.NValue, listSelection)
-				}
+			// NOTE : we don't actually wanna call item callback now
+			// we will call it when update is over
+			itemCallback = func() {
+				item.CallCallback()
 			}
 		}
 
