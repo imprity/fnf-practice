@@ -35,10 +35,10 @@ type KeyMap struct {
 
 var TheKM KeyMap = KeyMap{
 	NoteKeys: [NoteDirSize][]int32{
-		{rl.KeyA, rl.KeyLeft},
-		{rl.KeyS, rl.KeyDown},
-		{rl.KeySemicolon, rl.KeyUp},
-		{rl.KeyApostrophe, rl.KeyRight},
+		{rl.KeyLeft, rl.KeyA},
+		{rl.KeyDown, rl.KeyS},
+		{rl.KeyUp, rl.KeyW},
+		{rl.KeyRight, rl.KeyD},
 	},
 
 	SelectKey: rl.KeyEnter,

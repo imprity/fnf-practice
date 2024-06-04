@@ -97,6 +97,12 @@ func main() {
 	defer FreePopupDialog()
 	InitAlert()
 
+	// load settings
+	if err := LoadSettings(); err != nil {
+		ErrorLogger.Println(err)
+		DisplayAlert("failed to load settings")
+	}
+
 	// create screens
 	TheGameScreen = NewGameScreen()
 	TheSelectScreen = NewSelectScreen()
@@ -107,14 +113,7 @@ func main() {
 	defer TheSelectScreen.Free()
 	defer TheOptionsScreen.Free()
 
-	// load settings
-	if err := LoadSettings(); err != nil {
-		ErrorLogger.Println(err)
-		DisplayAlert("failed to load settings")
-	}
-
 	// load collections
-	//var savedCollections []PathGroupCollection
 	if savedCollections, err := LoadCollections(); err != nil {
 		ErrorLogger.Println(err)
 		DisplayAlert("failed to load songs")

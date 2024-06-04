@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	SettingsJsonMajorVersion = 1
+	SettingsJsonMajorVersion = 2
 	SettingsJsonMinorVersion = 1
 )
 
@@ -23,6 +23,7 @@ type SettingsJson struct {
 	MinorVersion int
 
 	Options Options
+	KeyMap  KeyMap
 }
 
 const (
@@ -130,6 +131,16 @@ func LoadCollections() ([]PathGroupCollection, error) {
 	if exists {
 		jc := CollectionsJson{}
 		err := decodeJsonFile(path, &jc)
+
+		// TODO : For now, just throwing error on incompatible version is probably fine
+		// But we will have to do some sophisticated backward compatibility stuff
+		// Once options get bigger
+		if jc.MajorVersion != CollectionsJsonMajorVersion {
+			return []PathGroupCollection{}, fmt.Errorf(
+				"expected major version to be \"%v\", got \"%v\"",
+				CollectionsJsonMajorVersion, jc.MajorVersion)
+		}
+
 		if err != nil {
 			return []PathGroupCollection{}, err
 		}
@@ -161,6 +172,7 @@ func SaveSettings() error {
 		MinorVersion: SettingsJsonMinorVersion,
 
 		Options: TheOptions,
+		KeyMap:  TheKM,
 	}
 
 	if err := encodeToJsonFile(path, sj); err != nil {
@@ -188,7 +200,16 @@ func LoadSettings() error {
 			return err
 		}
 
+		// TODO : For now, just throwing error on incompatible version is probably fine
+		// But we will have to do some sophisticated backward compatibility stuff
+		// Once options get bigger
+		if js.MajorVersion != SettingsJsonMajorVersion {
+			return fmt.Errorf("expected major version to be \"%v\", got \"%v\"",
+				SettingsJsonMajorVersion, js.MajorVersion)
+		}
+
 		TheOptions = js.Options
+		TheKM = js.KeyMap
 
 		return nil
 	} else {
