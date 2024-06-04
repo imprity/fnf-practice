@@ -67,8 +67,8 @@ func NewSelectScreen() *SelectScreen {
 	menuDeco.Type = MenuItemDeco
 	menuDeco.Color = Color255(0x4A, 0x7F, 0xD7, 0xFF)
 	menuDeco.FadeIfUnselected = false
-	menuDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-	menuDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
+	menuDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
+	menuDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
 	ss.Menu.AddItems(menuDeco)
 
 	// =======================================
@@ -141,8 +141,8 @@ func NewSelectScreen() *SelectScreen {
 	songDeco.Name = "Songs"
 	songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
 	songDeco.FadeIfUnselected = false
-	songDeco.SizeRegular = MenuItemSizeRegularDefault * 1.7
-	songDeco.SizeSelected = MenuItemSizeSelectedDefault * 1.7
+	songDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
+	songDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
 	ss.Menu.AddItems(songDeco)
 	ss.SongDecoItemId = songDeco.Id
 

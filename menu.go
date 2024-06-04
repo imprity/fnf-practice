@@ -101,8 +101,8 @@ type MenuItem struct {
 
 	CheckmarkColor Color // default is 0xFF FF FF FF
 
-	KeyColorRegular  Color
-	KeyColorSelected Color
+	KeyColorRegular  Color // default is 0xFF FF FF C8
+	KeyColorSelected Color // default is 0x0A FA 72 FF
 
 	// variables for animations
 	NameClickTimer       time.Duration
@@ -116,22 +116,31 @@ type MenuItem struct {
 
 var menuItemIdGenerator IdGenerator[MenuItemId]
 
-const (
-	MenuItemSizeRegularDefault  = 70
-	MenuItemSizeSelectedDefault = 90
-)
+var MenuItemDefaults = MenuItem{
+	SizeRegular:  70,
+	SizeSelected: 90,
+
+	Color: Col(1, 1, 1, 1),
+
+	FadeIfUnselected:    true,
+	ToggleStyleCheckBox: true,
+
+	BottomMargin:       30,
+	SelectedLeftMargin: 30,
+
+	CheckedBoxColor:   Color255(0x79, 0xE4, 0xAF, 0xFF),
+	UncheckedBoxColor: Color255(0xD1, 0xD1, 0xD1, 0xFF),
+
+	CheckmarkColor: Color255(0xFF, 0xFF, 0xFF, 0xFF),
+
+	KeyColorRegular:  Color255(0xFF, 0xFF, 0xFF, 0xC8),
+	KeyColorSelected: Color255(0x0A, 0xFA, 0x72, 0xFF),
+}
 
 func NewMenuItem() *MenuItem {
-	item := new(MenuItem)
+	item := MenuItemDefaults
 
 	item.Id = menuItemIdGenerator.NewId()
-
-	item.SizeRegular = MenuItemSizeRegularDefault
-	item.SizeSelected = MenuItemSizeSelectedDefault
-
-	item.BottomMargin = 30
-
-	item.SelectedLeftMargin = 30
 
 	item.NameClickTimer = -Years150
 	item.ValueClickTimer = -Years150
@@ -139,21 +148,7 @@ func NewMenuItem() *MenuItem {
 	item.RightArrowClickTimer = -Years150
 	item.KeySelectTimer = -Years150
 
-	item.Color = Col(1, 1, 1, 1)
-
-	item.FadeIfUnselected = true
-
-	item.ToggleStyleCheckBox = true
-
-	item.CheckedBoxColor = Color255(0x79, 0xE4, 0xAF, 0xFF)
-	item.UncheckedBoxColor = Color255(0xD1, 0xD1, 0xD1, 0xFF)
-
-	item.CheckmarkColor = Color255(0xFF, 0xFF, 0xFF, 0xFF)
-
-	item.KeyColorRegular = Color255(0xFF, 0xFF, 0xFF, 200)
-	item.KeyColorSelected = Color255(10, 250, 114, 0xFF)
-
-	return item
+	return &item
 }
 
 func (mi *MenuItem) AddKeys(keys ...int32) {
@@ -655,7 +650,7 @@ func (md *MenuDrawer) Draw() {
 		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
 
 		pos := rl.Vector2{
-			X: xAdvance,
+			X: xAdvance + textSize.X*0.5*(1-scale),
 			Y: yCenter - textSize.Y*scale*0.5,
 		}
 
@@ -676,8 +671,10 @@ func (md *MenuDrawer) Draw() {
 	drawTextCentered := func(text string, font rl.Font, fontSize, scale, width float32, col Color) float32 {
 		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
 
+		width = max(textSize.X, width)
+
 		pos := rl.Vector2{
-			X: (width-textSize.X)*0.5 + xAdvance,
+			X: xAdvance + (width-textSize.X*scale)*0.5,
 			Y: yCenter - textSize.Y*scale*0.5,
 		}
 
@@ -852,16 +849,6 @@ func (md *MenuDrawer) Draw() {
 
 				desiredWidth := item.SizeRegular * 4
 
-				actualWidth := float32(0)
-				actualHeight := float32(0)
-
-				{
-					actualSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
-
-					actualWidth = actualSize.X
-					actualHeight = actualSize.Y
-				}
-
 				if i == md.keySelected() && index == md.SelectedIndex {
 					const animDuration = time.Millisecond * 70
 					t := f32(TimeSinceNow(item.KeySelectTimer)) / f32(animDuration)
@@ -878,9 +865,11 @@ func (md *MenuDrawer) Draw() {
 				drawStrikeThrough = drawStrikeThrough && index == md.SelectedIndex
 
 				if drawStrikeThrough {
+					keyNameSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
+
 					keyNameRect := rl.Rectangle{
-						Width:  max(desiredWidth, actualWidth),
-						Height: actualHeight,
+						Width:  max(desiredWidth, keyNameSize.X),
+						Height: keyNameSize.Y,
 					}
 					keyNameRect.X = xAdvance
 					keyNameRect.Y = yCenter - keyNameRect.Height*0.5
@@ -888,17 +877,17 @@ func (md *MenuDrawer) Draw() {
 					keyNameCenter := RectCenter(keyNameRect)
 
 					strikeRect := rl.Rectangle{}
-					strikeRect.Width = actualWidth * 0.8 * keyScale
+					strikeRect.Width = keyNameSize.X * 0.8 * keyScale
 					strikeRect.Height = size * 0.1 * keyScale
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor.ToRlColor())
 
-					xAdvance += max(desiredWidth, actualWidth)
+					xAdvance += max(desiredWidth, keyNameSize.X)
 				} else {
 					keyColor = fadeC(keyColor, fade)
 
-					xAdvance += drawTextCentered(keyName, FontBold, size, keyScale, max(desiredWidth, actualWidth), keyColor)
+					xAdvance += drawTextCentered(keyName, FontBold, size, keyScale, desiredWidth, keyColor)
 				}
 
 				xAdvance += 30
