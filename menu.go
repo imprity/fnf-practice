@@ -56,6 +56,17 @@ type MenuItem struct {
 	Color            Color
 	FadeIfUnselected bool
 
+	// margin between next item
+	// default is 30
+	BottomMargin float32
+
+	// default is 30
+	SelectedLeftMargin float32
+
+	NameMinWidth float32
+
+	NameValueSeperator string
+
 	BValue bool
 
 	NValue float32
@@ -117,6 +128,10 @@ func NewMenuItem() *MenuItem {
 
 	item.SizeRegular = MenuItemSizeRegularDefault
 	item.SizeSelected = MenuItemSizeSelectedDefault
+
+	item.BottomMargin = 30
+
+	item.SelectedLeftMargin = 30
 
 	item.NameClickTimer = -Years150
 	item.ValueClickTimer = -Years150
@@ -182,8 +197,6 @@ const (
 type MenuDrawer struct {
 	SelectedIndex int
 
-	ListInterval float32
-
 	Yoffset float32
 
 	ScrollAnimT float32
@@ -201,8 +214,6 @@ func NewMenuDrawer() *MenuDrawer {
 	md := new(MenuDrawer)
 
 	md.ScrollAnimT = 1
-
-	md.ListInterval = 30
 
 	md.InputId = NewInputGroupId()
 
@@ -299,7 +310,6 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// handling input
 	// ==========================
 	if md.InputState == MenuInputStateWaitingKeyPress {
-		SetSoloInput(md.InputId)
 		if pressed, key := AnyKeyPressed(md.InputId); pressed {
 			selected := md.items[md.SelectedIndex]
 
@@ -408,6 +418,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				case MenuItemKey:
 					selected.ValueClickTimer = GlobalTimerNow()
 					if len(selected.KeyValues) > 0 {
+						SetSoloInput(md.InputId)
 						md.InputState = MenuInputStateWaitingKeyPress
 					}
 				}
@@ -556,11 +567,11 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			continue
 		}
 
-		seletionY -= item.SizeRegular + md.ListInterval
+		seletionY -= item.SizeRegular + item.BottomMargin
 	}
 
 	if tryingToMove && canNotMove {
-		push := (selected.SizeRegular*0.5 + md.ListInterval) * 0.8
+		push := (selected.SizeRegular*0.5 + 30) * 0.8
 		if tryingToMoveUp {
 			seletionY += push
 		} else {
@@ -759,7 +770,7 @@ func (md *MenuDrawer) Draw() {
 		if index == md.SelectedIndex {
 			fade = Lerp(0.5, 1.0, float64(md.ScrollAnimT))
 			size = Lerp(item.SizeRegular, item.SizeSelected, md.ScrollAnimT)
-			xAdvance += Lerp(0, 30, md.ScrollAnimT)
+			xAdvance += Lerp(0, item.SelectedLeftMargin, md.ScrollAnimT)
 		}
 
 		if !item.FadeIfUnselected {
@@ -771,10 +782,26 @@ func (md *MenuDrawer) Draw() {
 		leftArrowScale := calcArrowClick(item.LeftArrowClickTimer)
 		rightArrowScale := calcArrowClick(item.RightArrowClickTimer)
 
-		xAdvance += drawText(item.Name, FontBold, size, nameScale, fadeC(item.Color, fade))
-		xAdvance += 40
+		// ==========================
+		// draw name
+		// ==========================
+		{
+			renderedWidth := drawText(item.Name, FontBold, size, nameScale, fadeC(item.Color, fade))
+			xAdvance += max(renderedWidth, item.NameMinWidth)
+
+			if item.NameValueSeperator == "" {
+				xAdvance += 40
+			} else {
+				xAdvance += 20
+				xAdvance += drawText(item.NameValueSeperator, FontBold, size, 1, fadeC(item.Color, fade))
+				xAdvance += 40
+			}
+		}
 
 		if item.Type == MenuItemToggle && item.ToggleStyleCheckBox {
+			// ==========================
+			// draw toggle check box
+			// ==========================
 			checkBoxScale := float32(1.2)
 
 			checkBoxOffsetX := float32(0)
@@ -814,9 +841,26 @@ func (md *MenuDrawer) Draw() {
 			xDrawOffset = 0
 			yDrawOffset = 0
 		} else if item.Type == MenuItemKey {
+			// ==========================
+			// draw kew binding item
+			// ==========================
 			for i, key := range item.KeyValues {
+				keyName := GetKeyName(key)
+
 				keyScale := float32(0.9)
 				keyColor := item.KeyColorRegular
+
+				desiredWidth := item.SizeRegular * 4
+
+				actualWidth := float32(0)
+				actualHeight := float32(0)
+
+				{
+					actualSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
+
+					actualWidth = actualSize.X
+					actualHeight = actualSize.Y
+				}
 
 				if i == md.keySelected() && index == md.SelectedIndex {
 					const animDuration = time.Millisecond * 70
@@ -829,17 +873,14 @@ func (md *MenuDrawer) Draw() {
 					keyScale *= calcClick(item.ValueClickTimer)
 				}
 
-				keyName := GetKeyName(key)
-
 				drawStrikeThrough := md.InputState == MenuInputStateWaitingKeyPress
 				drawStrikeThrough = drawStrikeThrough && i == md.keySelected()
 				drawStrikeThrough = drawStrikeThrough && index == md.SelectedIndex
 
 				if drawStrikeThrough {
-					keyNameSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
 					keyNameRect := rl.Rectangle{
-						Width:  keyNameSize.X,
-						Height: keyNameSize.Y,
+						Width:  max(desiredWidth, actualWidth),
+						Height: actualHeight,
 					}
 					keyNameRect.X = xAdvance
 					keyNameRect.Y = yCenter - keyNameRect.Height*0.5
@@ -847,22 +888,25 @@ func (md *MenuDrawer) Draw() {
 					keyNameCenter := RectCenter(keyNameRect)
 
 					strikeRect := rl.Rectangle{}
-					strikeRect.Width = keyNameSize.X * 0.8 * keyScale
+					strikeRect.Width = actualWidth * 0.8 * keyScale
 					strikeRect.Height = size * 0.1 * keyScale
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor.ToRlColor())
 
-					xAdvance += keyNameSize.X
+					xAdvance += max(desiredWidth, actualWidth)
 				} else {
 					keyColor = fadeC(keyColor, fade)
 
-					xAdvance += drawText(keyName, FontBold, size, keyScale, keyColor)
+					xAdvance += drawTextCentered(keyName, FontBold, size, keyScale, max(desiredWidth, actualWidth), keyColor)
 				}
 
 				xAdvance += 30
 			}
 		} else {
+			// =====================================
+			// draw items with < value > style item
+			// =====================================
 			switch item.Type {
 			case MenuItemToggle, MenuItemList, MenuItemNumber:
 				arrowFill := fadeC(Col(1, 1, 1, 1), fade)
@@ -913,7 +957,7 @@ func (md *MenuDrawer) Draw() {
 			}
 		}
 
-		yOffset += item.SizeRegular + md.ListInterval
+		yOffset += item.SizeRegular + item.BottomMargin
 
 		// update item's rendered rect
 		item.bound = itemBound

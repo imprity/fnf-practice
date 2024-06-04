@@ -80,6 +80,8 @@ func NewOptionsScreen() *OptionsScreen {
 	loadAudioDuringGpItem.ToggleCallback = func(bValue bool) {
 		TheOptions.LoadAudioDuringGamePlay = bValue
 	}
+	loadAudioDuringGpItem.SizeSelected = 75
+	loadAudioDuringGpItem.SelectedLeftMargin = 5
 	op.LoadAudioDuringGpItemId = loadAudioDuringGpItem.Id
 	op.Menu.AddItems(loadAudioDuringGpItem)
 
@@ -94,15 +96,21 @@ func NewOptionsScreen() *OptionsScreen {
 		deco.FadeIfUnselected = false
 		op.Menu.AddItems(deco)
 
-		createKeyOp := func(name string, keys []int32, cb func(index int, prevKey int32, newKey int32)) {
+		createKeyOp := func(name string, keys []int32, cb func(index int, prevKey int32, newKey int32)) *MenuItem {
 			keyItem := NewMenuItem()
 			keyItem.Name = name
 			keyItem.Type = MenuItemKey
-			keyItem.SizeRegular = 70
-			keyItem.SizeSelected = 75
+			keyItem.SizeRegular = 65
+			keyItem.SizeSelected = 70
+			keyItem.BottomMargin = 15
+			keyItem.NameMinWidth = 270
+			keyItem.SelectedLeftMargin = 5
 			keyItem.AddKeys(keys...)
 			keyItem.KeyCallback = cb
+
 			op.Menu.AddItems(keyItem)
+
+			return keyItem
 		}
 
 		// direction key
@@ -124,7 +132,7 @@ func NewOptionsScreen() *OptionsScreen {
 			TheKM.SelectKey = newKey
 		})
 		createKeyOp("Pause :", []int32{TheKM.PauseKey}, func(index int, _ int32, newKey int32) {
-			TheKM.SelectKey = newKey
+			TheKM.PauseKey = newKey
 		})
 		createKeyOp("Escape :", []int32{TheKM.EscapeKey}, func(index int, _ int32, newKey int32) {
 			TheKM.EscapeKey = newKey
@@ -135,10 +143,10 @@ func NewOptionsScreen() *OptionsScreen {
 		createKeyOp("Scroll Down :", []int32{TheKM.NoteScrollDownKey}, func(index int, _ int32, newKey int32) {
 			TheKM.NoteScrollDownKey = newKey
 		})
-		createKeyOp("Speed Up :", []int32{TheKM.AudioSpeedUpKey}, func(index int, _ int32, newKey int32) {
+		speedUp := createKeyOp("Speed Up :", []int32{TheKM.AudioSpeedUpKey}, func(index int, _ int32, newKey int32) {
 			TheKM.AudioSpeedUpKey = newKey
 		})
-		createKeyOp("Speed Down :", []int32{TheKM.AudioSpeedDownKey}, func(index int, _ int32, newKey int32) {
+		speedDown := createKeyOp("Speed Down :", []int32{TheKM.AudioSpeedDownKey}, func(index int, _ int32, newKey int32) {
 			TheKM.AudioSpeedDownKey = newKey
 		})
 		createKeyOp("Reset :", []int32{TheKM.SongResetKey}, func(index int, _ int32, newKey int32) {
@@ -150,12 +158,17 @@ func NewOptionsScreen() *OptionsScreen {
 		createKeyOp("Jump To Bookmark :", []int32{TheKM.JumpToBookMarkKey}, func(index int, _ int32, newKey int32) {
 			TheKM.JumpToBookMarkKey = newKey
 		})
-		createKeyOp("Note Spacing Up :", []int32{TheKM.ZoomInKey}, func(index int, _ int32, newKey int32) {
+		spacingUp := createKeyOp("Note Spacing Up :", []int32{TheKM.ZoomInKey}, func(index int, _ int32, newKey int32) {
 			TheKM.ZoomInKey = newKey
 		})
-		createKeyOp("Note Spacing Down :", []int32{TheKM.ZoomOutKey}, func(index int, _ int32, newKey int32) {
+		spacingDown := createKeyOp("Note Spacing Down :", []int32{TheKM.ZoomOutKey}, func(index int, _ int32, newKey int32) {
 			TheKM.ZoomOutKey = newKey
 		})
+
+		// additional settings for specific items
+		speedUp.NameMinWidth, speedDown.NameMinWidth = 290, 290
+
+		spacingUp.NameMinWidth, spacingDown.NameMinWidth = 460, 460
 	}
 
 	return op
