@@ -25,12 +25,12 @@ type KeyMap struct {
 	SetBookMarkKey    int32
 	JumpToBookMarkKey int32
 
+	ZoomOutKey int32
+	ZoomInKey  int32
+
 	ToggleDebugKey     int32
 	ToggleLogNoteEvent int32
 	ReloadAssetsKey    int32
-
-	ZoomOutKey int32
-	ZoomInKey  int32
 }
 
 var TheKM KeyMap = KeyMap{
@@ -56,12 +56,12 @@ var TheKM KeyMap = KeyMap{
 	SetBookMarkKey:    rl.KeyB,
 	JumpToBookMarkKey: rl.KeyBackspace,
 
+	ZoomOutKey: rl.KeyLeftBracket,
+	ZoomInKey:  rl.KeyRightBracket,
+
 	ToggleDebugKey:     rl.KeyF1,
 	ToggleLogNoteEvent: rl.KeyF2,
 	ReloadAssetsKey:    rl.KeyF5,
-
-	ZoomOutKey: rl.KeyLeftBracket,
-	ZoomInKey:  rl.KeyRightBracket,
 }
 
 func NoteKeys(dir NoteDir) []int32 {

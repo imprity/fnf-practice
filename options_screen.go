@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"strings"
 	"time"
 )
 
@@ -80,6 +82,81 @@ func NewOptionsScreen() *OptionsScreen {
 	}
 	op.LoadAudioDuringGpItemId = loadAudioDuringGpItem.Id
 	op.Menu.AddItems(loadAudioDuringGpItem)
+
+	// create key control options
+	{
+		deco := NewMenuItem()
+		deco.Name = "Controls"
+		deco.Type = MenuItemDeco
+		deco.SizeRegular = MenuItemSizeRegularDefault * 1.4
+		deco.SizeSelected = MenuItemSizeSelectedDefault * 1.4
+		deco.Color = Color255(0xFC, 0x9F, 0x7C, 0xFF)
+		deco.FadeIfUnselected = false
+		op.Menu.AddItems(deco)
+
+		createKeyOp := func(name string, keys []int32, cb func(index int, prevKey int32, newKey int32)) {
+			keyItem := NewMenuItem()
+			keyItem.Name = name
+			keyItem.Type = MenuItemKey
+			keyItem.SizeRegular = 70
+			keyItem.SizeSelected = 75
+			keyItem.AddKeys(keys...)
+			keyItem.KeyCallback = cb
+			op.Menu.AddItems(keyItem)
+		}
+
+		// direction key
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			d := dir
+			createKeyOp(
+				// NOTE : I know Title is deprecated but range of input is only 4
+				// up down left right
+				// So I don't it really matters...
+				fmt.Sprintf("%v :", strings.Title(NoteDirStrs[d])),
+				NoteKeys(d),
+				func(index int, _ int32, newKey int32) {
+					TheKM.NoteKeys[d][index] = newKey
+				},
+			)
+		}
+
+		createKeyOp("Select :", []int32{TheKM.SelectKey}, func(index int, _ int32, newKey int32) {
+			TheKM.SelectKey = newKey
+		})
+		createKeyOp("Pause :", []int32{TheKM.PauseKey}, func(index int, _ int32, newKey int32) {
+			TheKM.SelectKey = newKey
+		})
+		createKeyOp("Escape :", []int32{TheKM.EscapeKey}, func(index int, _ int32, newKey int32) {
+			TheKM.EscapeKey = newKey
+		})
+		createKeyOp("Scroll Up :", []int32{TheKM.NoteScrollUpKey}, func(index int, _ int32, newKey int32) {
+			TheKM.NoteScrollUpKey = newKey
+		})
+		createKeyOp("Scroll Down :", []int32{TheKM.NoteScrollDownKey}, func(index int, _ int32, newKey int32) {
+			TheKM.NoteScrollDownKey = newKey
+		})
+		createKeyOp("Speed Up :", []int32{TheKM.AudioSpeedUpKey}, func(index int, _ int32, newKey int32) {
+			TheKM.AudioSpeedUpKey = newKey
+		})
+		createKeyOp("Speed Down :", []int32{TheKM.AudioSpeedDownKey}, func(index int, _ int32, newKey int32) {
+			TheKM.AudioSpeedDownKey = newKey
+		})
+		createKeyOp("Reset :", []int32{TheKM.SongResetKey}, func(index int, _ int32, newKey int32) {
+			TheKM.SongResetKey = newKey
+		})
+		createKeyOp("Bookmark :", []int32{TheKM.SetBookMarkKey}, func(index int, _ int32, newKey int32) {
+			TheKM.SetBookMarkKey = newKey
+		})
+		createKeyOp("Jump To Bookmark :", []int32{TheKM.JumpToBookMarkKey}, func(index int, _ int32, newKey int32) {
+			TheKM.JumpToBookMarkKey = newKey
+		})
+		createKeyOp("Note Spacing Up :", []int32{TheKM.ZoomInKey}, func(index int, _ int32, newKey int32) {
+			TheKM.ZoomInKey = newKey
+		})
+		createKeyOp("Note Spacing Down :", []int32{TheKM.ZoomOutKey}, func(index int, _ int32, newKey int32) {
+			TheKM.ZoomOutKey = newKey
+		})
+	}
 
 	return op
 }
