@@ -2,6 +2,7 @@
 test_songs/
 trace.out
 fnf-practice
+fnf-practice-debug
 
 fnf-practice-settings.json
 fnf-practice-collections.json
