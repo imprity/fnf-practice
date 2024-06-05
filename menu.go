@@ -317,7 +317,6 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 						selected.KeyCallback(keySelected, prevKey, newKey)
 					}
 				}
-				selected.KeyValues[keySelected] = key
 			} else {
 				ErrorLogger.Fatalf("wrong type of MenuItem : %v", MenuItemTypeName(selected.Type))
 			}

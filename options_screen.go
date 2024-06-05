@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	rl "github.com/gen2brain/raylib-go/raylib"
+	"slices"
 	"strings"
 	"time"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type OptionsScreen struct {
@@ -96,7 +98,7 @@ func NewOptionsScreen() *OptionsScreen {
 		deco.FadeIfUnselected = false
 		op.Menu.AddItems(deco)
 
-		createKeyOp := func(name string, keys []int32, cb func(index int, prevKey int32, newKey int32)) *MenuItem {
+		createKeyOp := func(name string, keys []int32) *MenuItem {
 			keyItem := NewMenuItem()
 			keyItem.Name = name
 			keyItem.Type = MenuItemKey
@@ -106,7 +108,6 @@ func NewOptionsScreen() *OptionsScreen {
 			keyItem.NameMinWidth = 270
 			keyItem.SelectedLeftMargin = 5
 			keyItem.AddKeys(keys...)
-			keyItem.KeyCallback = cb
 
 			op.Menu.AddItems(keyItem)
 
@@ -115,60 +116,88 @@ func NewOptionsScreen() *OptionsScreen {
 
 		// direction key
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			d := dir
-			createKeyOp(
-				// NOTE : I know Title is deprecated but range of input is only 4
-				// up down left right
-				// So I don't it really matters...
-				fmt.Sprintf("%v :", strings.Title(NoteDirStrs[d])),
-				NoteKeys(d),
-				func(index int, _ int32, newKey int32) {
-					SetNoteKeys(dir, index, newKey)
-				},
+			item := createKeyOp(
+				// NOTE : I know Title is deprecated but I don't care
+				fmt.Sprintf("%v :", strings.Title(NoteDirStrs[dir])),
+				NoteKeys(dir),
 			)
+
+			item.KeyCallback = func(index int, prevKey int32, newKey int32) {
+				if prevKey == newKey {
+					return
+				}
+
+				// check for duplicate
+				isDuplicate := false
+				var duplicateOf FnfKey
+
+				for binding := FnfKey(0); binding < FnfKeySize; binding++ {
+					if TheKM[binding] == newKey {
+						isDuplicate = true
+						duplicateOf = binding
+					}
+				}
+
+				if isDuplicate {
+					DisplayOptionsPopup(
+						fmt.Sprintf("Sorry\n\"%v\" key is already assigned to \"%v\"", GetKeyName(newKey), KeyHumanName[duplicateOf]),
+						[]string{}, nil)
+				} else {
+					SetNoteKeys(dir, index, newKey)
+					item.KeyValues[index] = newKey
+				}
+			}
 		}
 
-		createKeyOp("Select :", []int32{TheKM[SelectKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[SelectKey] = newKey
-		})
-		createKeyOp("Pause :", []int32{TheKM[PauseKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[PauseKey] = newKey
-		})
-		createKeyOp("Escape :", []int32{TheKM[EscapeKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[EscapeKey] = newKey
-		})
-		createKeyOp("Scroll Up :", []int32{TheKM[NoteScrollUpKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[NoteScrollUpKey] = newKey
-		})
-		createKeyOp("Scroll Down :", []int32{TheKM[NoteScrollDownKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[NoteScrollDownKey] = newKey
-		})
-		speedUp := createKeyOp("Speed Up :", []int32{TheKM[AudioSpeedUpKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[AudioSpeedUpKey] = newKey
-		})
-		speedDown := createKeyOp("Speed Down :", []int32{TheKM[AudioSpeedDownKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[AudioSpeedDownKey] = newKey
-		})
-		createKeyOp("Reset :", []int32{TheKM[SongResetKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[SongResetKey] = newKey
-		})
-		createKeyOp("Bookmark :", []int32{TheKM[SetBookMarkKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[SetBookMarkKey] = newKey
-		})
-		createKeyOp("Jump To Bookmark :", []int32{TheKM[JumpToBookMarkKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[JumpToBookMarkKey] = newKey
-		})
-		spacingUp := createKeyOp("Note Spacing Up :", []int32{TheKM[ZoomInKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[ZoomInKey] = newKey
-		})
-		spacingDown := createKeyOp("Note Spacing Down :", []int32{TheKM[ZoomOutKey]}, func(index int, _ int32, newKey int32) {
-			TheKM[ZoomOutKey] = newKey
-		})
+		debugKeys := []FnfKey{
+			ToggleDebugKey,
+			ToggleLogNoteEvent,
+			ReloadAssetsKey,
+		}
 
-		// additional settings for specific items
-		speedUp.NameMinWidth, speedDown.NameMinWidth = 290, 290
+		for key := SelectKey; key < FnfKeySize; key++ {
+			// leave out debug keys from menu
+			if slices.Contains(debugKeys, key) {
+				continue
+			}
 
-		spacingUp.NameMinWidth, spacingDown.NameMinWidth = 460, 460
+			// NOTE : I know Title is deprecated but I don't care
+			name := fmt.Sprintf("%v :", strings.Title(KeyHumanName[key]))
+			item := createKeyOp(name, []int32{TheKM[key]})
+
+			item.KeyCallback = func(index int, prevKey int32, newKey int32) {
+				if prevKey == newKey {
+					return
+				}
+
+				// check for duplicate
+				isDuplicate := false
+				var duplicateOf FnfKey
+
+				for binding := FnfKey(0); binding < FnfKeySize; binding++ {
+					if TheKM[binding] == newKey {
+						isDuplicate = true
+						duplicateOf = binding
+					}
+				}
+
+				if isDuplicate {
+					DisplayOptionsPopup(
+						fmt.Sprintf("Sorry\n\"%v\" key is already assigned to \"%v\"", GetKeyName(newKey), KeyHumanName[duplicateOf]),
+						[]string{}, nil)
+				} else {
+					TheKM[key] = newKey
+					item.KeyValues[index] = newKey
+				}
+			}
+
+			switch key {
+			case AudioSpeedUpKey, AudioSpeedDownKey:
+				item.NameMinWidth = 290
+			case ZoomInKey, ZoomOutKey:
+				item.NameMinWidth = 460
+			}
+		}
 	}
 
 	return op
