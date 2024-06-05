@@ -20,7 +20,16 @@ const BytesPerSample = 4
 
 var TheContext *oto.Context
 
+type AudioManager struct {
+	globalVolume float64
+	players      []*VaryingSpeedPlayer
+}
+
+var TheAudioManager AudioManager
+
 func InitAudio() error {
+	TheAudioManager.globalVolume = 1.0
+
 	contextOp := oto.NewContextOptions{
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
@@ -28,7 +37,6 @@ func InitAudio() error {
 		BufferSize:   0, // use default
 	}
 
-	//context := audio.NewContext(SampleRate)
 	var contextReady chan struct{}
 	var err error
 	TheContext, contextReady, err = oto.NewContext(&contextOp)
@@ -40,6 +48,18 @@ func InitAudio() error {
 	<-contextReady
 
 	return nil
+}
+
+func UpdateAudio() {
+	volume := Clamp(TheOptions.Volume, 0, 1)
+
+	if volume != TheAudioManager.globalVolume {
+		TheAudioManager.globalVolume = volume
+
+		for _, p := range TheAudioManager.players {
+			p.SetVolume(p.Volume())
+		}
+	}
 }
 
 type AudioDecoder interface {
@@ -75,6 +95,8 @@ type VaryingSpeedPlayer struct {
 	padStart time.Duration
 	padEnd   time.Duration
 
+	volume float64
+
 	isPlaying bool
 }
 
@@ -82,6 +104,9 @@ func NewVaryingSpeedPlayer(padStart, padEnd time.Duration) *VaryingSpeedPlayer {
 	vp := new(VaryingSpeedPlayer)
 	vp.padStart = padStart
 	vp.padEnd = padEnd
+	vp.volume = 1.0
+
+	TheAudioManager.players = append(TheAudioManager.players, vp)
 
 	return vp
 }
@@ -125,6 +150,8 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 		vp.player = player
 
 		vp.isReady = true
+
+		vp.SetVolume(vp.Volume())
 	} else {
 		vp.player.Pause()
 		if err := vp.stream.ChangeAudio(rawFile, fileType); err != nil {
@@ -191,11 +218,17 @@ func (vp *VaryingSpeedPlayer) Rewind() {
 }
 
 func (vp *VaryingSpeedPlayer) SetVolume(volume float64) {
-	vp.player.SetVolume(volume)
+	volume = Clamp(volume, 0, 1)
+
+	vp.volume = volume
+
+	if vp.isReady {
+		vp.player.SetVolume(TheAudioManager.globalVolume * volume)
+	}
 }
 
 func (vp *VaryingSpeedPlayer) Volume() float64 {
-	return vp.player.Volume()
+	return vp.volume
 }
 
 func (vp *VaryingSpeedPlayer) Speed() float64 {

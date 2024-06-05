@@ -12,9 +12,7 @@ import (
 type OptionsScreen struct {
 	Menu *MenuDrawer
 
-	FpsItemId               MenuItemId
-	DownScrollItemId        MenuItemId
-	LoadAudioDuringGpItemId MenuItemId
+	setItemValuesToOptions func()
 
 	InputId InputGroupId
 }
@@ -64,8 +62,20 @@ func NewOptionsScreen() *OptionsScreen {
 	fpsItem.NumberCallback = func(nValue float32) {
 		TheOptions.TargetFPS = int32(nValue)
 	}
-	op.FpsItemId = fpsItem.Id
 	op.Menu.AddItems(fpsItem)
+
+	volumeItem := NewMenuItem()
+	volumeItem.Name = "Volume"
+	volumeItem.Type = MenuItemNumber
+	volumeItem.NValue = float32(TheOptions.Volume)
+	volumeItem.NValueMin = 0
+	volumeItem.NValueMax = 10
+	volumeItem.NValueInterval = 1
+	volumeItem.NValueFmtString = "%1.f"
+	volumeItem.NumberCallback = func(nValue float32) {
+		TheOptions.Volume = float64(nValue) / 10
+	}
+	op.Menu.AddItems(volumeItem)
 
 	downScrollItem := NewMenuItem()
 	downScrollItem.Name = "Down Scroll"
@@ -73,7 +83,6 @@ func NewOptionsScreen() *OptionsScreen {
 	downScrollItem.ToggleCallback = func(bValue bool) {
 		TheOptions.DownScroll = bValue
 	}
-	op.DownScrollItemId = downScrollItem.Id
 	op.Menu.AddItems(downScrollItem)
 
 	loadAudioDuringGpItem := NewMenuItem()
@@ -84,8 +93,14 @@ func NewOptionsScreen() *OptionsScreen {
 	}
 	loadAudioDuringGpItem.SizeSelected = 75
 	loadAudioDuringGpItem.SelectedLeftMargin = 5
-	op.LoadAudioDuringGpItemId = loadAudioDuringGpItem.Id
 	op.Menu.AddItems(loadAudioDuringGpItem)
+
+	op.setItemValuesToOptions = func() {
+		op.Menu.SetItemNvalue(fpsItem.Id, f32(TheOptions.TargetFPS))
+		op.Menu.SetItemNvalue(volumeItem.Id, f32(TheOptions.Volume)*10)
+		op.Menu.SetItemBValue(downScrollItem.Id, TheOptions.DownScroll)
+		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
+	}
 
 	// create key control options
 	{
@@ -232,9 +247,9 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	op.Menu.ResetAnimation()
 	op.Menu.SelectedIndex = 1
 
-	op.Menu.SetItemNvalue(op.FpsItemId, float32(TheOptions.TargetFPS))
-	op.Menu.SetItemBValue(op.DownScrollItemId, TheOptions.DownScroll)
-	op.Menu.SetItemBValue(op.LoadAudioDuringGpItemId, TheOptions.LoadAudioDuringGamePlay)
+	if op.setItemValuesToOptions != nil {
+		op.setItemValuesToOptions()
+	}
 }
 
 func (op *OptionsScreen) Free() {

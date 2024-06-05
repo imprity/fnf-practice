@@ -197,6 +197,8 @@ func main() {
 				ReloadAssets()
 			}
 
+			UpdateAudio()
+
 			UpdatePopup(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 
 			UpdateTransitionTexture()

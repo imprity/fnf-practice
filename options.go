@@ -202,6 +202,7 @@ func NoteKeysArr() [NoteDirSize][]int32 {
 
 type Options struct {
 	TargetFPS               int32
+	Volume                  float64
 	DownScroll              bool
 	LoadAudioDuringGamePlay bool
 }
