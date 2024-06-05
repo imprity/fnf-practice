@@ -200,14 +200,14 @@ func UpdatePopup(deltaTime time.Duration) {
 
 			current.SelectedOption = Clamp(current.SelectedOption, 0, len(current.Options)-1)
 
-			if AreKeysPressed(pdm.InputId, TheKM.SelectKey) {
+			if AreKeysPressed(pdm.InputId, TheKM[SelectKey]) {
 				current.Resolved = true
-			} else if AreKeysPressed(pdm.InputId, TheKM.EscapeKey) {
+			} else if AreKeysPressed(pdm.InputId, TheKM[EscapeKey]) {
 				current.IsCanceled = true
 				current.Resolved = true
 			}
 		} else {
-			if AreKeysPressed(pdm.InputId, TheKM.SelectKey, TheKM.EscapeKey) {
+			if AreKeysPressed(pdm.InputId, TheKM[SelectKey], TheKM[EscapeKey]) {
 				current.IsCanceled = true
 				current.Resolved = true
 			}

@@ -326,7 +326,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		}
 	} else if md.InputState == MenuInputStateWaitingKeyRelease {
 		var menuKeys []int32
-		menuKeys = append(menuKeys, TheKM.SelectKey, TheKM.EscapeKey)
+		menuKeys = append(menuKeys, TheKM[SelectKey], TheKM[EscapeKey])
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			menuKeys = append(menuKeys, NoteKeys(dir)...)
 		}
@@ -400,7 +400,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			// ===================================
 			// handle select key interaction
 			// ===================================
-			if AreKeysPressed(md.InputId, TheKM.SelectKey) {
+			if AreKeysPressed(md.InputId, TheKM[SelectKey]) {
 				switch selected.Type {
 				case MenuItemTrigger:
 					selected.BValue = true

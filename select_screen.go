@@ -465,7 +465,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 	} else {
 		ss.DeleteMenu.Update(deltaTime)
 
-		if AreKeysPressed(ss.DeleteMenu.InputId, TheKM.EscapeKey) {
+		if AreKeysPressed(ss.DeleteMenu.InputId, TheKM[EscapeKey]) {
 			ss.HideDeleteMenu(false)
 		}
 	}

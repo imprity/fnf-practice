@@ -123,46 +123,46 @@ func NewOptionsScreen() *OptionsScreen {
 				fmt.Sprintf("%v :", strings.Title(NoteDirStrs[d])),
 				NoteKeys(d),
 				func(index int, _ int32, newKey int32) {
-					TheKM.NoteKeys[d][index] = newKey
+					SetNoteKeys(dir, index, newKey)
 				},
 			)
 		}
 
-		createKeyOp("Select :", []int32{TheKM.SelectKey}, func(index int, _ int32, newKey int32) {
-			TheKM.SelectKey = newKey
+		createKeyOp("Select :", []int32{TheKM[SelectKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[SelectKey] = newKey
 		})
-		createKeyOp("Pause :", []int32{TheKM.PauseKey}, func(index int, _ int32, newKey int32) {
-			TheKM.PauseKey = newKey
+		createKeyOp("Pause :", []int32{TheKM[PauseKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[PauseKey] = newKey
 		})
-		createKeyOp("Escape :", []int32{TheKM.EscapeKey}, func(index int, _ int32, newKey int32) {
-			TheKM.EscapeKey = newKey
+		createKeyOp("Escape :", []int32{TheKM[EscapeKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[EscapeKey] = newKey
 		})
-		createKeyOp("Scroll Up :", []int32{TheKM.NoteScrollUpKey}, func(index int, _ int32, newKey int32) {
-			TheKM.NoteScrollUpKey = newKey
+		createKeyOp("Scroll Up :", []int32{TheKM[NoteScrollUpKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[NoteScrollUpKey] = newKey
 		})
-		createKeyOp("Scroll Down :", []int32{TheKM.NoteScrollDownKey}, func(index int, _ int32, newKey int32) {
-			TheKM.NoteScrollDownKey = newKey
+		createKeyOp("Scroll Down :", []int32{TheKM[NoteScrollDownKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[NoteScrollDownKey] = newKey
 		})
-		speedUp := createKeyOp("Speed Up :", []int32{TheKM.AudioSpeedUpKey}, func(index int, _ int32, newKey int32) {
-			TheKM.AudioSpeedUpKey = newKey
+		speedUp := createKeyOp("Speed Up :", []int32{TheKM[AudioSpeedUpKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[AudioSpeedUpKey] = newKey
 		})
-		speedDown := createKeyOp("Speed Down :", []int32{TheKM.AudioSpeedDownKey}, func(index int, _ int32, newKey int32) {
-			TheKM.AudioSpeedDownKey = newKey
+		speedDown := createKeyOp("Speed Down :", []int32{TheKM[AudioSpeedDownKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[AudioSpeedDownKey] = newKey
 		})
-		createKeyOp("Reset :", []int32{TheKM.SongResetKey}, func(index int, _ int32, newKey int32) {
-			TheKM.SongResetKey = newKey
+		createKeyOp("Reset :", []int32{TheKM[SongResetKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[SongResetKey] = newKey
 		})
-		createKeyOp("Bookmark :", []int32{TheKM.SetBookMarkKey}, func(index int, _ int32, newKey int32) {
-			TheKM.SetBookMarkKey = newKey
+		createKeyOp("Bookmark :", []int32{TheKM[SetBookMarkKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[SetBookMarkKey] = newKey
 		})
-		createKeyOp("Jump To Bookmark :", []int32{TheKM.JumpToBookMarkKey}, func(index int, _ int32, newKey int32) {
-			TheKM.JumpToBookMarkKey = newKey
+		createKeyOp("Jump To Bookmark :", []int32{TheKM[JumpToBookMarkKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[JumpToBookMarkKey] = newKey
 		})
-		spacingUp := createKeyOp("Note Spacing Up :", []int32{TheKM.ZoomInKey}, func(index int, _ int32, newKey int32) {
-			TheKM.ZoomInKey = newKey
+		spacingUp := createKeyOp("Note Spacing Up :", []int32{TheKM[ZoomInKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[ZoomInKey] = newKey
 		})
-		spacingDown := createKeyOp("Note Spacing Down :", []int32{TheKM.ZoomOutKey}, func(index int, _ int32, newKey int32) {
-			TheKM.ZoomOutKey = newKey
+		spacingDown := createKeyOp("Note Spacing Down :", []int32{TheKM[ZoomOutKey]}, func(index int, _ int32, newKey int32) {
+			TheKM[ZoomOutKey] = newKey
 		})
 
 		// additional settings for specific items
@@ -177,7 +177,7 @@ func NewOptionsScreen() *OptionsScreen {
 func (op *OptionsScreen) Update(deltaTime time.Duration) {
 	op.Menu.Update(deltaTime)
 
-	if AreKeysPressed(op.InputId, TheKM.EscapeKey) {
+	if AreKeysPressed(op.InputId, TheKM[EscapeKey]) {
 		// TODO : options screen doesn't save settings
 		// if it's quit by user
 		err := SaveSettings()

@@ -520,7 +520,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	}
 
 	// note logging toggle
-	if rl.IsKeyPressed(TheKM.ToggleLogNoteEvent) {
+	if rl.IsKeyPressed(TheKM[ToggleLogNoteEvent]) {
 		gs.LogNoteEvent = !gs.LogNoteEvent
 	}
 
@@ -536,7 +536,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	// menu stuff
 	// =============================================
-	if AreKeysPressed(gs.InputId, TheKM.EscapeKey) || AreKeysPressed(gs.Menu.InputId, TheKM.EscapeKey) {
+	if AreKeysPressed(gs.InputId, TheKM[EscapeKey]) || AreKeysPressed(gs.Menu.InputId, TheKM[EscapeKey]) {
 		wasDrawingMenu := gs.DrawMenu
 
 		gs.DrawMenu = !gs.DrawMenu
@@ -658,7 +658,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 	{
 		// pause unpause
-		if AreKeysPressed(gs.InputId, TheKM.PauseKey) {
+		if AreKeysPressed(gs.InputId, TheKM[PauseKey]) {
 			if gs.IsPlayingAudio() {
 				gs.PauseAudio()
 			} else {
@@ -674,7 +674,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		}
 
 		// book marking
-		if AreKeysPressed(gs.InputId, TheKM.SetBookMarkKey) {
+		if AreKeysPressed(gs.InputId, TheKM[SetBookMarkKey]) {
 			gs.BookMarkSet = !gs.BookMarkSet
 			if gs.BookMarkSet {
 				gs.BookMark = gs.AudioPosition()
@@ -686,12 +686,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		changedSpeed := false
 		audioSpeed := gs.AudioSpeed()
 
-		if AreKeysPressed(gs.InputId, TheKM.AudioSpeedDownKey) {
+		if AreKeysPressed(gs.InputId, TheKM[AudioSpeedDownKey]) {
 			changedSpeed = true
 			audioSpeed -= 0.1
 		}
 
-		if AreKeysPressed(gs.InputId, TheKM.AudioSpeedUpKey) {
+		if AreKeysPressed(gs.InputId, TheKM[AudioSpeedUpKey]) {
 			changedSpeed = true
 			audioSpeed += 0.1
 		}
@@ -708,12 +708,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			zoom := gs.Zoom()
 			changedZoom := false
 			// zoom in and out
-			if HandleKeyRepeat(gs.InputId, time.Millisecond*100, time.Millisecond*100, TheKM.ZoomInKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*100, time.Millisecond*100, TheKM[ZoomInKey]) {
 				zoom += 0.05
 				changedZoom = true
 			}
 
-			if HandleKeyRepeat(gs.InputId, time.Millisecond*100, time.Millisecond*100, TheKM.ZoomOutKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*100, time.Millisecond*100, TheKM[ZoomOutKey]) {
 				zoom -= 0.05
 				changedZoom = true
 			}
@@ -744,13 +744,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 			// NOTE : If we ever implement note up scroll
 			// this keybindings have to reversed
-			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, TheKM.NoteScrollUpKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, TheKM[NoteScrollUpKey]) {
 				changedFromScroll = true
 				pos -= keyT
 				gs.ClearRewind()
 			}
 
-			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, TheKM.NoteScrollDownKey) {
+			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, TheKM[NoteScrollDownKey]) {
 				changedFromScroll = true
 				pos += keyT
 				gs.ClearRewind()
@@ -779,13 +779,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
-		if AreKeysPressed(gs.InputId, TheKM.SongResetKey) {
+		if AreKeysPressed(gs.InputId, TheKM[SongResetKey]) {
 			positionArbitraryChange = true
 			gs.SetAudioPosition(0)
 			gs.ClearRewind()
 		}
 
-		if AreKeysPressed(gs.InputId, TheKM.JumpToBookMarkKey) {
+		if AreKeysPressed(gs.InputId, TheKM[JumpToBookMarkKey]) {
 			if gs.BookMarkSet {
 				positionArbitraryChange = true
 				gs.SetAudioPosition(gs.BookMark)
@@ -2243,7 +2243,7 @@ func (hm *HelpMessage) InitTextImage() {
 
 	// pasue and play
 	{
-		rect := drawMsgAndKey("pause/play", TheKM.PauseKey, offsetX, offsetY)
+		rect := drawMsgAndKey("pause/play", TheKM[PauseKey], offsetX, offsetY)
 		offsetY += rect.Height + marginY
 		txtTotalRect = RectUnion(txtTotalRect, rect)
 	}
@@ -2261,7 +2261,7 @@ func (hm *HelpMessage) InitTextImage() {
 		// scroll up and down
 		rect = drawManyMsgAndKeys(
 			[]string{"scroll up", "scroll down"},
-			[]int32{TheKM.NoteScrollUpKey, TheKM.NoteScrollDownKey},
+			[]int32{TheKM[NoteScrollUpKey], TheKM[NoteScrollDownKey]},
 			x, y)
 		txtTotalRect = RectUnion(txtTotalRect, rect)
 
@@ -2271,7 +2271,7 @@ func (hm *HelpMessage) InitTextImage() {
 		// audio speed adjustment
 		rect = drawManyMsgAndKeys(
 			[]string{"audio speed up", "audio speed down"},
-			[]int32{TheKM.AudioSpeedUpKey, TheKM.AudioSpeedDownKey},
+			[]int32{TheKM[AudioSpeedUpKey], TheKM[AudioSpeedDownKey]},
 			x, y)
 
 		totalH = max(totalH, rect.Height)
@@ -2285,7 +2285,7 @@ func (hm *HelpMessage) InitTextImage() {
 	{
 		rect := drawManyMsgAndKeys(
 			[]string{"note spacing up", "note spacing down"},
-			[]int32{TheKM.ZoomInKey, TheKM.ZoomOutKey},
+			[]int32{TheKM[ZoomInKey], TheKM[ZoomOutKey]},
 			offsetX, offsetY)
 		txtTotalRect = RectUnion(txtTotalRect, rect)
 
@@ -2296,7 +2296,7 @@ func (hm *HelpMessage) InitTextImage() {
 	{
 		rect := drawManyMsgAndKeys(
 			[]string{"set bookmark", "jump to bookmark"},
-			[]int32{TheKM.SetBookMarkKey, TheKM.JumpToBookMarkKey},
+			[]int32{TheKM[SetBookMarkKey], TheKM[JumpToBookMarkKey]},
 			offsetX, offsetY)
 		txtTotalRect = RectUnion(txtTotalRect, rect)
 
