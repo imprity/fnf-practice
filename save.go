@@ -23,7 +23,7 @@ type SettingsJson struct {
 	MinorVersion int
 
 	Options Options
-	KeyMap  [FnfKeySize]int32
+	KeyMap  [FnfBindingSize]int32
 }
 
 const (

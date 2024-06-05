@@ -129,9 +129,9 @@ func NewOptionsScreen() *OptionsScreen {
 
 				// check for duplicate
 				isDuplicate := false
-				var duplicateOf FnfKey
+				var duplicateOf FnfBinding
 
-				for binding := FnfKey(0); binding < FnfKeySize; binding++ {
+				for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
 					if TheKM[binding] == newKey {
 						isDuplicate = true
 						duplicateOf = binding
@@ -149,13 +149,13 @@ func NewOptionsScreen() *OptionsScreen {
 			}
 		}
 
-		debugKeys := []FnfKey{
+		debugKeys := []FnfBinding{
 			ToggleDebugKey,
 			ToggleLogNoteEvent,
 			ReloadAssetsKey,
 		}
 
-		for key := SelectKey; key < FnfKeySize; key++ {
+		for key := SelectKey; key < FnfBindingSize; key++ {
 			// leave out debug keys from menu
 			if slices.Contains(debugKeys, key) {
 				continue
@@ -172,9 +172,9 @@ func NewOptionsScreen() *OptionsScreen {
 
 				// check for duplicate
 				isDuplicate := false
-				var duplicateOf FnfKey
+				var duplicateOf FnfBinding
 
-				for binding := FnfKey(0); binding < FnfKeySize; binding++ {
+				for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
 					if TheKM[binding] == newKey {
 						isDuplicate = true
 						duplicateOf = binding

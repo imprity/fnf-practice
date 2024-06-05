@@ -4,10 +4,10 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type FnfKey int
+type FnfBinding int
 
 const (
-	NoteKeyLeft0 FnfKey = iota
+	NoteKeyLeft0 FnfBinding = iota
 	NoteKeyLeft1
 
 	NoteKeyDown0
@@ -41,11 +41,11 @@ const (
 	ToggleLogNoteEvent
 	ReloadAssetsKey
 
-	FnfKeySize
+	FnfBindingSize
 )
 
-var TheKM [FnfKeySize]int32
-var KeyHumanName [FnfKeySize]string
+var TheKM [FnfBindingSize]int32
+var KeyHumanName [FnfBindingSize]string
 
 func init() {
 	// set default key bindings
@@ -83,7 +83,7 @@ func init() {
 	TheKM[ToggleLogNoteEvent] = rl.KeyF2
 	TheKM[ReloadAssetsKey] = rl.KeyF5
 
-	for i := range FnfKeySize {
+	for i := range FnfBindingSize {
 		if TheKM[i] == 0 {
 			ErrorLogger.Fatalf("default key binding for \"%v\" is omitted", i.String())
 		}
@@ -124,7 +124,7 @@ func init() {
 	KeyHumanName[ToggleLogNoteEvent] = "togglee note event"
 	KeyHumanName[ReloadAssetsKey] = "reload assets"
 
-	for i := range FnfKeySize {
+	for i := range FnfBindingSize {
 		if KeyHumanName[i] == "" {
 			ErrorLogger.Fatalf("human name for \"%v\" is omitted", i.String())
 		}
@@ -147,7 +147,7 @@ func NoteKeys(dir NoteDir) []int32 {
 	}
 }
 
-func NoteDirAndIndexToKey(dir NoteDir, index int) FnfKey {
+func NoteDirAndIndexToBinding(dir NoteDir, index int) FnfBinding {
 	if !(0 <= dir && dir < NoteDirSize) {
 		ErrorLogger.Fatal("invalid dir \"%v\"", dir)
 	}
@@ -188,7 +188,7 @@ func NoteDirAndIndexToKey(dir NoteDir, index int) FnfKey {
 }
 
 func SetNoteKeys(dir NoteDir, index int, key int32) {
-	TheKM[NoteDirAndIndexToKey(dir, index)] = key
+	TheKM[NoteDirAndIndexToBinding(dir, index)] = key
 }
 
 func NoteKeysArr() [NoteDirSize][]int32 {
