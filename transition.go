@@ -90,10 +90,6 @@ func CallTransitionCallbackIfNeeded() {
 func UpdateTransitionTexture() {
 	manager := &TheTransitionManager
 
-	if manager.ImgTexture.ID <= 0 { //just in case
-		return
-	}
-
 	timeT := float32(TimeSinceNow(manager.AnimStartedAt))
 	timeT /= float32(manager.AnimDuration)
 
