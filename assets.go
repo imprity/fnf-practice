@@ -30,6 +30,8 @@ const (
 	UIarrowsSpriteCount
 )
 
+var SustainTex rl.Texture2D
+
 var (
 	CheckBoxMark Sprite
 	CheckBoxBox  rl.Texture2D
@@ -202,6 +204,8 @@ func loadAssets(isReload bool) {
 		// NOTE : same also goes for ui arrows
 		UIarrowsSprite.Width = f32(uiArrowsTex.Width) / UIarrowsSpriteCount
 	}
+
+	SustainTex = loadTexture("assets/sustain-bar.png", true, ".png")
 
 	// load checkbox sprite
 	{

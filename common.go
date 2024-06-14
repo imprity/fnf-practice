@@ -311,18 +311,119 @@ func DrawPatternBackground(
 	}
 }
 
+func DrawTextureUvVertices(
+	texture rl.Texture2D,
+	uvs [4]rl.Vector2,
+	vertices [4]rl.Vector2,
+	tint rl.Color,
+){
+	if texture.ID > 0 {
+		rl.SetTexture(texture.ID)
+		rl.Begin(rl.Quads)
+
+		rl.Color4ub(tint.R, tint.G, tint.B, tint.A)
+		rl.Normal3f(0, 0, 1.0)
+
+		if IsClockWise(vertices[0], vertices[1], vertices[2]) {
+			rl.TexCoord2f(uvs[0].X, uvs[0].Y)
+			rl.Vertex2f(vertices[0].X, vertices[0].Y)
+
+			rl.TexCoord2f(uvs[1].X, uvs[1].Y)
+			rl.Vertex2f(vertices[1].X, vertices[1].Y)
+
+			rl.TexCoord2f(uvs[2].X, uvs[2].Y)
+			rl.Vertex2f(vertices[2].X, vertices[2].Y)
+
+			rl.TexCoord2f(uvs[3].X, uvs[3].Y)
+			rl.Vertex2f(vertices[3].X, vertices[3].Y)
+
+		} else {
+			rl.TexCoord2f(uvs[0].X, uvs[0].Y)
+			rl.Vertex2f(vertices[0].X, vertices[0].Y)
+
+			rl.TexCoord2f(uvs[3].X, uvs[3].Y)
+			rl.Vertex2f(vertices[3].X, vertices[3].Y)
+
+			rl.TexCoord2f(uvs[2].X, uvs[2].Y)
+			rl.Vertex2f(vertices[2].X, vertices[2].Y)
+
+			rl.TexCoord2f(uvs[1].X, uvs[1].Y)
+			rl.Vertex2f(vertices[1].X, vertices[1].Y)
+		}
+
+		rl.End()
+		rl.SetTexture(0)
+	}
+}
+
+// Draw a texture with vertices.
+//
+// Vertices should be laid out thus.
+//
+// 	0 -- 3
+// 	|    |
+// 	|    |
+// 	1 -- 2
+//
+func DrawTextureVertices(
+	texture rl.Texture2D,
+	srcRect rl.Rectangle,
+	vertices [4]rl.Vector2,
+	tint rl.Color,
+){
+	if texture.ID > 0 {
+		texW := float32(texture.Width)
+		texH := float32(texture.Height)
+
+		uvs := [4]rl.Vector2{
+			rl.Vector2{srcRect.X / texW, srcRect.Y / texH},
+			rl.Vector2{srcRect.X / texW, (srcRect.Y + srcRect.Height) / texH},
+			rl.Vector2{(srcRect.X + srcRect.Width) / texW, (srcRect.Y + srcRect.Height) / texH},
+			rl.Vector2{(srcRect.X + srcRect.Width) / texW, srcRect.Y / texH},
+		}
+
+		DrawTextureUvVertices(
+			texture,
+			uvs,
+			vertices,
+			tint,
+		)
+	}
+}
+
+// TODO : refactor this to use mat2
 func DrawTextureTransfromed(
 	texture rl.Texture2D,
 	srcRect rl.Rectangle,
 	mat rl.Matrix,
 	tint rl.Color,
 ) {
-	/*
+	vertices := [4]rl.Vector2{
+		rl.Vector2{0, 0},
+		rl.Vector2{0, srcRect.Height},
+		rl.Vector2{srcRect.Width, srcRect.Height},
+		rl.Vector2{srcRect.Width, 0},
+	}
+
+	vertices[0] = rl.Vector2Transform(vertices[0], mat)
+	vertices[1] = rl.Vector2Transform(vertices[1], mat)
+	vertices[2] = rl.Vector2Transform(vertices[2], mat)
+	vertices[3] = rl.Vector2Transform(vertices[3], mat)
+
+	DrawTextureVertices(texture, srcRect, vertices, tint)
+}
+
+/*
+func DrawTextureTransfromed(
+	texture rl.Texture2D,
+	srcRect rl.Rectangle,
+	mat rl.Matrix,
+	tint rl.Color,
+) {
 		0 -- 3
 		|    |
 		|    |
 		1 -- 2
-	*/
 
 	if texture.ID > 0 {
 		//normalize src rect
@@ -380,7 +481,7 @@ func DrawTextureTransfromed(
 		rl.End()
 		rl.SetTexture(0)
 	}
-}
+}*/
 
 func drawRectangleRoundedCornersImpl(
 	rec rl.Rectangle,
