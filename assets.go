@@ -206,6 +206,10 @@ func loadAssets(isReload bool) {
 	}
 
 	SustainTex = loadTexture("assets/sustain-bar.png", true, ".png")
+	if SustainTex.Width > SustainTex.Height {
+		ErrorLogger.Printf("SustainTex width(%v) is bigger than height(%v)",
+			SustainTex.Width, SustainTex.Height)
+	}
 
 	// load checkbox sprite
 	{

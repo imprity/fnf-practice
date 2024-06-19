@@ -316,7 +316,7 @@ func DrawTextureUvVertices(
 	uvs [4]rl.Vector2,
 	vertices [4]rl.Vector2,
 	tint rl.Color,
-){
+) {
 	if texture.ID > 0 {
 		rl.SetTexture(texture.ID)
 		rl.Begin(rl.Quads)
@@ -360,26 +360,25 @@ func DrawTextureUvVertices(
 //
 // Vertices should be laid out thus.
 //
-// 	0 -- 3
-// 	|    |
-// 	|    |
-// 	1 -- 2
-//
+//	0 -- 3
+//	|    |
+//	|    |
+//	1 -- 2
 func DrawTextureVertices(
 	texture rl.Texture2D,
 	srcRect rl.Rectangle,
 	vertices [4]rl.Vector2,
 	tint rl.Color,
-){
+) {
 	if texture.ID > 0 {
 		texW := float32(texture.Width)
 		texH := float32(texture.Height)
 
 		uvs := [4]rl.Vector2{
-			rl.Vector2{srcRect.X / texW, srcRect.Y / texH},
-			rl.Vector2{srcRect.X / texW, (srcRect.Y + srcRect.Height) / texH},
-			rl.Vector2{(srcRect.X + srcRect.Width) / texW, (srcRect.Y + srcRect.Height) / texH},
-			rl.Vector2{(srcRect.X + srcRect.Width) / texW, srcRect.Y / texH},
+			{srcRect.X / texW, srcRect.Y / texH},
+			{srcRect.X / texW, (srcRect.Y + srcRect.Height) / texH},
+			{(srcRect.X + srcRect.Width) / texW, (srcRect.Y + srcRect.Height) / texH},
+			{(srcRect.X + srcRect.Width) / texW, srcRect.Y / texH},
 		}
 
 		DrawTextureUvVertices(
@@ -399,10 +398,10 @@ func DrawTextureTransfromed(
 	tint rl.Color,
 ) {
 	vertices := [4]rl.Vector2{
-		rl.Vector2{0, 0},
-		rl.Vector2{0, srcRect.Height},
-		rl.Vector2{srcRect.Width, srcRect.Height},
-		rl.Vector2{srcRect.Width, 0},
+		{0, 0},
+		{0, srcRect.Height},
+		{srcRect.Width, srcRect.Height},
+		{srcRect.Width, 0},
 	}
 
 	vertices[0] = rl.Vector2Transform(vertices[0], mat)
