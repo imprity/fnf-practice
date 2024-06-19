@@ -24,7 +24,7 @@ func (mt *SustainTestScreen) Update(deltaTime time.Duration) {
 }
 
 func (mt *SustainTestScreen) Draw() {
-	rl.ClearBackground(rl.Color{10, 10, 10, 255})
+	rl.ClearBackground(rl.Color{200, 200, 200, 255})
 	from := rl.Vector2{
 		X: SCREEN_WIDTH * 0.5, Y: SCREEN_HEIGHT * 0.5,
 	}
@@ -39,8 +39,10 @@ func (mt *SustainTestScreen) Draw() {
 	}
 
 	//drawLineWithSustainTex(from, to, mt.LineWidth, rl.Color{255,255,255,255})
-	//_=to
-	drawLineWithSustainTex(from, to, mt.LineWidth, rl.Color{255, 255, 255, 255})
+	drawLineWithSustainTex(
+		from,
+		rl.Vector2{from.X, from.Y - 100},
+		mt.LineWidth, rl.Color{255, 255, 255, 255})
 
 	rl.DrawCircleV(from, mt.LineWidth*0.5, rl.Color{255, 0, 0, 100})
 	rl.DrawCircleV(to, mt.LineWidth*0.5, rl.Color{0, 255, 0, 100})

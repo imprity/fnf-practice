@@ -209,6 +209,7 @@ type Options struct {
 
 var TheOptions Options = Options{
 	TargetFPS:               60,
+	Volume:                  1.0,
 	DownScroll:              false,
 	LoadAudioDuringGamePlay: false,
 }
