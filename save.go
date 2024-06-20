@@ -199,9 +199,9 @@ func LoadSettings() error {
 		// fill options with invalid values
 		js.Options.Volume = -1
 		js.Options.TargetFPS = -1
-		js.Options.SickHitWindow = -1
-		js.Options.GoodHitWindow = -1
-		js.Options.BadHitWindow = -1
+		for r := FnfHitRating(0); r < HitRatingSize; r++ {
+			js.Options.HitWindows[r] = -1
+		}
 
 		err := decodeJsonFile(path, &js)
 		if err != nil {
@@ -224,14 +224,10 @@ func LoadSettings() error {
 		if js.Options.TargetFPS < 0 {
 			js.Options.TargetFPS = DefaultOptions.TargetFPS
 		}
-		if js.Options.SickHitWindow < 0 {
-			js.Options.SickHitWindow = DefaultOptions.SickHitWindow
-		}
-		if js.Options.GoodHitWindow < 0 {
-			js.Options.GoodHitWindow = DefaultOptions.GoodHitWindow
-		}
-		if js.Options.BadHitWindow < 0 {
-			js.Options.BadHitWindow = DefaultOptions.BadHitWindow
+		for r := FnfHitRating(0); r < HitRatingSize; r++ {
+			if js.Options.HitWindows[r] < 0 {
+				js.Options.HitWindows[r] = DefaultOptions.HitWindows[r]
+			}
 		}
 
 		TheOptions = js.Options

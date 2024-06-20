@@ -95,11 +95,58 @@ func NewOptionsScreen() *OptionsScreen {
 	loadAudioDuringGpItem.SelectedLeftMargin = 5
 	op.Menu.AddItems(loadAudioDuringGpItem)
 
+	var ratingItems [HitRatingSize]MenuItemId
+
+	// add rating options
+	{
+		deco := NewMenuItem()
+		deco.Name = "Hit Window Size"
+		deco.Type = MenuItemDeco
+		deco.SizeRegular = MenuItemDefaults.SizeRegular * 1.4
+		deco.SizeSelected = MenuItemDefaults.SizeSelected * 1.4
+		deco.Color = Color255(0xFC, 0x9F, 0x7C, 0xFF)
+		deco.FadeIfUnselected = false
+		op.Menu.AddItems(deco)
+
+		ratingOptNames := [HitRatingSize]string{
+			"Bad Hit Window",
+			"Good Hit Window",
+			"Sick! Hit Window",
+		}
+
+		ratingOptOrder := [HitRatingSize]FnfHitRating{
+			HitRatingSick,
+			HitRatingGood,
+			HitRatingBad,
+		}
+
+		for _, rating := range ratingOptOrder {
+			ratingOpt := NewMenuItem()
+			ratingOpt.Name = ratingOptNames[rating]
+			ratingOpt.Type = MenuItemNumber
+			ratingOpt.NValue = float32(TheOptions.HitWindows[rating])
+			ratingOpt.NValueMin = 15
+			ratingOpt.NValueMax = 2000
+			ratingOpt.NValueInterval = 1
+			ratingOpt.NValueFmtString = "%1.f"
+			ratingOpt.NumberCallback = func(nValue float32) {
+				TheOptions.HitWindows[rating] = time.Duration(nValue) * time.Millisecond
+			}
+			op.Menu.AddItems(ratingOpt)
+
+			ratingItems[rating] = ratingOpt.Id
+		}
+	}
+
 	op.setItemValuesToOptions = func() {
 		op.Menu.SetItemNvalue(fpsItem.Id, f32(TheOptions.TargetFPS))
 		op.Menu.SetItemNvalue(volumeItem.Id, f32(TheOptions.Volume)*10)
 		op.Menu.SetItemBValue(downScrollItem.Id, TheOptions.DownScroll)
 		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
+
+		for r := FnfHitRating(0); r < HitRatingSize; r++ {
+			op.Menu.SetItemNvalue(ratingItems[r], f32(TheOptions.HitWindows[r])/f32(time.Millisecond))
+		}
 	}
 
 	// create key control options

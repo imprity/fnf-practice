@@ -118,7 +118,7 @@ var menuItemIdGenerator IdGenerator[MenuItemId]
 
 var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
-	SizeSelected: 90,
+	SizeSelected: 80,
 
 	Color: Col(1, 1, 1, 1),
 
@@ -126,7 +126,7 @@ var MenuItemDefaults = MenuItem{
 	ToggleStyleCheckBox: true,
 
 	BottomMargin:       30,
-	SelectedLeftMargin: 30,
+	SelectedLeftMargin: 10,
 
 	CheckedBoxColor:   Color255(0x79, 0xE4, 0xAF, 0xFF),
 	UncheckedBoxColor: Color255(0xD1, 0xD1, 0xD1, 0xFF),

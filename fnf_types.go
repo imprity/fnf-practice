@@ -253,9 +253,9 @@ var RatingStrs [HitRatingSize]string = [HitRatingSize]string{
 func GetHitRating(noteStartsAt time.Duration, noteHitAt time.Duration) FnfHitRating {
 	t := AbsI(noteStartsAt - noteHitAt)
 
-	if t <= TheOptions.SickHitWindow {
+	if t <= TheOptions.HitWindows[HitRatingSick] {
 		return HitRatingSick
-	} else if t <= TheOptions.GoodHitWindow {
+	} else if t <= TheOptions.HitWindows[HitRatingGood] {
 		return HitRatingGood
 	} else {
 		return HitRatingBad

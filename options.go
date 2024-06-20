@@ -208,31 +208,35 @@ type Options struct {
 
 	DownScroll bool
 
-	SickHitWindow time.Duration
-	GoodHitWindow time.Duration
-	BadHitWindow  time.Duration
+	HitWindows [HitRatingSize]time.Duration
 
 	LoadAudioDuringGamePlay bool
 }
 
-var DefaultOptions Options = Options{
-	TargetFPS: 60,
-	Volume:    1.0,
+var DefaultOptions Options
 
-	SickHitWindow: time.Millisecond * 45,
-	GoodHitWindow: time.Millisecond * 90,
-	BadHitWindow:  time.Millisecond * 135,
+var TheOptions Options
 
-	DownScroll:              false,
-	LoadAudioDuringGamePlay: false,
+func init() {
+	// set default option values
+	DefaultOptions.TargetFPS = 60
+	DefaultOptions.Volume = 1.0
+
+	DefaultOptions.HitWindows[HitRatingBad] = time.Millisecond * 135
+	DefaultOptions.HitWindows[HitRatingGood] = time.Millisecond * 90
+	DefaultOptions.HitWindows[HitRatingSick] = time.Millisecond * 45
+
+	DefaultOptions.DownScroll = false
+	DefaultOptions.LoadAudioDuringGamePlay = false
+
+	// set TheOptions to DefaultOptions
+	TheOptions = DefaultOptions
 }
-
-var TheOptions Options = DefaultOptions
 
 func HitWindow() time.Duration {
 	return max(
-		TheOptions.SickHitWindow,
-		TheOptions.GoodHitWindow,
-		TheOptions.BadHitWindow,
+		TheOptions.HitWindows[HitRatingBad],
+		TheOptions.HitWindows[HitRatingGood],
+		TheOptions.HitWindows[HitRatingSick],
 	) * 2
 }
