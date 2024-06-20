@@ -2,6 +2,7 @@ package main
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"time"
 )
 
 type FnfBinding int
@@ -201,15 +202,37 @@ func NoteKeysArr() [NoteDirSize][]int32 {
 }
 
 type Options struct {
-	TargetFPS               int32
-	Volume                  float64
-	DownScroll              bool
+	TargetFPS int32
+
+	Volume float64
+
+	DownScroll bool
+
+	SickHitWindow time.Duration
+	GoodHitWindow time.Duration
+	BadHitWindow  time.Duration
+
 	LoadAudioDuringGamePlay bool
 }
 
-var TheOptions Options = Options{
-	TargetFPS:               60,
-	Volume:                  1.0,
+var DefaultOptions Options = Options{
+	TargetFPS: 60,
+	Volume:    1.0,
+
+	SickHitWindow: time.Millisecond * 45,
+	GoodHitWindow: time.Millisecond * 90,
+	BadHitWindow:  time.Millisecond * 135,
+
 	DownScroll:              false,
 	LoadAudioDuringGamePlay: false,
+}
+
+var TheOptions Options = DefaultOptions
+
+func HitWindow() time.Duration {
+	return max(
+		TheOptions.SickHitWindow,
+		TheOptions.GoodHitWindow,
+		TheOptions.BadHitWindow,
+	) * 2
 }

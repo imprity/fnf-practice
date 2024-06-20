@@ -84,8 +84,6 @@ var GSC struct {
 	PadStart time.Duration
 	PadEnd   time.Duration
 
-	HitWindow time.Duration
-
 	// constants about note rendering
 	//
 	// NOTE : these positions are calculated based on note center!! (I know it's bad...)
@@ -107,8 +105,6 @@ var GSC struct {
 func init() {
 	GSC.PadStart = time.Millisecond * 500 // 0.5 seconds
 	GSC.PadEnd = time.Millisecond * 100   // 0.1 seconds
-
-	GSC.HitWindow = time.Millisecond * 135 * 2
 
 	GSC.NotesMarginLeft = 145
 	GSC.NotesMarginRight = 145
@@ -867,7 +863,8 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.Song.Notes, gs.noteIndexStart,
 		gs.IsPlayingAudio(), prevAudioPos, audioPos,
 		gs.botPlay,
-		GSC.HitWindow)
+		HitWindow(),
+	)
 
 	var noteEvents []NoteEvent
 
@@ -880,7 +877,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		audioPos,
 		gs.AudioDuration(),
 		gs.IsPlayingAudio(),
-		GSC.HitWindow,
+		HitWindow(),
 		gs.botPlay,
 		gs.noteIndexStart,
 	)
@@ -893,13 +890,17 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			dir := note.Direction
 
 			if e.IsFirstHit() {
-				fmt.Printf("player %v hit %v note %v : %v\n", p, NoteDirStrs[dir], i, AbsI(note.StartsAt-e.Time))
+				rating := GetHitRating(note.StartsAt, e.Time)
+
+				fmt.Printf(
+					"player %v hit %v %v note %v at %v : \"%v\", \"%v\"\n",
+					p, RatingStrs[rating], NoteDirStrs[dir], i, note.StartsAt, e.Time, AbsI(note.StartsAt-e.Time))
 			} else {
 				if e.IsRelease() {
 					fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
 				}
 				if e.IsMiss() {
-					fmt.Printf("player %v missed %v note %v\n", p, NoteDirStrs[dir], i)
+					fmt.Printf("player %v missed %v note %v at %v\n", p, NoteDirStrs[dir], i, note.StartsAt)
 				}
 			}
 		}
@@ -912,19 +913,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 		note := gs.Song.Notes[e.Index]
 		if e.IsFirstHit() && note.Player == 0 {
-			var rating FnfHitRating
-
-			t := AbsI(note.StartsAt - e.Time)
-
-			// NOTE : these ratings are based on Psych engine
-			// TODO : provice options for these (acutally when are we gonna implement options???)
-			if t < time.Millisecond*45 {
-				rating = HitRatingSick
-			} else if t < time.Millisecond*90 {
-				rating = HitRatingGood
-			} else {
-				rating = HitRatingBad
-			}
+			rating := GetHitRating(note.StartsAt, e.Time)
 
 			popup := NotePopup{
 				Start:  GlobalTimerNow(),
@@ -997,7 +986,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			rewind = rewind && eventNote.Player == 0            //note is player0's note
 			rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
 			// ignore miss if note is overlapped with bookmark
-			rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, GSC.HitWindow)
+			rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, HitWindow())
 
 			// prevent rewind from happening when user released on sustain note too early
 			// TODO : make this an options
@@ -1528,7 +1517,7 @@ func (gs *GameScreen) Draw() {
 				arrowStroke := noteStroke[note.Direction]
 
 				// if we are not holding note and it passed the hit window, grey it out
-				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), GSC.HitWindow) {
+				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), HitWindow()) {
 					arrowFill = noteFillGrey[note.Direction]
 					arrowStroke = noteStrokeGrey[note.Direction]
 				}
@@ -1548,7 +1537,7 @@ func (gs *GameScreen) Draw() {
 			arrowFill := noteFill[note.Direction]
 			arrowStroke := noteStroke[note.Direction]
 
-			if note.StartPassedWindow(gs.AudioPosition(), GSC.HitWindow) {
+			if note.StartPassedWindow(gs.AudioPosition(), HitWindow()) {
 				arrowFill = noteFillGrey[note.Direction]
 				arrowStroke = noteStrokeGrey[note.Direction]
 			}

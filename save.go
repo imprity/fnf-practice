@@ -195,6 +195,14 @@ func LoadSettings() error {
 
 	if exists {
 		js := SettingsJson{}
+
+		// fill options with invalid values
+		js.Options.Volume = -1
+		js.Options.TargetFPS = -1
+		js.Options.SickHitWindow = -1
+		js.Options.GoodHitWindow = -1
+		js.Options.BadHitWindow = -1
+
 		err := decodeJsonFile(path, &js)
 		if err != nil {
 			return err
@@ -206,6 +214,24 @@ func LoadSettings() error {
 		if js.MajorVersion != SettingsJsonMajorVersion {
 			return fmt.Errorf("expected major version to be \"%v\", got \"%v\"",
 				SettingsJsonMajorVersion, js.MajorVersion)
+		}
+
+		// replace invalid options with dafault values since it
+		// likely means that it was unset
+		if js.Options.Volume < 0 {
+			js.Options.Volume = DefaultOptions.Volume
+		}
+		if js.Options.TargetFPS < 0 {
+			js.Options.TargetFPS = DefaultOptions.TargetFPS
+		}
+		if js.Options.SickHitWindow < 0 {
+			js.Options.SickHitWindow = DefaultOptions.SickHitWindow
+		}
+		if js.Options.GoodHitWindow < 0 {
+			js.Options.GoodHitWindow = DefaultOptions.GoodHitWindow
+		}
+		if js.Options.BadHitWindow < 0 {
+			js.Options.BadHitWindow = DefaultOptions.BadHitWindow
 		}
 
 		TheOptions = js.Options

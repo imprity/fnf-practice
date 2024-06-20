@@ -243,3 +243,21 @@ const (
 	HitRatingSick
 	HitRatingSize
 )
+
+var RatingStrs [HitRatingSize]string = [HitRatingSize]string{
+	"bad",
+	"good",
+	"sick",
+}
+
+func GetHitRating(noteStartsAt time.Duration, noteHitAt time.Duration) FnfHitRating {
+	t := AbsI(noteStartsAt - noteHitAt)
+
+	if t <= TheOptions.SickHitWindow {
+		return HitRatingSick
+	} else if t <= TheOptions.GoodHitWindow {
+		return HitRatingGood
+	} else {
+		return HitRatingBad
+	}
+}
