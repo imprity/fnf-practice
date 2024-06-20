@@ -76,6 +76,54 @@ type AnimatedRewind struct {
 	Duration time.Duration
 }
 
+// Stands for GameScreen Constants.
+var GSC struct {
+	// constant for padding at the begin and end of the audio
+	// some songs and game logic depends on song to have a padding
+	// at the end so we will put them in
+	PadStart time.Duration
+	PadEnd   time.Duration
+
+	HitWindow time.Duration
+
+	// constants about note rendering
+	//
+	// NOTE : these positions are calculated based on note center!! (I know it's bad...)
+	NotesMarginLeft   float32
+	NotesMarginRight  float32
+	NotesMarginTop    float32
+	NotesMarginBottom float32
+
+	NotesInterval float32
+
+	NotesSize float32
+
+	SustainBarWidth float32
+
+	// pixels for milliseconds
+	PixelsPerMillis float32
+}
+
+func init() {
+	GSC.PadStart = time.Millisecond * 500 // 0.5 seconds
+	GSC.PadEnd = time.Millisecond * 100   // 0.1 seconds
+
+	GSC.HitWindow = time.Millisecond * 135 * 2
+
+	GSC.NotesMarginLeft = 145
+	GSC.NotesMarginRight = 145
+	GSC.NotesMarginTop = 100
+	GSC.NotesMarginBottom = 100
+
+	GSC.NotesInterval = 113
+
+	GSC.NotesSize = 112
+
+	GSC.SustainBarWidth = GSC.NotesSize * 0.3
+
+	GSC.PixelsPerMillis = 0.5
+}
+
 type GameScreen struct {
 	Songs   [DifficultySize]FnfSong
 	HasSong [DifficultySize]bool
@@ -85,16 +133,8 @@ type GameScreen struct {
 	Song         FnfSong
 	IsSongLoaded bool
 
-	// constant for padding at the begin and end of the audio
-	// some songs and game logic depends on song to have a padding
-	// at the end so we will put them in
-	PadStart time.Duration
-	PadEnd   time.Duration
-
 	InstPlayer  *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
-
-	HitWindow time.Duration
 
 	Pstates [2]PlayerState
 
@@ -131,20 +171,6 @@ type GameScreen struct {
 	DifficultyMenuItemId      MenuItemId
 	RewindOnMistakeMenuItemId MenuItemId
 
-	// variables about note rendering
-	NotesMarginLeft   float32
-	NotesMarginRight  float32
-	NotesMarginTop    float32
-	NotesMarginBottom float32
-
-	NotesInterval float32
-
-	NotesSize float32
-
-	SustainBarWidth float32
-
-	PixelsPerMillis float32
-
 	// private members
 	isKeyPressed   [2][NoteDirSize]bool
 	noteIndexStart int
@@ -168,28 +194,8 @@ func NewGameScreen() *GameScreen {
 
 	gs.zoom = 1.0
 
-	// NOTE : these positions are calculated based on note center!! (I know it's bad...)
-	gs.NotesMarginLeft = 145
-	gs.NotesMarginRight = 145
-
-	gs.NotesMarginTop = 100
-	gs.NotesMarginBottom = 100
-
-	gs.NotesInterval = 113
-
-	gs.NotesSize = 112
-
-	gs.SustainBarWidth = gs.NotesSize * 0.3
-
-	gs.HitWindow = time.Millisecond * 135 * 2
-
-	gs.PadStart = time.Millisecond * 500 // 0.5 seconds
-	gs.PadEnd = time.Millisecond * 100   // 0.1 seconds
-
-	gs.InstPlayer = NewVaryingSpeedPlayer(gs.PadStart, gs.PadEnd)
-	gs.VoicePlayer = NewVaryingSpeedPlayer(gs.PadStart, gs.PadEnd)
-
-	gs.PixelsPerMillis = 0.5
+	gs.InstPlayer = NewVaryingSpeedPlayer(GSC.PadStart, GSC.PadEnd)
+	gs.VoicePlayer = NewVaryingSpeedPlayer(GSC.PadStart, GSC.PadEnd)
 
 	gs.PopupQueue = CircularQueue[NotePopup]{
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
@@ -276,7 +282,7 @@ func (gs *GameScreen) LoadSongs(
 	// insert start padding
 	for i := FnfDifficulty(0); i < DifficultySize; i++ {
 		for j := 0; j < len(gs.Songs[i].Notes); j++ {
-			gs.Songs[i].Notes[j].StartsAt += gs.PadStart
+			gs.Songs[i].Notes[j].StartsAt += GSC.PadStart
 		}
 	}
 
@@ -488,9 +494,9 @@ func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
 	zoomInverse := 1.0 / gs.Zoom()
 
 	if gs.Song.Speed == 0 {
-		pm = gs.PixelsPerMillis
+		pm = GSC.PixelsPerMillis
 	} else {
-		pm = gs.PixelsPerMillis / zoomInverse * float32(gs.Song.Speed)
+		pm = GSC.PixelsPerMillis / zoomInverse * float32(gs.Song.Speed)
 	}
 
 	return pm * float32(t.Milliseconds())
@@ -502,9 +508,9 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 	zoomInverse := 1.0 / gs.Zoom()
 
 	if gs.Song.Speed == 0 {
-		pm = gs.PixelsPerMillis
+		pm = GSC.PixelsPerMillis
 	} else {
-		pm = gs.PixelsPerMillis / zoomInverse * float32(gs.Song.Speed)
+		pm = GSC.PixelsPerMillis / zoomInverse * float32(gs.Song.Speed)
 	}
 
 	millisForPixels := 1.0 / pm
@@ -861,7 +867,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.Song.Notes, gs.noteIndexStart,
 		gs.IsPlayingAudio(), prevAudioPos, audioPos,
 		gs.botPlay,
-		gs.HitWindow)
+		GSC.HitWindow)
 
 	var noteEvents []NoteEvent
 
@@ -874,7 +880,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		audioPos,
 		gs.AudioDuration(),
 		gs.IsPlayingAudio(),
-		gs.HitWindow,
+		GSC.HitWindow,
 		gs.botPlay,
 		gs.noteIndexStart,
 	)
@@ -991,7 +997,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			rewind = rewind && eventNote.Player == 0            //note is player0's note
 			rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
 			// ignore miss if note is overlapped with bookmark
-			rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, gs.HitWindow)
+			rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, GSC.HitWindow)
 
 			// prevent rewind from happening when user released on sustain note too early
 			// TODO : make this an options
@@ -1363,12 +1369,12 @@ func (gs *GameScreen) Draw() {
 
 		x = gs.NoteX(player, dir) + statusOffsetX[player][dir]
 		if TheOptions.DownScroll {
-			y = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
+			y = SCREEN_HEIGHT - GSC.NotesMarginBottom + statusOffsetY[player][dir]
 		} else {
-			y = gs.NotesMarginTop + statusOffsetY[player][dir]
+			y = GSC.NotesMarginTop + statusOffsetY[player][dir]
 		}
 
-		scale := gs.NotesSize * statusScaleOffset[player][dir]
+		scale := GSC.NotesSize * statusScaleOffset[player][dir]
 
 		sincePressed := GlobalTimerNow() - gs.Pstates[player].KeyPressedAt[dir]
 		glowT := float64(sincePressed) / float64(time.Millisecond*50)
@@ -1434,12 +1440,12 @@ func (gs *GameScreen) Draw() {
 
 			x = gs.NoteX(player, dir) + statusOffsetX[player][dir]
 			if TheOptions.DownScroll {
-				y = SCREEN_HEIGHT - gs.NotesMarginBottom + statusOffsetY[player][dir]
+				y = SCREEN_HEIGHT - GSC.NotesMarginBottom + statusOffsetY[player][dir]
 			} else {
-				y = gs.NotesMarginTop + statusOffsetY[player][dir]
+				y = GSC.NotesMarginTop + statusOffsetY[player][dir]
 			}
 
-			scale := gs.NotesSize * statusScaleOffset[player][dir]
+			scale := GSC.NotesSize * statusScaleOffset[player][dir]
 
 			DrawNoteArrow(x, y, scale, dir, color, color)
 		}
@@ -1522,7 +1528,7 @@ func (gs *GameScreen) Draw() {
 				arrowStroke := noteStroke[note.Direction]
 
 				// if we are not holding note and it passed the hit window, grey it out
-				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), gs.HitWindow) {
+				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), GSC.HitWindow) {
 					arrowFill = noteFillGrey[note.Direction]
 					arrowStroke = noteStrokeGrey[note.Direction]
 				}
@@ -1534,7 +1540,7 @@ func (gs *GameScreen) Draw() {
 
 				if !isHoldingNote { // draw note if we are not holding it
 					DrawNoteArrow(x, gs.TimeToY(susBegin)+susBeginOffset,
-						gs.NotesSize, note.Direction, arrowFill, arrowStroke)
+						GSC.NotesSize, note.Direction, arrowFill, arrowStroke)
 				}
 			}
 		} else if !note.IsHit { // draw regular note
@@ -1542,7 +1548,7 @@ func (gs *GameScreen) Draw() {
 			arrowFill := noteFill[note.Direction]
 			arrowStroke := noteStroke[note.Direction]
 
-			if note.StartPassedWindow(gs.AudioPosition(), gs.HitWindow) {
+			if note.StartPassedWindow(gs.AudioPosition(), GSC.HitWindow) {
 				arrowFill = noteFillGrey[note.Direction]
 				arrowStroke = noteStrokeGrey[note.Direction]
 			}
@@ -1552,7 +1558,7 @@ func (gs *GameScreen) Draw() {
 				arrowStroke = noteStrokeMistake[note.Direction]
 			}
 
-			DrawNoteArrow(x, y, gs.NotesSize, note.Direction, arrowFill, arrowStroke)
+			DrawNoteArrow(x, y, GSC.NotesSize, note.Direction, arrowFill, arrowStroke)
 		}
 	}
 
@@ -1577,7 +1583,7 @@ func (gs *GameScreen) Draw() {
 			if miss.Player == 0 {
 				DrawNoteArrow(
 					gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
-					gs.NotesSize, miss.Direction,
+					GSC.NotesSize, miss.Direction,
 					Col(0, 0, 0, 0), Col(1, 0, 0, 1),
 				)
 			}
@@ -1620,7 +1626,7 @@ func (gs *GameScreen) Draw() {
 				projectileX = -xt * 15
 			}
 
-			y := SCREEN_HEIGHT - gs.NotesMarginBottom - 200 + projectileY
+			y := SCREEN_HEIGHT - GSC.NotesMarginBottom - 200 + projectileY
 			x := float32(SCREEN_WIDTH/2) + projectileX - 200
 
 			tex := HitRatingTexs[popup.Rating]
@@ -1697,15 +1703,15 @@ func (gs *GameScreen) Draw() {
 }
 
 func (gs *GameScreen) NoteX(player int, dir NoteDir) float32 {
-	player1NoteStartLeft := gs.NotesMarginLeft
-	player0NoteStartRight := SCREEN_WIDTH - gs.NotesMarginRight
+	player1NoteStartLeft := GSC.NotesMarginLeft
+	player0NoteStartRight := SCREEN_WIDTH - GSC.NotesMarginRight
 
 	var noteX float32 = 0
 
 	if player == 1 {
-		noteX = player1NoteStartLeft + gs.NotesInterval*float32(dir)
+		noteX = player1NoteStartLeft + GSC.NotesInterval*float32(dir)
 	} else {
-		noteX = player0NoteStartRight - (gs.NotesInterval)*(3-float32(dir))
+		noteX = player0NoteStartRight - (GSC.NotesInterval)*(3-float32(dir))
 	}
 
 	return noteX
@@ -1715,9 +1721,9 @@ func (gs *GameScreen) TimeToY(t time.Duration) float32 {
 	relativeTime := t - gs.AudioPosition()
 
 	if TheOptions.DownScroll {
-		return SCREEN_HEIGHT - gs.NotesMarginBottom - gs.TimeToPixels(relativeTime)
+		return SCREEN_HEIGHT - GSC.NotesMarginBottom - gs.TimeToPixels(relativeTime)
 	} else {
-		return gs.NotesMarginTop + gs.TimeToPixels(relativeTime)
+		return GSC.NotesMarginTop + gs.TimeToPixels(relativeTime)
 	}
 
 }
@@ -1773,8 +1779,8 @@ func (gs *GameScreen) DrawSustainBar(
 		maxY := max(fromV.Y, toV.Y)
 
 		// make it longer just in case
-		minY -= gs.SustainBarWidth * 2
-		maxY += gs.SustainBarWidth * 2
+		minY -= GSC.SustainBarWidth * 2
+		maxY += GSC.SustainBarWidth * 2
 
 		minInScreen := 0 < minY && minY < SCREEN_HEIGHT
 		maxInScreen := 0 < maxY && maxY < SCREEN_HEIGHT
@@ -1786,7 +1792,7 @@ func (gs *GameScreen) DrawSustainBar(
 		}
 	}
 
-	drawLineWithSustainTex(fromV, toV, gs.SustainBarWidth, baseColor.ToRlColor())
+	drawLineWithSustainTex(fromV, toV, GSC.SustainBarWidth, baseColor.ToRlColor())
 
 	durationF := float32(duration)
 
@@ -1805,7 +1811,7 @@ func (gs *GameScreen) DrawSustainBar(
 		bv := rl.Vector2Lerp(fromV, toV, float32(b-from)/durationF)
 		ev := rl.Vector2Lerp(fromV, toV, float32(e-from)/durationF)
 
-		drawLineWithSustainTex(bv, ev, gs.SustainBarWidth, c.Color.ToRlColor())
+		drawLineWithSustainTex(bv, ev, GSC.SustainBarWidth, c.Color.ToRlColor())
 	}
 }
 
