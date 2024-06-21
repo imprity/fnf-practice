@@ -177,6 +177,8 @@ type GameScreen struct {
 	audioPosition      time.Duration
 	prevPlayerPosition time.Duration
 
+	positionChangedWhilePaused bool
+
 	zoom float32
 
 	// TODO : Does it really have to be a private member?
@@ -482,6 +484,9 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 	gs.Pstates = [2]PlayerState{}
 
 	gs.noteIndexStart = 0
+
+	gs.ResetNoteEvents()
+	gs.Mispresses = gs.Mispresses[:0]
 }
 
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
@@ -514,7 +519,31 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 	return time.Duration(p * millisForPixels * float32(time.Millisecond))
 }
 
-// returns true when it wants to quit
+// returns misses and hit counts per rating
+func (gs *GameScreen) CountEvents(player int) (int, [HitRatingSize]int) {
+	misses := 0
+
+	hits := [HitRatingSize]int{}
+
+	misses += len(gs.Mispresses)
+
+	for _, events := range gs.NoteEvents {
+		for _, e := range events {
+			note := gs.Song.Notes[e.Index]
+			if note.Player == player {
+				if e.IsMiss() {
+					misses += 1
+				} else if e.IsFirstHit() {
+					rating := GetHitRating(note.StartsAt, e.Time)
+					hits[rating] += 1
+				}
+			}
+		}
+	}
+
+	return misses, hits
+}
+
 func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
@@ -597,10 +626,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-					gs.PauseAudio()
-
-					gs.ResetNoteEvents()
-					gs.Mispresses = gs.Mispresses[:0]
 					gs.ResetStatesThatTracksGamePlayChanges()
 				}
 			}
@@ -667,8 +692,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				if gs.OnlyTemporarilyPaused() {
 					gs.ClearTempPause()
 				} else {
-					gs.ResetNoteEvents()
-					gs.Mispresses = gs.Mispresses[:0]
+					/*
+						gs.ResetNoteEvents()
+						gs.Mispresses = gs.Mispresses[:0]
+					*/
 					gs.PlayAudio()
 				}
 			}
@@ -801,11 +828,16 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// =============================================
 
 	if positionArbitraryChange {
-		gs.ResetStatesThatTracksGamePlayChanges()
-		if gs.IsPlayingAudio() {
-			gs.ResetNoteEvents()
-			gs.Mispresses = gs.Mispresses[:0]
+		if !gs.IsPlayingAudio() {
+			gs.positionChangedWhilePaused = true
+		} else {
+			gs.ResetStatesThatTracksGamePlayChanges()
 		}
+	}
+
+	if gs.IsPlayingAudio() && gs.positionChangedWhilePaused {
+		gs.ResetStatesThatTracksGamePlayChanges()
+		gs.positionChangedWhilePaused = false
 	}
 
 	// =============================================
@@ -814,9 +846,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	if gs.tempPauseUntil < GlobalTimerNow() {
 		if gs.wasPlayingWhenTempPause {
-			gs.ResetNoteEvents()
-			gs.Mispresses = gs.Mispresses[:0]
-
 			gs.PlayAudio()
 			gs.wasPlayingWhenTempPause = false
 		}
@@ -882,160 +911,161 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.noteIndexStart,
 	)
 
-	logNoteEvent := func(e NoteEvent) {
-		if gs.LogNoteEvent {
-			i := e.Index
-			note := gs.Song.Notes[i]
-			p := note.Player
-			dir := note.Direction
+	if gs.IsPlayingAudio() {
+		logNoteEvent := func(e NoteEvent) {
+			if gs.LogNoteEvent {
+				i := e.Index
+				note := gs.Song.Notes[i]
+				p := note.Player
+				dir := note.Direction
 
-			if e.IsFirstHit() {
-				rating := GetHitRating(note.StartsAt, e.Time)
+				if e.IsFirstHit() {
+					rating := GetHitRating(note.StartsAt, e.Time)
 
-				fmt.Printf(
-					"player %v hit %v %v note %v at %v : \"%v\", \"%v\"\n",
-					p, RatingStrs[rating], NoteDirStrs[dir], i, note.StartsAt, e.Time, AbsI(note.StartsAt-e.Time))
-			} else {
-				if e.IsRelease() {
-					fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
-				}
-				if e.IsMiss() {
-					fmt.Printf("player %v missed %v note %v at %v\n", p, NoteDirStrs[dir], i, note.StartsAt)
-				}
-			}
-		}
-	}
-
-	pushPopupIfHumanPlayerHit := func(e NoteEvent) {
-		if gs.IsBotPlay() {
-			return
-		}
-
-		note := gs.Song.Notes[e.Index]
-		if e.IsFirstHit() && note.Player == 0 {
-			rating := GetHitRating(note.StartsAt, e.Time)
-
-			popup := NotePopup{
-				Start:  GlobalTimerNow(),
-				Rating: rating,
-			}
-			gs.PopupQueue.Enqueue(popup)
-		}
-	}
-
-	queuedRewind := false
-
-	// ===================
-	// handle mispresses
-	// ===================
-	for player := 0; player <= 1; player++ {
-		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			mispressed := (gs.Pstates[player].IsHoldingBadKey[dir] &&
-				gs.Pstates[player].IsKeyJustPressed[dir])
-
-			rewind := mispressed
-
-			rewind = rewind && !queuedRewind
-
-			rewind = rewind && player == 0
-			rewind = rewind && !gs.IsBotPlay()
-
-			rewind = rewind && gs.RewindOnMistake
-			rewind = rewind && gs.BookMarkSet
-
-			rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
-
-			// rewind on mispress
-			// TODO : add option to disable this behaviour
-			if rewind {
-				queuedRewind = true
-				gs.RewindQueue.Clear()
-
-				// pause a bit at mispress
-				gs.RewindQueue.Enqueue(AnimatedRewind{
-					Target:   gs.AudioPosition(),
-					Duration: time.Millisecond * 300,
-				})
-
-				gs.RewindQueue.Enqueue(AnimatedRewind{
-					Target:   gs.BookMark,
-					Duration: time.Millisecond * 700,
-				})
-			}
-
-			if mispressed {
-				gs.Mispresses = append(gs.Mispresses, Mispress{
-					Player: player, Direction: dir, Time: gs.AudioPosition(),
-				})
-			}
-		}
-	}
-
-	for _, e := range noteEvents {
-
-		// ===========================
-		// rewind on miss
-		// ===========================
-		if gs.RewindOnMistake {
-			eventNote := gs.Song.Notes[e.Index]
-
-			rewind := !gs.IsBotPlay()
-			rewind = rewind && !queuedRewind
-			rewind = rewind && gs.BookMarkSet
-			rewind = rewind && e.IsMiss()
-			rewind = rewind && eventNote.Player == 0            //note is player0's note
-			rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
-			// ignore miss if note is overlapped with bookmark
-			rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, HitWindow())
-
-			// prevent rewind from happening when user released on sustain note too early
-			// TODO : make this an options
-			// I think it would be annoying if game rewinds even after user pressed 90% of the sustain note
-			// so there should be an tolerance option for that
-			rewind = rewind && !eventNote.IsHit
-
-			if rewind {
-				queuedRewind = true
-				gs.RewindQueue.Clear()
-
-				gs.RewindQueue.Enqueue(AnimatedRewind{
-					Target:   eventNote.StartsAt,
-					Duration: time.Millisecond * 300,
-				})
-
-				gs.RewindQueue.Enqueue(AnimatedRewind{
-					Target:   eventNote.StartsAt,
-					Duration: time.Millisecond * 300,
-				})
-
-				gs.RewindQueue.Enqueue(AnimatedRewind{
-					Target:   gs.BookMark,
-					Duration: time.Millisecond * 700,
-				})
-			}
-		}
-
-		events := gs.NoteEvents[e.Index]
-
-		if len(events) <= 0 {
-			logNoteEvent(e)
-			pushPopupIfHumanPlayerHit(e)
-			gs.NoteEvents[e.Index] = append(events, e)
-		} else {
-			last := events[len(events)-1]
-
-			if last.SameKind(e) {
-				if last.IsMiss() {
-					t := e.Time - last.Time
-					if t > time.Millisecond*500 { // only report miss every 500 ms
-						logNoteEvent(e)
-						gs.NoteEvents[e.Index] = append(events, e)
+					fmt.Printf(
+						"player %v hit %v %v note %v at %v : \"%v\", \"%v\"\n",
+						p, RatingStrs[rating], NoteDirStrs[dir], i, note.StartsAt, e.Time, AbsI(note.StartsAt-e.Time))
+				} else {
+					if e.IsRelease() {
+						fmt.Printf("player %v released %v note %v\n", p, NoteDirStrs[dir], i)
+					}
+					if e.IsMiss() {
+						fmt.Printf("player %v missed %v note %v at %v\n", p, NoteDirStrs[dir], i, note.StartsAt)
 					}
 				}
-			} else {
+			}
+		}
+
+		pushPopupIfHumanPlayerHit := func(e NoteEvent) {
+			if gs.IsBotPlay() {
+				return
+			}
+
+			note := gs.Song.Notes[e.Index]
+			if e.IsFirstHit() && note.Player == 0 {
+				rating := GetHitRating(note.StartsAt, e.Time)
+
+				popup := NotePopup{
+					Start:  GlobalTimerNow(),
+					Rating: rating,
+				}
+				gs.PopupQueue.Enqueue(popup)
+			}
+		}
+		queuedRewind := false
+
+		// ===================
+		// handle mispresses
+		// ===================
+		for player := 0; player <= 1; player++ {
+			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+				mispressed := (gs.Pstates[player].IsHoldingBadKey[dir] &&
+					gs.Pstates[player].IsKeyJustPressed[dir])
+
+				// rewind on mispress
+				rewind := mispressed
+
+				rewind = rewind && !queuedRewind
+
+				rewind = rewind && player == 0
+				rewind = rewind && !gs.IsBotPlay()
+
+				rewind = rewind && gs.RewindOnMistake
+				rewind = rewind && gs.BookMarkSet
+
+				rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
+
+				// TODO : add option to disable this behaviour
+				if rewind {
+					queuedRewind = true
+					gs.RewindQueue.Clear()
+
+					// pause a bit at mispress
+					gs.RewindQueue.Enqueue(AnimatedRewind{
+						Target:   gs.AudioPosition(),
+						Duration: time.Millisecond * 300,
+					})
+
+					gs.RewindQueue.Enqueue(AnimatedRewind{
+						Target:   gs.BookMark,
+						Duration: time.Millisecond * 700,
+					})
+				}
+
+				if mispressed {
+					gs.Mispresses = append(gs.Mispresses, Mispress{
+						Player: player, Direction: dir, Time: gs.AudioPosition(),
+					})
+				}
+			}
+		}
+
+		for _, e := range noteEvents {
+
+			// ===========================
+			// rewind on miss
+			// ===========================
+			if gs.RewindOnMistake {
+				eventNote := gs.Song.Notes[e.Index]
+
+				rewind := !gs.IsBotPlay()
+				rewind = rewind && !queuedRewind
+				rewind = rewind && gs.BookMarkSet
+				rewind = rewind && e.IsMiss()
+				rewind = rewind && eventNote.Player == 0            //note is player0's note
+				rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
+				// ignore miss if note is overlapped with bookmark
+				rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, HitWindow())
+
+				// prevent rewind from happening when user released on sustain note too early
+				// TODO : make this an options
+				// I think it would be annoying if game rewinds even after user pressed 90% of the sustain note
+				// so there should be an tolerance option for that
+				rewind = rewind && !eventNote.IsHit
+
+				if rewind {
+					queuedRewind = true
+					gs.RewindQueue.Clear()
+
+					gs.RewindQueue.Enqueue(AnimatedRewind{
+						Target:   eventNote.StartsAt,
+						Duration: time.Millisecond * 300,
+					})
+
+					gs.RewindQueue.Enqueue(AnimatedRewind{
+						Target:   eventNote.StartsAt,
+						Duration: time.Millisecond * 300,
+					})
+
+					gs.RewindQueue.Enqueue(AnimatedRewind{
+						Target:   gs.BookMark,
+						Duration: time.Millisecond * 700,
+					})
+				}
+			}
+
+			events := gs.NoteEvents[e.Index]
+
+			if len(events) <= 0 {
 				logNoteEvent(e)
 				pushPopupIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
+			} else {
+				last := events[len(events)-1]
+
+				if last.SameKind(e) {
+					if last.IsMiss() {
+						t := e.Time - last.Time
+						if t > time.Millisecond*500 { // only report miss every 500 ms
+							logNoteEvent(e)
+							gs.NoteEvents[e.Index] = append(events, e)
+						}
+					}
+				} else {
+					logNoteEvent(e)
+					pushPopupIfHumanPlayerHit(e)
+					gs.NoteEvents[e.Index] = append(events, e)
+				}
 			}
 		}
 	}
@@ -1304,6 +1334,7 @@ func (gs *GameScreen) Draw() {
 	statusOffsetX := [2][NoteDirSize]float32{}
 	statusOffsetY := [2][NoteDirSize]float32{}
 
+	// fill the scales with 1
 	for player := 0; player <= 1; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			statusScaleOffset[player][dir] = 1
@@ -1311,40 +1342,42 @@ func (gs *GameScreen) Draw() {
 	}
 
 	// it we hit note, offset note
-	for p := 0; p <= 1; p++ {
-		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			if gs.Pstates[p].IsHoldingBadKey[dir] {
-				statusScaleOffset[p][dir] += 0.1
-			} else if gs.Pstates[p].DidReleaseBadKey[dir] {
-				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir])) / float32(time.Millisecond*40)
-				if t > 1 {
-					t = 1
-				}
-				t = 1 - t
+	if !gs.positionChangedWhilePaused {
+		for p := 0; p <= 1; p++ {
+			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+				if gs.Pstates[p].IsHoldingBadKey[dir] {
+					statusScaleOffset[p][dir] += 0.1
+				} else if gs.Pstates[p].DidReleaseBadKey[dir] {
+					t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir])) / float32(time.Millisecond*40)
+					if t > 1 {
+						t = 1
+					}
+					t = 1 - t
 
-				statusScaleOffset[p][dir] += 0.1 * t
-			}
-			if gs.Pstates[p].IsHoldingKey[dir] && !gs.Pstates[p].IsHoldingBadKey[dir] {
-				statusOffsetY[p][dir] = -5
-				statusScaleOffset[p][dir] += 0.1
-				if gs.Pstates[p].IsHoldingNote[dir] {
-					statusOffsetX[p][dir] += (rand.Float32()*2 - 1) * 3
-					statusOffsetY[p][dir] += (rand.Float32()*2 - 1) * 3
+					statusScaleOffset[p][dir] += 0.1 * t
 				}
-			} else if !gs.Pstates[p].DidReleaseBadKey[dir] {
-				t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir])) / float32(time.Millisecond*40)
-				if t > 1 {
-					t = 1
-				}
-				t = 1 - t
+				if gs.Pstates[p].IsHoldingKey[dir] && !gs.Pstates[p].IsHoldingBadKey[dir] {
+					statusOffsetY[p][dir] = -5
+					statusScaleOffset[p][dir] += 0.1
+					if gs.Pstates[p].IsHoldingNote[dir] {
+						statusOffsetX[p][dir] += (rand.Float32()*2 - 1) * 3
+						statusOffsetY[p][dir] += (rand.Float32()*2 - 1) * 3
+					}
+				} else if !gs.Pstates[p].DidReleaseBadKey[dir] {
+					t := float32((GlobalTimerNow() - gs.Pstates[p].KeyReleasedAt[dir])) / float32(time.Millisecond*40)
+					if t > 1 {
+						t = 1
+					}
+					t = 1 - t
 
-				if TheOptions.DownScroll {
-					statusOffsetY[p][dir] = -5 * t
-				} else {
-					statusOffsetY[p][dir] = 5 * t
-				}
+					if TheOptions.DownScroll {
+						statusOffsetY[p][dir] = -5 * t
+					} else {
+						statusOffsetY[p][dir] = 5 * t
+					}
 
-				statusScaleOffset[p][dir] += 0.1 * t
+					statusScaleOffset[p][dir] += 0.1 * t
+				}
 			}
 		}
 	}
@@ -1416,12 +1449,11 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw input status
 	// ============================================
-
 	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 		for player := 0; player <= 1; player++ {
 			color := Col(0.5, 0.5, 0.5, 1.0)
 
-			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] {
+			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] && !gs.positionChangedWhilePaused {
 				color = Col(1, 0, 0, 1)
 			}
 
@@ -1443,11 +1475,12 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw regular note hit
 	// ============================================
-
-	for player := 0; player <= 1; player++ {
-		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir] {
-				drawHitOverlay(player, dir)
+	if !gs.positionChangedWhilePaused {
+		for player := 0; player <= 1; player++ {
+			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+				if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir] {
+					drawHitOverlay(player, dir)
+				}
 			}
 		}
 	}
@@ -1464,19 +1497,25 @@ func (gs *GameScreen) Draw() {
 		y := gs.TimeToY(note.StartsAt)
 
 		if note.IsSustain() { // draw hold note
-			if note.HoldReleaseAt < note.End() {
+			if note.HoldReleaseAt < note.End() || gs.positionChangedWhilePaused {
 				isHoldingNote := gs.Pstates[note.Player].IsHoldingNote[note.Direction]
 				isHoldingNote = isHoldingNote && gs.Pstates[note.Player].HoldingNote[note.Direction].Equals(note)
 
-				susBegin := max(note.StartsAt, note.HoldReleaseAt)
+				var susBegin time.Duration
 
-				if isHoldingNote {
-					susBegin = max(susBegin, gs.AudioPosition())
+				if gs.positionChangedWhilePaused {
+					susBegin = note.StartsAt
+				} else {
+					susBegin = max(note.StartsAt, note.HoldReleaseAt)
+
+					if isHoldingNote {
+						susBegin = max(susBegin, gs.AudioPosition())
+					}
 				}
 
 				susBeginOffset := float32(0)
 
-				if isHoldingNote {
+				if isHoldingNote && !gs.positionChangedWhilePaused {
 					susBeginOffset = statusOffsetY[note.Player][note.Direction]
 				}
 
@@ -1517,7 +1556,7 @@ func (gs *GameScreen) Draw() {
 				arrowStroke := noteStroke[note.Direction]
 
 				// if we are not holding note and it passed the hit window, grey it out
-				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), HitWindow()) {
+				if !isHoldingNote && note.StartPassedWindow(gs.AudioPosition(), HitWindow()) && !gs.positionChangedWhilePaused {
 					arrowFill = noteFillGrey[note.Direction]
 					arrowStroke = noteStrokeGrey[note.Direction]
 				}
@@ -1527,17 +1566,17 @@ func (gs *GameScreen) Draw() {
 					arrowStroke = noteStrokeMistake[note.Direction]
 				}
 
-				if !isHoldingNote { // draw note if we are not holding it
+				if !isHoldingNote || gs.positionChangedWhilePaused { // draw note if we are not holding it
 					DrawNoteArrow(x, gs.TimeToY(susBegin)+susBeginOffset,
 						GSC.NotesSize, note.Direction, arrowFill, arrowStroke)
 				}
 			}
-		} else if !note.IsHit { // draw regular note
+		} else if !note.IsHit || gs.positionChangedWhilePaused { // draw regular note
 
 			arrowFill := noteFill[note.Direction]
 			arrowStroke := noteStroke[note.Direction]
 
-			if note.StartPassedWindow(gs.AudioPosition(), HitWindow()) {
+			if note.StartPassedWindow(gs.AudioPosition(), HitWindow()) && !gs.positionChangedWhilePaused {
 				arrowFill = noteFillGrey[note.Direction]
 				arrowStroke = noteStrokeGrey[note.Direction]
 			}
@@ -1554,11 +1593,12 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	// draw sustain note hit
 	// ============================================
-
-	for player := 0; player <= 1; player++ {
-		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir] {
-				drawHitOverlay(player, dir)
+	if !gs.positionChangedWhilePaused {
+		for player := 0; player <= 1; player++ {
+			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+				if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir] {
+					drawHitOverlay(player, dir)
+				}
 			}
 		}
 	}
@@ -1568,7 +1608,6 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	if !gs.IsPlayingAudio() && len(gs.Mispresses) > 0 && !gs.IsBotPlay() {
 		for _, miss := range gs.Mispresses {
-
 			if miss.Player == 0 {
 				DrawNoteArrow(
 					gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
@@ -1676,6 +1715,8 @@ func (gs *GameScreen) Draw() {
 	} else {
 		gs.DrawZoom()
 	}
+
+	gs.DrawPlayerEventCounter()
 
 	// ============================================
 	// draw help menu
@@ -2106,6 +2147,50 @@ func (gs *GameScreen) DrawZoom() {
 	gs.drawAudioSpeedOrZoom(true)
 }
 
+func (gs *GameScreen) DrawPlayerEventCounter() {
+	const textSize = 24
+
+	rl.SetTextLineSpacing(textSize)
+	labelSize := rl.MeasureTextEx(
+		FontClear,
+		"Miss:\n"+
+			"Bad:\n"+
+			"Good:\n"+
+			"Sick!:",
+		textSize, 0,
+	)
+
+	labelPos := rl.Vector2{
+		20,
+		SCREEN_HEIGHT*0.5 - labelSize.Y*0.5,
+	}
+
+	rl.DrawTextEx(FontClear, "Miss:", labelPos, textSize, 0, rl.Color{255, 0, 0, 255})
+	rl.DrawTextEx(
+		FontClear,
+		"Bad:\n"+
+			"Good:\n"+
+			"Sick!:",
+		rl.Vector2{labelPos.X, labelPos.Y + textSize}, textSize, 0, rl.Color{0, 0, 0, 255},
+	)
+
+	misses, hits := gs.CountEvents(0)
+
+	numberPos := rl.Vector2{labelPos.X + 8 + labelSize.X, labelPos.Y}
+
+	missCountStr := fmt.Sprintf("%v", misses)
+	hitCountStr := fmt.Sprintf(
+		"%d\n"+
+			"%d\n"+
+			"%d",
+		hits[HitRatingBad], hits[HitRatingGood], hits[HitRatingSick],
+	)
+
+	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, rl.Color{255, 0, 0, 255})
+	numberPos.Y += textSize
+	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, rl.Color{0, 0, 0, 255})
+}
+
 func (gs *GameScreen) BeforeScreenTransition() {
 	gs.zoom = 1.0
 
@@ -2128,11 +2213,9 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.SetAudioPosition(0)
 
-	gs.ResetNoteEvents()
-
-	gs.Mispresses = gs.Mispresses[:0]
-
 	gs.ResetStatesThatTracksGamePlayChanges()
+
+	gs.positionChangedWhilePaused = false
 }
 
 func (gs *GameScreen) Free() {
@@ -2151,7 +2234,7 @@ func (hm *HelpMessage) InitTextImage() {
 	// NOTE : resized font looks very ugly
 	// so we have to use whatever size font is loaded in
 	// if you want to resize the help message, modify it in assets.go
-	fontSize := f32(HelpMsgFont.BaseSize)
+	fontSize := f32(FontClear.BaseSize)
 
 	type textPosColor struct {
 		Text string
@@ -2167,7 +2250,7 @@ func (hm *HelpMessage) InitTextImage() {
 		// Draw message
 		msg = msg + " : "
 
-		msgSize := rl.MeasureTextEx(HelpMsgFont, msg, fontSize, 0)
+		msgSize := rl.MeasureTextEx(FontClear, msg, fontSize, 0)
 
 		textsToDraw = append(textsToDraw,
 			textPosColor{
@@ -2182,7 +2265,7 @@ func (hm *HelpMessage) InitTextImage() {
 		// Draw key name
 		keyName := GetKeyName(key)
 
-		keyNameSize := rl.MeasureTextEx(HelpMsgFont, keyName, fontSize, 0)
+		keyNameSize := rl.MeasureTextEx(FontClear, keyName, fontSize, 0)
 
 		textsToDraw = append(textsToDraw,
 			textPosColor{
@@ -2291,7 +2374,7 @@ func (hm *HelpMessage) InitTextImage() {
 	for _, toDraw := range textsToDraw {
 		pos := toDraw.Pos
 
-		rl.DrawTextEx(HelpMsgFont, toDraw.Text, pos,
+		rl.DrawTextEx(FontClear, toDraw.Text, pos,
 			fontSize, 0, toDraw.Col)
 	}
 

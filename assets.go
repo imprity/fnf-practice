@@ -60,8 +60,8 @@ var (
 	KeySelectFont rl.Font
 
 	//go:embed fonts/Pangolin/Pangolin-Regular.ttf
-	helpMsgFontData []byte
-	HelpMsgFont     rl.Font
+	FontClearData []byte
+	FontClear     rl.Font
 )
 
 var PopupBg rl.Texture2D
@@ -260,7 +260,7 @@ func loadAssets(isReload bool) {
 		FontBold = loadFont(fontBoldData, "FontBold", 128, ".ttf")
 		KeySelectFont = loadFont(fontBoldData, "KeySelectFont", 240, ".ttf")
 
-		HelpMsgFont = loadFont(helpMsgFontData, "HelpMsgFont", 30, ".ttf")
+		FontClear = loadFont(FontClearData, "HelpMsgFont", 30, ".ttf")
 	}
 }
 
