@@ -1236,6 +1236,10 @@ func (gs *GameScreen) Draw() {
 		return
 	}
 
+	if DrawDebugGraphics {
+		gs.drawBpmDebugGrid()
+	}
+
 	// ===================
 	// draw big bookmark
 	// ===================
@@ -2781,4 +2785,43 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color rl.Color) 
 	)
 
 	rl.EndBlendMode()
+}
+
+func (gs *GameScreen) drawBpmDebugGrid() {
+	pos := GSC.PadStart
+
+	counter := 0
+
+	for pos < gs.AudioDuration() {
+		pos0 := pos
+		pos1 := pos0 + StepsToTime(1, gs.Song.GetBpmAt(pos0))
+		pos2 := pos1 + StepsToTime(1, gs.Song.GetBpmAt(pos1))
+
+		middle := gs.TimeToY(pos1)
+
+		pos0Y := gs.TimeToY(pos0)
+		pos2Y := gs.TimeToY(pos2)
+
+		minY := min(pos0Y, pos2Y)
+		maxY := max(pos0Y, pos2Y)
+
+		halfMinY := (middle + minY) * 0.5
+		halfMaxY := (middle + maxY) * 0.5
+
+		if counter%2 == 0 {
+			if (0 <= halfMinY && halfMinY <= SCREEN_HEIGHT) ||
+				(0 <= halfMaxY && halfMaxY <= SCREEN_HEIGHT) {
+
+				col := rl.Color{0, 0, 0, 30}
+
+				height := halfMaxY - halfMinY
+
+				rl.DrawRectangle(
+					0, i32(halfMinY), SCREEN_WIDTH, i32(height), col)
+			}
+		}
+
+		pos = pos1
+		counter++
+	}
 }

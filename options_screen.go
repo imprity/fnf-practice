@@ -212,8 +212,9 @@ func NewOptionsScreen() *OptionsScreen {
 		}
 
 		debugKeys := []FnfBinding{
-			ToggleDebugKey,
+			ToggleDebugMsg,
 			ToggleLogNoteEvent,
+			ToggleDebugGraphics,
 			ReloadAssetsKey,
 		}
 

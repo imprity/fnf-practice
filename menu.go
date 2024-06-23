@@ -9,8 +9,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var DrawMenuDebug bool = false
-
 type MenuItemType int
 
 const (
@@ -591,7 +589,9 @@ func (md *MenuDrawer) Draw() {
 		return
 	}
 
-	if DrawMenuDebug {
+	//fmt.Printf("debug print %v\n", DrawDebugGraphics)
+
+	if DrawDebugGraphics {
 		rl.DrawLine(
 			0, SCREEN_HEIGHT*0.5,
 			SCREEN_WIDTH, SCREEN_HEIGHT*0.5,

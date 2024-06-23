@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	SettingsJsonMajorVersion = 2
+	SettingsJsonMajorVersion = 3
 	SettingsJsonMinorVersion = 1
 )
 
@@ -23,7 +23,7 @@ type SettingsJson struct {
 	MinorVersion int
 
 	Options Options
-	KeyMap  [FnfBindingSize]int32
+	KeyMap  map[string]int32
 }
 
 const (
@@ -172,7 +172,11 @@ func SaveSettings() error {
 		MinorVersion: SettingsJsonMinorVersion,
 
 		Options: TheOptions,
-		KeyMap:  TheKM,
+		KeyMap:  make(map[string]int32),
+	}
+
+	for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
+		sj.KeyMap[binding.String()] = TheKM[binding]
 	}
 
 	if err := encodeToJsonFile(path, sj); err != nil {
@@ -230,8 +234,21 @@ func LoadSettings() error {
 			}
 		}
 
+		newKeyMap := DefaultKM
+
+		// only replace keys that are not null
+		// since it likely means that it was unset
+		for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
+			bindingStr := binding.String()
+			if js.KeyMap[bindingStr] != 0 {
+				newKeyMap[binding] = js.KeyMap[bindingStr]
+			}
+		}
+
 		TheOptions = js.Options
-		TheKM = js.KeyMap
+		TheKM = newKeyMap
+
+		FnfLogger.Printf("%v key is %v", KeyHumanName[ToggleDebugGraphics], TheKM[ToggleDebugGraphics])
 
 		return nil
 	} else {

@@ -38,57 +38,68 @@ const (
 	ZoomOutKey
 	ZoomInKey
 
-	ToggleDebugKey
+	ToggleDebugMsg
 	ToggleLogNoteEvent
+	ToggleDebugGraphics
 	ReloadAssetsKey
 
 	FnfBindingSize
 )
 
-var TheKM [FnfBindingSize]int32
+var (
+	// default key map
+	DefaultKM [FnfBindingSize]int32
+	// key bindings game will use
+	TheKM [FnfBindingSize]int32
+)
+
 var KeyHumanName [FnfBindingSize]string
 
 func init() {
 	// set default key bindings
-	TheKM[NoteKeyLeft0] = rl.KeyLeft
-	TheKM[NoteKeyLeft1] = rl.KeyA
+	DefaultKM[NoteKeyLeft0] = rl.KeyLeft
+	DefaultKM[NoteKeyLeft1] = rl.KeyA
 
-	TheKM[NoteKeyDown0] = rl.KeyDown
-	TheKM[NoteKeyDown1] = rl.KeyS
+	DefaultKM[NoteKeyDown0] = rl.KeyDown
+	DefaultKM[NoteKeyDown1] = rl.KeyS
 
-	TheKM[NoteKeyUp0] = rl.KeyUp
-	TheKM[NoteKeyUp1] = rl.KeyW
+	DefaultKM[NoteKeyUp0] = rl.KeyUp
+	DefaultKM[NoteKeyUp1] = rl.KeyW
 
-	TheKM[NoteKeyRight0] = rl.KeyRight
-	TheKM[NoteKeyRight1] = rl.KeyD
+	DefaultKM[NoteKeyRight0] = rl.KeyRight
+	DefaultKM[NoteKeyRight1] = rl.KeyD
 
-	TheKM[SelectKey] = rl.KeyEnter
-	TheKM[PauseKey] = rl.KeySpace
-	TheKM[EscapeKey] = rl.KeyEscape
+	DefaultKM[SelectKey] = rl.KeyEnter
+	DefaultKM[PauseKey] = rl.KeySpace
+	DefaultKM[EscapeKey] = rl.KeyEscape
 
-	TheKM[NoteScrollUpKey] = rl.KeyPageUp
-	TheKM[NoteScrollDownKey] = rl.KeyPageDown
+	DefaultKM[NoteScrollUpKey] = rl.KeyPageUp
+	DefaultKM[NoteScrollDownKey] = rl.KeyPageDown
 
-	TheKM[AudioSpeedUpKey] = rl.KeyEqual
-	TheKM[AudioSpeedDownKey] = rl.KeyMinus
+	DefaultKM[AudioSpeedUpKey] = rl.KeyEqual
+	DefaultKM[AudioSpeedDownKey] = rl.KeyMinus
 
-	TheKM[SongResetKey] = rl.KeyR
+	DefaultKM[SongResetKey] = rl.KeyR
 
-	TheKM[SetBookMarkKey] = rl.KeyB
-	TheKM[JumpToBookMarkKey] = rl.KeyBackspace
+	DefaultKM[SetBookMarkKey] = rl.KeyB
+	DefaultKM[JumpToBookMarkKey] = rl.KeyBackspace
 
-	TheKM[ZoomOutKey] = rl.KeyLeftBracket
-	TheKM[ZoomInKey] = rl.KeyRightBracket
+	DefaultKM[ZoomOutKey] = rl.KeyLeftBracket
+	DefaultKM[ZoomInKey] = rl.KeyRightBracket
 
-	TheKM[ToggleDebugKey] = rl.KeyF1
-	TheKM[ToggleLogNoteEvent] = rl.KeyF2
-	TheKM[ReloadAssetsKey] = rl.KeyF5
+	DefaultKM[ToggleDebugMsg] = rl.KeyF1
+	DefaultKM[ToggleLogNoteEvent] = rl.KeyF2
+	DefaultKM[ToggleDebugGraphics] = rl.KeyF3
+	DefaultKM[ReloadAssetsKey] = rl.KeyF5
 
 	for i := range FnfBindingSize {
-		if TheKM[i] == 0 {
+		if DefaultKM[i] == 0 {
 			ErrorLogger.Fatalf("default key binding for \"%v\" is omitted", i.String())
 		}
 	}
+
+	// set TheKM to DefaultKM
+	TheKM = DefaultKM
 
 	// assign names for humans
 	KeyHumanName[NoteKeyLeft0] = "left 0"
@@ -121,8 +132,9 @@ func init() {
 	KeyHumanName[ZoomOutKey] = "note spacing up"
 	KeyHumanName[ZoomInKey] = "note spacing down"
 
-	KeyHumanName[ToggleDebugKey] = "toggle debug message"
-	KeyHumanName[ToggleLogNoteEvent] = "togglee note event"
+	KeyHumanName[ToggleDebugMsg] = "toggle debug message"
+	KeyHumanName[ToggleLogNoteEvent] = "toggle note event"
+	KeyHumanName[ToggleDebugGraphics] = "toggle debug graphics"
 	KeyHumanName[ReloadAssetsKey] = "reload assets"
 
 	for i := range FnfBindingSize {

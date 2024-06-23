@@ -28,15 +28,16 @@ func _() {
 	_ = x[JumpToBookMarkKey-17]
 	_ = x[ZoomOutKey-18]
 	_ = x[ZoomInKey-19]
-	_ = x[ToggleDebugKey-20]
+	_ = x[ToggleDebugMsg-20]
 	_ = x[ToggleLogNoteEvent-21]
-	_ = x[ReloadAssetsKey-22]
-	_ = x[FnfBindingSize-23]
+	_ = x[ToggleDebugGraphics-22]
+	_ = x[ReloadAssetsKey-23]
+	_ = x[FnfBindingSize-24]
 }
 
-const _FnfBinding_name = "NoteKeyLeft0NoteKeyLeft1NoteKeyDown0NoteKeyDown1NoteKeyUp0NoteKeyUp1NoteKeyRight0NoteKeyRight1SelectKeyPauseKeyEscapeKeyNoteScrollUpKeyNoteScrollDownKeyAudioSpeedUpKeyAudioSpeedDownKeySongResetKeySetBookMarkKeyJumpToBookMarkKeyZoomOutKeyZoomInKeyToggleDebugKeyToggleLogNoteEventReloadAssetsKeyFnfBindingSize"
+const _FnfBinding_name = "NoteKeyLeft0NoteKeyLeft1NoteKeyDown0NoteKeyDown1NoteKeyUp0NoteKeyUp1NoteKeyRight0NoteKeyRight1SelectKeyPauseKeyEscapeKeyNoteScrollUpKeyNoteScrollDownKeyAudioSpeedUpKeyAudioSpeedDownKeySongResetKeySetBookMarkKeyJumpToBookMarkKeyZoomOutKeyZoomInKeyToggleDebugMsgToggleLogNoteEventToggleDebugGraphicsReloadAssetsKeyFnfBindingSize"
 
-var _FnfBinding_index = [...]uint16{0, 12, 24, 36, 48, 58, 68, 81, 94, 103, 111, 120, 135, 152, 167, 184, 196, 210, 227, 237, 246, 260, 278, 293, 307}
+var _FnfBinding_index = [...]uint16{0, 12, 24, 36, 48, 58, 68, 81, 94, 103, 111, 120, 135, 152, 167, 184, 196, 210, 227, 237, 246, 260, 278, 297, 312, 326}
 
 func (i FnfBinding) String() string {
 	if i < 0 || i >= FnfBinding(len(_FnfBinding_index)-1) {

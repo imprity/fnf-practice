@@ -31,6 +31,10 @@ var (
 	NextScreen Screen
 )
 
+var (
+	DrawDebugGraphics bool
+)
+
 func SetNextScreen(screen Screen) {
 	NextScreen = screen
 }
@@ -189,8 +193,18 @@ func main() {
 			// ========================
 			rl.PollInputEvents()
 
-			if rl.IsKeyPressed(TheKM[ToggleDebugKey]) {
+			if rl.IsKeyPressed(TheKM[ToggleDebugMsg]) {
 				printDebugMsg = !printDebugMsg
+			}
+
+			if rl.IsKeyPressed(TheKM[ToggleDebugGraphics]) {
+				DrawDebugGraphics = !DrawDebugGraphics
+			}
+
+			if DrawDebugGraphics {
+				DebugPrint("Draw Debug Graphics", "true")
+			} else {
+				DebugPrint("Draw Debug Graphics", "false")
 			}
 
 			if rl.IsKeyPressed(TheKM[ReloadAssetsKey]) {
