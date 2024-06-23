@@ -8,16 +8,23 @@ import (
 	"time"
 )
 
-type RawFnfNote struct {
+type RawFnfSection struct {
+	SectionNotes [][3]float64
+
 	MustHitSection bool
-	SectionNotes   [][3]float64
+
+	Bpm       float64
+	ChangeBPM bool
+
+	LengthInSteps float64
 }
 
 type RawFnfSong struct {
 	Song        string
-	Notes       []RawFnfNote
+	Notes       []RawFnfSection
 	Speed       float64
 	NeedsVoices bool
+	Bpm         float64
 }
 
 type RawFnfJson struct {
@@ -38,8 +45,44 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error) {
 	parsedSong.Speed = rawFnfJson.Song.Speed
 	parsedSong.SongName = rawFnfJson.Song.Song
 
-	for _, rawNote := range rawFnfJson.Song.Notes {
-		for _, sectionNote := range rawNote.SectionNotes {
+	if rawFnfJson.Song.Bpm > 0 {
+		parsedSong.Bpms = append(parsedSong.Bpms,
+			FnfBpm{
+				StartsAt: 0,
+				Bpm:      rawFnfJson.Song.Bpm,
+			},
+		)
+	}
+
+	for _, rawSection := range rawFnfJson.Song.Notes {
+		// see if section bpm changes
+		if rawSection.Bpm > 0 {
+			if len(parsedSong.Bpms) <= 0 {
+				parsedSong.Bpms = append(parsedSong.Bpms,
+					FnfBpm{
+						StartsAt: 0,
+						Bpm:      rawSection.Bpm,
+					},
+				)
+			} else if rawSection.ChangeBPM && len(rawSection.SectionNotes) > 0 {
+				sectionStart := Years150
+
+				for _, sectionNote := range rawSection.SectionNotes {
+					startsAt := time.Duration(sectionNote[0] * float64(time.Millisecond))
+					sectionStart = min(startsAt, sectionStart)
+				}
+
+				parsedSong.Bpms = append(parsedSong.Bpms,
+					FnfBpm{
+						StartsAt: sectionStart,
+						Bpm:      rawSection.Bpm,
+					},
+				)
+			}
+		}
+
+		// parse notes
+		for _, sectionNote := range rawSection.SectionNotes {
 			parsedNote := FnfNote{}
 
 			parsedNote.StartsAt = time.Duration(sectionNote[0] * float64(time.Millisecond))
@@ -53,7 +96,7 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error) {
 				parsedNote.Direction = NoteDir(noteIndex)
 			}
 
-			if rawNote.MustHitSection {
+			if rawSection.MustHitSection {
 				if noteIndex > 3 {
 					parsedNote.Player = 1
 				} else {
@@ -79,6 +122,17 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error) {
 
 	if len(parsedSong.Notes) <= 0 {
 		return parsedSong, fmt.Errorf("ParseJsonToFnfSong : song contains no notes")
+	}
+
+	// if there are still no bpms
+	// set it to default bpm
+	if len(parsedSong.Bpms) <= 0 {
+		parsedSong.Bpms = append(parsedSong.Bpms,
+			FnfBpm{
+				StartsAt: 0,
+				Bpm:      DefaultBpm,
+			},
+		)
 	}
 
 	// we sort the notes just in case

@@ -153,21 +153,33 @@ func FindPrevNoteIndex(notes []FnfNote, before time.Duration, filter NoteFilter)
 	return FnfNote{}, false
 }
 
+type FnfBpm struct {
+	StartsAt time.Duration
+	Bpm      float64
+}
+
+const DefaultBpm = 100
+
 type FnfSong struct {
 	SongName    string
 	Notes       []FnfNote
 	NotesEndsAt time.Duration
 	Speed       float64
 	NeedsVoices bool
+	Bpms        []FnfBpm
 }
 
 func (fs FnfSong) Copy() FnfSong {
 	copy := FnfSong{}
 
 	copy.Notes = make([]FnfNote, len(fs.Notes))
-
 	for i := range len(fs.Notes) {
 		copy.Notes[i] = fs.Notes[i]
+	}
+
+	copy.Bpms = make([]FnfBpm, len(fs.Bpms))
+	for i := range len(fs.Bpms) {
+		copy.Bpms[i] = fs.Bpms[i]
 	}
 
 	copy.NotesEndsAt = fs.NotesEndsAt
@@ -175,6 +187,38 @@ func (fs FnfSong) Copy() FnfSong {
 	copy.NeedsVoices = fs.NeedsVoices
 
 	return copy
+}
+
+// Offset the song to a offset
+// As name implies, it modifies the notes and bpm changes
+// So use the clone if you want to keep the original values intact
+func (fs *FnfSong) OffsetNotesAndBpmChanges(offset time.Duration) {
+	for i := 0; i < len(fs.Notes); i++ {
+		fs.Notes[i].StartsAt += offset
+	}
+
+	// we ignore the first bpm since it's were we store the first bpm
+	for i := 1; i < len(fs.Bpms); i++ {
+		fs.Bpms[i].StartsAt += offset
+	}
+}
+
+func (fs FnfSong) GetBpmAt(at time.Duration) float64 {
+	if at >= fs.Bpms[len(fs.Bpms)-1].StartsAt {
+		return fs.Bpms[len(fs.Bpms)-1].Bpm
+	}
+
+	var bpm float64
+
+	for i := 0; i+1 < len(fs.Bpms); i++ {
+		bpm = fs.Bpms[i].Bpm
+
+		if at < fs.Bpms[i+1].StartsAt {
+			break
+		}
+	}
+
+	return bpm
 }
 
 type FnfDifficulty int

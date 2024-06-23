@@ -117,7 +117,7 @@ func init() {
 
 	GSC.SustainBarWidth = GSC.NotesSize * 0.3
 
-	GSC.PixelsPerMillis = 0.5
+	GSC.PixelsPerMillis = 0.45
 }
 
 type GameScreen struct {
@@ -277,11 +277,9 @@ func (gs *GameScreen) LoadSongs(
 		}
 	}
 
-	// insert start padding
+	// insert padding
 	for i := FnfDifficulty(0); i < DifficultySize; i++ {
-		for j := 0; j < len(gs.Songs[i].Notes); j++ {
-			gs.Songs[i].Notes[j].StartsAt += GSC.PadStart
-		}
+		gs.Songs[i].OffsetNotesAndBpmChanges(GSC.PadStart)
 	}
 
 	gs.Song = gs.Songs[startingDifficulty].Copy()
@@ -549,6 +547,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	if !gs.IsSongLoaded {
 		return
 	}
+
+	// TEST TEST TEST TEST TEST TEST
+	{
+		bpm := gs.Song.GetBpmAt(gs.AudioPosition())
+		DebugPrint("BPM", fmt.Sprintf("%.2f", bpm))
+	}
+	// TEST TEST TEST TEST TEST TEST
 
 	// note logging toggle
 	if rl.IsKeyPressed(TheKM[ToggleLogNoteEvent]) {

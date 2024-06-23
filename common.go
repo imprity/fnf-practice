@@ -4,6 +4,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/exp/constraints"
 
@@ -580,6 +581,22 @@ func DrawRectangleRoundedCornersLines(
 		rec, roundness, segements,
 		col, false, lineThick,
 	)
+}
+
+// ==================
+// music stuff
+// ==================
+
+func CalculateCrochet(bpm float64) time.Duration {
+	return time.Duration(f64(time.Minute) / bpm)
+}
+
+func BeatsToTime(beats float64, bpm float64) time.Duration {
+	return time.Duration(beats * f64(time.Minute) / bpm)
+}
+
+func StepsToTime(steps float64, bpm float64) time.Duration {
+	return time.Duration(steps * f64(time.Minute) / bpm / 4)
 }
 
 // ==================
