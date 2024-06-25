@@ -613,6 +613,10 @@ func EaseInOutCubic(x float64) float64 {
 	}
 }
 
+func EaseOutQuint[F constraints.Float](x F) F {
+	return 1 - F(math.Pow(1-f64(x), 5))
+}
+
 // copied from https://www.febucci.com/2018/08/easing-functions/
 
 func EaseIn[F constraints.Float](t F) F {

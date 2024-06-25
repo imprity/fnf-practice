@@ -100,6 +100,8 @@ var GSC struct {
 
 	// pixels for milliseconds
 	PixelsPerMillis float32
+
+	RewindHightlightDuration time.Duration
 }
 
 func init() {
@@ -118,6 +120,8 @@ func init() {
 	GSC.SustainBarWidth = GSC.NotesSize * 0.3
 
 	GSC.PixelsPerMillis = 0.45
+
+	GSC.RewindHightlightDuration = time.Millisecond * 600
 }
 
 type GameScreen struct {
@@ -152,11 +156,6 @@ type GameScreen struct {
 
 	RewindOnMistake bool
 
-	RewindQueue    CircularQueue[AnimatedRewind]
-	RewindT        float64
-	RewindStarted  bool
-	RewindStartPos time.Duration //audio position
-
 	InputId InputGroupId
 
 	// menu stuff
@@ -181,9 +180,15 @@ type GameScreen struct {
 
 	zoom float32
 
-	// TODO : Does it really have to be a private member?
-	// Make this a public member later if you think it's more convinient
 	botPlay bool
+
+	rewindQueue      CircularQueue[AnimatedRewind]
+	rewindT          float64
+	rewindStarted    bool
+	rewindStartPos   time.Duration //audio position
+	rewindHightLight float64
+	rewindPlayer     int
+	rewindDir        NoteDir
 }
 
 func NewGameScreen() *GameScreen {
@@ -199,7 +204,7 @@ func NewGameScreen() *GameScreen {
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
 	}
 
-	gs.RewindQueue = CircularQueue[AnimatedRewind]{
+	gs.rewindQueue = CircularQueue[AnimatedRewind]{
 		Data: make([]AnimatedRewind, 8),
 	}
 
@@ -379,8 +384,8 @@ func (gs *GameScreen) ClearTempPause() {
 }
 
 func (gs *GameScreen) ClearRewind() {
-	gs.RewindStarted = false
-	gs.RewindQueue.Clear()
+	gs.rewindStarted = false
+	gs.rewindQueue.Clear()
 }
 
 func (gs *GameScreen) SetAudioPosition(at time.Duration) {
@@ -648,37 +653,40 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// rewind stuff
 	// =============================================
 
-	if !gs.RewindQueue.IsEmpty() && !gs.DrawMenu {
+	if !gs.rewindQueue.IsEmpty() && !gs.DrawMenu {
 		gs.TempPause(time.Millisecond * 5)
 
-		if !gs.RewindStarted {
-			gs.RewindStarted = true
-			gs.RewindStartPos = gs.AudioPosition()
-			gs.RewindT = 0
+		if !gs.rewindStarted {
+			gs.rewindStarted = true
+			gs.rewindStartPos = gs.AudioPosition()
+			gs.rewindT = 0
 		}
 
-		rewind := gs.RewindQueue.PeekFirst()
+		rewind := gs.rewindQueue.PeekFirst()
 
-		gs.RewindT += f64(deltaTime) / f64(rewind.Duration)
+		gs.rewindT += f64(deltaTime) / f64(rewind.Duration)
 
 		var newPos time.Duration
 
-		if gs.RewindT > 1 {
+		if gs.rewindT > 1 {
 			newPos = rewind.Target
 		} else {
-			t := Clamp(gs.RewindT, 0, 1)
+			t := Clamp(gs.rewindT, 0, 1)
 
 			t = EaseInOutCubic(t)
 
-			newPos = time.Duration(Lerp(f64(gs.RewindStartPos), f64(rewind.Target), t))
+			newPos = time.Duration(Lerp(f64(gs.rewindStartPos), f64(rewind.Target), t))
 		}
 
 		gs.SetAudioPosition(newPos)
 
-		if gs.RewindT > 1 {
-			gs.RewindQueue.Dequeue()
-			gs.RewindStarted = false
+		if gs.rewindT > 1 {
+			gs.rewindQueue.Dequeue()
+			gs.rewindStarted = false
 		}
+
+		gs.rewindHightLight -= f64(deltaTime) / f64(GSC.RewindHightlightDuration)
+		gs.rewindHightLight = Clamp(gs.rewindHightLight, 0, 1)
 
 		positionArbitraryChange = true
 	}
@@ -955,7 +963,26 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				gs.PopupQueue.Enqueue(popup)
 			}
 		}
+
 		queuedRewind := false
+
+		queueRewinds := func(player int, direction NoteDir, rewinds ...AnimatedRewind) {
+			if queuedRewind {
+				return
+			}
+
+			queuedRewind = true
+			gs.rewindQueue.Clear()
+
+			for _, rewind := range rewinds {
+				gs.rewindQueue.Enqueue(rewind)
+			}
+
+			gs.rewindHightLight = 1
+
+			gs.rewindPlayer = player
+			gs.rewindDir = direction
+		}
 
 		// ===================
 		// handle mispresses
@@ -980,19 +1007,17 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 				// TODO : add option to disable this behaviour
 				if rewind {
-					queuedRewind = true
-					gs.RewindQueue.Clear()
-
-					// pause a bit at mispress
-					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   gs.AudioPosition(),
-						Duration: time.Millisecond * 300,
-					})
-
-					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   gs.BookMark,
-						Duration: time.Millisecond * 700,
-					})
+					queueRewinds(player, dir,
+						// pause a bit at mispress
+						AnimatedRewind{
+							Target:   gs.AudioPosition(),
+							Duration: time.Millisecond * 300,
+						},
+						AnimatedRewind{
+							Target:   gs.BookMark,
+							Duration: time.Millisecond * 700,
+						},
+					)
 				}
 
 				if mispressed {
@@ -1035,23 +1060,20 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 						missPosition = eventNote.StartsAt
 					}
 
-					queuedRewind = true
-					gs.RewindQueue.Clear()
-
-					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   missPosition,
-						Duration: time.Millisecond * 300,
-					})
-
-					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   missPosition,
-						Duration: time.Millisecond * 300,
-					})
-
-					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   gs.BookMark,
-						Duration: time.Millisecond * 700,
-					})
+					queueRewinds(eventNote.Player, eventNote.Direction,
+						AnimatedRewind{
+							Target:   missPosition,
+							Duration: time.Millisecond * 300,
+						},
+						AnimatedRewind{
+							Target:   missPosition,
+							Duration: time.Millisecond * 300,
+						},
+						AnimatedRewind{
+							Target:   gs.BookMark,
+							Duration: time.Millisecond * 700,
+						},
+					)
 				}
 			}
 
@@ -1270,8 +1292,13 @@ func (gs *GameScreen) Draw() {
 	}
 
 	if DrawDebugGraphics {
-		gs.drawBpmDebugGrid()
+		gs.DrawBpmDebugGrid()
 	}
+
+	// ========================
+	// draw rewind highlight
+	// ========================
+	gs.DrawRewindHighlight()
 
 	// ===================
 	// draw big bookmark
@@ -1982,7 +2009,14 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 func (gs *GameScreen) DrawBigBookMark() {
 	if gs.BookMarkSet {
 		relativeTime := gs.BookMark - gs.AudioPosition()
-		bookMarkY := SCREEN_HEIGHT*0.5 - gs.TimeToPixels(relativeTime)
+
+		var bookMarkY float32
+
+		if TheOptions.DownScroll {
+			bookMarkY = SCREEN_HEIGHT*0.5 - gs.TimeToPixels(relativeTime)
+		} else {
+			bookMarkY = SCREEN_HEIGHT*0.5 + gs.TimeToPixels(relativeTime)
+		}
 
 		srcRect := rl.Rectangle{
 			X: 0, Y: 0,
@@ -2234,6 +2268,72 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, rl.Color{255, 0, 0, 255})
 	numberPos.Y += textSize
 	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, rl.Color{0, 0, 0, 255})
+}
+
+func (gs *GameScreen) DrawRewindHighlight() {
+	if gs.rewindHightLight > 0 {
+		t := gs.rewindHightLight
+		t = Clamp(t, 0, 1)
+
+		t = EaseOutQuint(t)
+
+		t *= 0.1
+
+		col1 := Col(0, 0, 0, t)
+		col2 := Col(0, 0, 0, 0)
+
+		if TheOptions.DownScroll {
+			col1, col2 = col2, col1
+		}
+
+		width := GSC.NotesSize
+		x := gs.NoteX(gs.rewindPlayer, gs.rewindDir) - width*0.5
+
+		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+		rl.DrawRectangleGradientV(
+			i32(x), 0, i32(width), SCREEN_HEIGHT, col1.ToImageRGBA(), col2.ToImageRGBA(),
+		)
+		rl.EndBlendMode()
+	}
+}
+
+func (gs *GameScreen) DrawBpmDebugGrid() {
+	pos := GSC.PadStart
+
+	counter := 0
+
+	for pos < gs.AudioDuration() {
+		pos0 := pos
+		pos1 := pos0 + StepsToTime(1, gs.Song.GetBpmAt(pos0))
+		pos2 := pos1 + StepsToTime(1, gs.Song.GetBpmAt(pos1))
+
+		middle := gs.TimeToY(pos1)
+
+		pos0Y := gs.TimeToY(pos0)
+		pos2Y := gs.TimeToY(pos2)
+
+		minY := min(pos0Y, pos2Y)
+		maxY := max(pos0Y, pos2Y)
+
+		halfMinY := (middle + minY) * 0.5
+		halfMaxY := (middle + maxY) * 0.5
+
+		if counter%2 == 0 {
+			if (0 <= halfMinY && halfMinY <= SCREEN_HEIGHT) ||
+				(0 <= halfMaxY && halfMaxY <= SCREEN_HEIGHT) {
+
+				col := rl.Color{0, 0, 0, 30}
+
+				height := halfMaxY - halfMinY
+
+				rl.DrawRectangle(
+					0, i32(halfMinY), SCREEN_WIDTH, i32(height), col)
+			}
+		}
+
+		pos = pos1
+		counter++
+	}
 }
 
 func (gs *GameScreen) BeforeScreenTransition() {
@@ -2821,43 +2921,4 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color rl.Color) 
 	)
 
 	rl.EndBlendMode()
-}
-
-func (gs *GameScreen) drawBpmDebugGrid() {
-	pos := GSC.PadStart
-
-	counter := 0
-
-	for pos < gs.AudioDuration() {
-		pos0 := pos
-		pos1 := pos0 + StepsToTime(1, gs.Song.GetBpmAt(pos0))
-		pos2 := pos1 + StepsToTime(1, gs.Song.GetBpmAt(pos1))
-
-		middle := gs.TimeToY(pos1)
-
-		pos0Y := gs.TimeToY(pos0)
-		pos2Y := gs.TimeToY(pos2)
-
-		minY := min(pos0Y, pos2Y)
-		maxY := max(pos0Y, pos2Y)
-
-		halfMinY := (middle + minY) * 0.5
-		halfMaxY := (middle + maxY) * 0.5
-
-		if counter%2 == 0 {
-			if (0 <= halfMinY && halfMinY <= SCREEN_HEIGHT) ||
-				(0 <= halfMaxY && halfMaxY <= SCREEN_HEIGHT) {
-
-				col := rl.Color{0, 0, 0, 30}
-
-				height := halfMaxY - halfMinY
-
-				rl.DrawRectangle(
-					0, i32(halfMinY), SCREEN_WIDTH, i32(height), col)
-			}
-		}
-
-		pos = pos1
-		counter++
-	}
 }

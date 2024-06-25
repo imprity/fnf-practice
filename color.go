@@ -11,6 +11,7 @@ type Color struct {
 	R, G, B, A float64
 }
 
+// Range is 0 - 1
 func Col(r, g, b, a float64) Color {
 	return Color{r, g, b, a}
 }
