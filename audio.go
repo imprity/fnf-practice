@@ -239,6 +239,12 @@ func (vp *VaryingSpeedPlayer) SetSpeed(speed float64) {
 	if speed <= 0 {
 		panic("VaryingSpeedStream: speed should be bigger than 0")
 	}
+
+	// if we don't do this, changing speed changes the audio position
+	// by doing this, we empty the buffer of internal player while maintaining position
+	if !vp.IsPlaying() {
+		vp.SetPosition(vp.Position())
+	}
 	vp.stream.SetSpeed(speed)
 }
 
