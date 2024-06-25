@@ -548,12 +548,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		return
 	}
 
-	// TEST TEST TEST TEST TEST TEST
 	{
 		bpm := gs.Song.GetBpmAt(gs.AudioPosition())
 		DebugPrint("BPM", fmt.Sprintf("%.2f", bpm))
 	}
-	// TEST TEST TEST TEST TEST TEST
 
 	// note logging toggle
 	if rl.IsKeyPressed(TheKM[ToggleLogNoteEvent]) {
@@ -903,7 +901,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	var noteEvents []NoteEvent
 
 	gs.Pstates, noteEvents, gs.noteIndexStart = UpdateNotesAndStates(
-		gs.Song.Notes,
+		gs.Song,
 		gs.Pstates,
 		wasKeyPressed,
 		gs.isKeyPressed,
@@ -1026,19 +1024,27 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				// TODO : make this an options
 				// I think it would be annoying if game rewinds even after user pressed 90% of the sustain note
 				// so there should be an tolerance option for that
-				rewind = rewind && !eventNote.IsHit
+				//rewind = rewind && !eventNote.IsHit
 
 				if rewind {
+					var missPosition time.Duration
+
+					if eventNote.IsSustain() && eventNote.IsHit {
+						missPosition = eventNote.HoldReleaseAt
+					} else {
+						missPosition = eventNote.StartsAt
+					}
+
 					queuedRewind = true
 					gs.RewindQueue.Clear()
 
 					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   eventNote.StartsAt,
+						Target:   missPosition,
 						Duration: time.Millisecond * 300,
 					})
 
 					gs.RewindQueue.Enqueue(AnimatedRewind{
-						Target:   eventNote.StartsAt,
+						Target:   missPosition,
 						Duration: time.Millisecond * 300,
 					})
 
@@ -1056,20 +1062,47 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				pushPopupIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
 			} else {
-				last := events[len(events)-1]
+				if e.IsMiss() {
+					// try to find last miss
+					var lastMiss NoteEvent
 
-				if last.SameKind(e) {
-					if last.IsMiss() {
-						t := e.Time - last.Time
-						if t > time.Millisecond*500 { // only report miss every 500 ms
+					for i := len(events) - 1; i >= 0; i-- {
+						if events[i].IsMiss() {
+							lastMiss = events[i]
+							break
+						}
+					}
+
+					if lastMiss.IsNone() {
+						logNoteEvent(e)
+						gs.NoteEvents[e.Index] = append(events, e)
+					} else {
+						// if there are any previous misses
+						// only report miss after every step
+						note := gs.Song.Notes[e.Index]
+
+						bpm := gs.Song.GetBpmAt(note.StartsAt)
+						stepTime := StepsToTime(1, bpm)
+
+						lastDelta := lastMiss.Time - note.StartsAt
+						lastStepCount := lastDelta / stepTime
+
+						delta := e.Time - note.StartsAt
+						stepCount := delta / stepTime
+
+						if stepCount > lastStepCount {
 							logNoteEvent(e)
 							gs.NoteEvents[e.Index] = append(events, e)
 						}
 					}
 				} else {
-					logNoteEvent(e)
-					pushPopupIfHumanPlayerHit(e)
-					gs.NoteEvents[e.Index] = append(events, e)
+					last := events[len(events)-1]
+
+					if !last.SameKind(e) {
+						logNoteEvent(e)
+						pushPopupIfHumanPlayerHit(e)
+						gs.NoteEvents[e.Index] = append(events, e)
+					}
 				}
 			}
 		}
@@ -1506,7 +1539,10 @@ func (gs *GameScreen) Draw() {
 		y := gs.TimeToY(note.StartsAt)
 
 		if note.IsSustain() { // draw hold note
-			if note.HoldReleaseAt < note.End() || gs.positionChangedWhilePaused {
+			bpm := gs.Song.GetBpmAt(note.StartsAt)
+			stepTime := StepsToTime(1, bpm)
+
+			if note.End()-note.HoldReleaseAt > stepTime || gs.positionChangedWhilePaused {
 				isHoldingNote := gs.Pstates[note.Player].IsHoldingNote[note.Direction]
 				isHoldingNote = isHoldingNote && gs.Pstates[note.Player].HoldingNote[note.Direction].Equals(note)
 

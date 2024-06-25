@@ -124,7 +124,7 @@ func SustainNoteTunneled(
 }
 
 func UpdateNotesAndStates(
-	notes []FnfNote,
+	song FnfSong,
 	pStates [2]PlayerState,
 	wasKeyPressed [2][NoteDirSize]bool,
 	isKeyPressed [2][NoteDirSize]bool,
@@ -136,6 +136,8 @@ func UpdateNotesAndStates(
 	botPlay bool,
 	noteIndexStart int,
 ) ([2]PlayerState, []NoteEvent, int) {
+	notes := song.Notes
+
 	newNoteIndexStart := noteIndexStart
 
 	var noteEvents []NoteEvent
@@ -303,7 +305,14 @@ func UpdateNotesAndStates(
 				missed = missed || (pStates[np].IsHoldingNote[nd] && !pStates[np].HoldingNote[nd].Equals(note))
 				missed = missed && note.StartPassedWindow(audioPos, hitWindow)
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
-				missed = missed && note.HoldReleaseAt < note.StartsAt+note.Duration
+
+				bpm := song.GetBpmAt(note.StartsAt)
+				stepTime := StepsToTime(1, bpm)
+
+				if note.IsHit {
+					missed = missed && note.End()-note.HoldReleaseAt > stepTime
+				}
+
 				if missed {
 					onNoteMiss(note, &event)
 				}
