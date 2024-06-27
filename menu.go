@@ -266,12 +266,12 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl
 func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
 	tm := &TheMenuManager
 
-	innerSpriteN := UIarrowRightInner
-	outerSpriteN := UIarrowRightOuter
+	fillSpriteN := UIarrowRightFill
+	strokeSpriteN := UIarrowRightStroke
 
 	if drawLeft {
-		innerSpriteN = UIarrowLeftInner
-		outerSpriteN = UIarrowLeftOuter
+		fillSpriteN = UIarrowLeftFill
+		strokeSpriteN = UIarrowLeftStroke
 	}
 
 	flipY := rl.MatrixIdentity()
@@ -287,13 +287,13 @@ func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
 	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 
 	DrawSpriteTransfromed(
-		UIarrowsSprite, innerSpriteN,
+		UIarrowsSprite, fillSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
 		fill.ToImageRGBA())
 
 	DrawSpriteTransfromed(
-		UIarrowsSprite, outerSpriteN,
+		UIarrowsSprite, strokeSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
 		stroke.ToImageRGBA())

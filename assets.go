@@ -13,8 +13,8 @@ import (
 var EmebededAssets embed.FS
 
 var (
-	ArrowsInnerSprite Sprite
-	ArrowsOuterSprite Sprite
+	ArrowsFillSprite Sprite
+	ArrowsStrokeSprite Sprite
 )
 
 var ArrowsGlowSprite Sprite
@@ -22,10 +22,10 @@ var ArrowsGlowSprite Sprite
 var UIarrowsSprite Sprite
 
 const (
-	UIarrowLeftOuter = iota
-	UIarrowRightOuter
-	UIarrowLeftInner
-	UIarrowRightInner
+	UIarrowLeftStroke = iota
+	UIarrowRightStroke
+	UIarrowLeftFill
+	UIarrowRightFill
 
 	UIarrowsSpriteCount
 )
@@ -158,26 +158,26 @@ func loadAssets(isReload bool) {
 
 	// load fnf arrows texture
 	{
-		outerTex := loadTexture("assets/arrows_outer.png", true, ".png")
-		innerTex := loadTexture("assets/arrows_inner.png", true, ".png")
+		strokeTex := loadTexture("assets/arrows_outer.png", true, ".png")
+		fillTex := loadTexture("assets/arrows_inner.png", true, ".png")
 
-		if outerTex.Width != innerTex.Width || outerTex.Height != innerTex.Height {
-			ErrorLogger.Fatal("Arrow inner and outer images should have same size")
+		if strokeTex.Width != fillTex.Width || strokeTex.Height != fillTex.Height {
+			ErrorLogger.Fatal("Arrow fill and stroke images should have same size")
 		}
 
-		ArrowsOuterSprite.Texture = outerTex
-		ArrowsInnerSprite.Texture = innerTex
+		ArrowsStrokeSprite.Texture = strokeTex
+		ArrowsFillSprite.Texture = fillTex
 
-		ArrowsOuterSprite.Count = int(NoteDirSize)
-		ArrowsInnerSprite.Count = int(NoteDirSize)
+		ArrowsStrokeSprite.Count = int(NoteDirSize)
+		ArrowsFillSprite.Count = int(NoteDirSize)
 
-		ArrowsOuterSprite.Height = f32(outerTex.Height)
-		ArrowsInnerSprite.Height = f32(innerTex.Height)
+		ArrowsStrokeSprite.Height = f32(strokeTex.Height)
+		ArrowsFillSprite.Height = f32(fillTex.Height)
 
 		// NOTE : we will assume that we can get arrow width
 		// by just devding the texture width by 4
-		ArrowsOuterSprite.Width = f32(outerTex.Width) / f32(NoteDirSize)
-		ArrowsInnerSprite.Width = f32(innerTex.Width) / f32(NoteDirSize)
+		ArrowsStrokeSprite.Width = f32(strokeTex.Width) / f32(NoteDirSize)
+		ArrowsFillSprite.Width = f32(fillTex.Width) / f32(NoteDirSize)
 	}
 
 	// load fnf arrows glow texture

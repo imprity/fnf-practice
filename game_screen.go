@@ -1920,7 +1920,7 @@ func (gs *GameScreen) DrawSustainBar(
 func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 	rl.BeginBlendMode(rl.BlendAddColors)
 
-	arrowH := ArrowsOuterSprite.Height
+	arrowH := ArrowsStrokeSprite.Height
 
 	glowW := ArrowsGlowSprite.Width
 	glowH := ArrowsGlowSprite.Height
@@ -1948,19 +1948,19 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 }
 
 func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
-	texW := ArrowsOuterSprite.Width
-	texH := ArrowsOuterSprite.Height
+	texW := ArrowsStrokeSprite.Width
+	texH := ArrowsStrokeSprite.Height
 
 	scale := arrowHeight / texH
 
-	outerRect := rl.Rectangle{
+	strokeRect := rl.Rectangle{
 		X: 0, Y: 0,
-		Width: ArrowsOuterSprite.Width, Height: ArrowsOuterSprite.Height,
+		Width: ArrowsStrokeSprite.Width, Height: ArrowsStrokeSprite.Height,
 	}
 
-	innerRect := rl.Rectangle{
+	fillRect := rl.Rectangle{
 		X: 0, Y: 0,
-		Width: ArrowsInnerSprite.Width, Height: ArrowsInnerSprite.Height,
+		Width: ArrowsFillSprite.Width, Height: ArrowsFillSprite.Height,
 	}
 
 	//check if it arrow is in screen
@@ -1970,19 +1970,19 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
 		}
 
-		inner := innerRect
-		outer := outerRect
+		fill := fillRect
+		stroke := strokeRect
 
-		inner.Width *= scale
-		inner.Height *= scale
+		fill.Width *= scale
+		fill.Height *= scale
 
-		outer.Width *= scale
-		outer.Height *= scale
+		stroke.Width *= scale
+		stroke.Height *= scale
 
-		inner = RectCenetered(inner, x, y)
-		outer = RectCenetered(outer, x, y)
+		fill = RectCenetered(fill, x, y)
+		stroke = RectCenetered(stroke, x, y)
 
-		union := RectUnion(inner, outer)
+		union := RectUnion(fill, stroke)
 
 		if !rl.CheckCollisionRecs(screenRect, union) {
 			return
@@ -2000,8 +2000,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-	DrawSpriteTransfromed(ArrowsInnerSprite, int(dir), innerRect, mat, fill.ToImageRGBA())
-	DrawSpriteTransfromed(ArrowsOuterSprite, int(dir), outerRect, mat, stroke.ToImageRGBA())
+	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, fill.ToImageRGBA())
+	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, stroke.ToImageRGBA())
 
 	rl.EndBlendMode()
 }
