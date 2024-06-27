@@ -9,6 +9,10 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// ===============================
+// MenuItem stuffs
+// ===============================
+
 type MenuItemType int
 
 const (
@@ -180,6 +184,131 @@ func (mi *MenuItem) CanIncrement() bool {
 func (mi *MenuItem) IsSelectable() bool {
 	return !mi.IsHidden && mi.Type != MenuItemDeco
 }
+
+// ===============================
+// MenuManger stuffs
+// ===============================
+
+var TheMenuManager struct {
+	CheckBoxRenderTex rl.RenderTexture2D
+	UIarrowRenderTex  rl.RenderTexture2D
+}
+
+func InitMenuManager() {
+	tm := &TheMenuManager
+
+	cbw := max(i32(CheckBoxMark.Width), CheckBoxBox.Width)
+	cbh := max(i32(CheckBoxMark.Height), CheckBoxBox.Height)
+
+	tm.CheckBoxRenderTex = rl.LoadRenderTexture(cbw, cbh)
+
+	tm.UIarrowRenderTex = rl.LoadRenderTexture(i32(UIarrowsSprite.Width), i32(UIarrowsSprite.Height))
+}
+
+func FreeMenuManager() {
+	tm := &TheMenuManager
+
+	rl.UnloadRenderTexture(tm.CheckBoxRenderTex)
+	rl.UnloadRenderTexture(tm.UIarrowRenderTex)
+}
+
+func UpdateMenuManager(deltaTime time.Duration) {
+	tm := &TheMenuManager
+
+	cbw := max(i32(CheckBoxMark.Width), CheckBoxBox.Width)
+	cbh := max(i32(CheckBoxMark.Height), CheckBoxBox.Height)
+
+	if cbw != tm.CheckBoxRenderTex.Texture.Width || cbh != tm.CheckBoxRenderTex.Texture.Height {
+		rl.UnloadRenderTexture(tm.CheckBoxRenderTex)
+		tm.CheckBoxRenderTex = rl.LoadRenderTexture(cbw, cbh)
+	}
+
+	if i32(UIarrowsSprite.Width) != tm.UIarrowRenderTex.Texture.Width || i32(UIarrowsSprite.Height) != tm.UIarrowRenderTex.Texture.Height {
+		rl.UnloadRenderTexture(tm.UIarrowRenderTex)
+		tm.UIarrowRenderTex = rl.LoadRenderTexture(i32(UIarrowsSprite.Width), i32(UIarrowsSprite.Height))
+	}
+}
+
+// Get check box texture drawn with specified colors.
+func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl.Texture2D {
+	tm := &TheMenuManager
+
+	flipY := rl.MatrixIdentity()
+	flipY = rl.MatrixMultiply(flipY, rl.MatrixScale(1, -1, 1))
+	flipY = rl.MatrixMultiply(
+		flipY,
+		rl.MatrixTranslate(0, f32(tm.CheckBoxRenderTex.Texture.Height), 0),
+	)
+
+	FnfBeginTextureMode(tm.CheckBoxRenderTex)
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+
+	DrawTextureTransfromed(
+		CheckBoxBox,
+		rl.Rectangle{0, 0, f32(CheckBoxBox.Width), f32(CheckBoxBox.Height)},
+		flipY,
+		boxColor.ToImageRGBA())
+
+	if checked {
+		DrawSpriteTransfromed(
+			CheckBoxMark, spriteN,
+			rl.Rectangle{0, 0, CheckBoxMark.Width, CheckBoxMark.Height},
+			flipY,
+			markColor.ToImageRGBA())
+	}
+
+	rl.EndBlendMode()
+	FnfEndTextureMode()
+
+	return tm.CheckBoxRenderTex.Texture
+}
+
+func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
+	tm := &TheMenuManager
+
+	innerSpriteN := UIarrowRightInner
+	outerSpriteN := UIarrowRightOuter
+
+	if drawLeft {
+		innerSpriteN = UIarrowLeftInner
+		outerSpriteN = UIarrowLeftOuter
+	}
+
+	flipY := rl.MatrixIdentity()
+	flipY = rl.MatrixMultiply(flipY, rl.MatrixScale(1, -1, 1))
+	flipY = rl.MatrixMultiply(
+		flipY,
+		rl.MatrixTranslate(0, f32(tm.UIarrowRenderTex.Texture.Height), 0),
+	)
+
+	FnfBeginTextureMode(tm.UIarrowRenderTex)
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+
+	DrawSpriteTransfromed(
+		UIarrowsSprite, innerSpriteN,
+		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
+		flipY,
+		fill.ToImageRGBA())
+
+	DrawSpriteTransfromed(
+		UIarrowsSprite, outerSpriteN,
+		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
+		flipY,
+		stroke.ToImageRGBA())
+
+	rl.EndBlendMode()
+	FnfEndTextureMode()
+
+	return tm.UIarrowRenderTex.Texture
+}
+
+// ===============================
+// MenuDrawer stuffs
+// ===============================
 
 const (
 	MenuInputStateNotSelectingKey = iota
@@ -731,30 +860,32 @@ func (md *MenuDrawer) Draw() {
 		return wScale * srcRect.Width
 	}
 
-	drawSprite := func(sprite Sprite, spriteN int, height, scale float32, col Color) float32 {
-		spriteRect := SpriteRect(sprite, spriteN)
+	/*
+		drawSprite := func(sprite Sprite, spriteN int, height, scale float32, col Color) float32 {
+			spriteRect := SpriteRect(sprite, spriteN)
 
-		return drawImage(sprite.Texture, spriteRect, height, scale, col)
+			return drawImage(sprite.Texture, spriteRect, height, scale, col)
+		}
+	*/
+
+	drawArrow := func(
+		drawLeft bool, height, scale float32, fill, stroke Color, alpha float64) float32 {
+
+		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
+
+		return drawImage(
+			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, Col(1, 1, 1, alpha),
+		)
 	}
 
-	drawArrow := func(drawLeft bool, height, scale float32, fill, stroke Color) float32 {
-		var innerSpriteN int
-		var outerSpriteN int
-
-		if drawLeft {
-			innerSpriteN = UIarrowLeftInner
-			outerSpriteN = UIarrowLeftOuter
-		} else {
-			innerSpriteN = UIarrowRightInner
-			outerSpriteN = UIarrowRightOuter
-		}
-
-		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-		advance := drawSprite(UIarrowsSprite, innerSpriteN, height, scale, fill)
-		drawSprite(UIarrowsSprite, outerSpriteN, height, scale, stroke)
-		rl.EndBlendMode()
-
-		return advance
+	drawCheckBox := func(
+		checked bool, spriteN int, height, scale float32, boxColor, markColor Color, alpha float64) float32 {
+		checkBoxTex := getCheckBoxTexture(checked, spriteN, boxColor, markColor)
+		return drawImage(
+			checkBoxTex, RectWH(checkBoxTex.Width, checkBoxTex.Height),
+			height, scale,
+			Col(1, 1, 1, alpha),
+		)
 	}
 
 	fadeC := func(col Color, fade float64) Color {
@@ -762,14 +893,16 @@ func (md *MenuDrawer) Draw() {
 		return col
 	}
 
-	dimmC := func(col Color, dimm float64) Color {
-		hsv := ToHSV(col)
+	/*
+		dimmC := func(col Color, dimm float64) Color {
+			hsv := ToHSV(col)
 
-		hsv[1] *= dimm
-		hsv[2] *= dimm
+			hsv[1] *= dimm
+			hsv[2] *= dimm
 
-		return FromHSV(hsv)
-	}
+			return FromHSV(hsv)
+		}
+	*/
 
 	for index, item := range md.items {
 		if item.IsHidden {
@@ -826,33 +959,25 @@ func (md *MenuDrawer) Draw() {
 			xDrawOffset = checkBoxOffsetX
 			yDrawOffset = checkBoxOffsetY
 
-			boxRect := rl.Rectangle{
-				X: 0, Y: 0,
-				Width: f32(CheckBoxBox.Width), Height: f32(CheckBoxBox.Height),
-			}
-
+			boxColor := item.UncheckedBoxColor
 			if item.BValue {
-				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.CheckedBoxColor, fade))
-			} else {
-				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.UncheckedBoxColor, fade))
+				boxColor = item.CheckedBoxColor
 			}
 
-			if item.BValue {
-				const animDuration = time.Millisecond * 200
+			const animDuration = time.Millisecond * 200
 
-				delta := TimeSinceNow(item.ValueClickTimer)
+			delta := TimeSinceNow(item.ValueClickTimer)
 
-				t := f32(delta) / f32(animDuration)
-				t = Clamp(t, 0, 1)
+			t := f32(delta) / f32(animDuration)
+			t = Clamp(t, 0, 1)
 
-				spriteN := int(f32(CheckBoxMark.Count) * t)
+			spriteN := int(f32(CheckBoxMark.Count) * t)
 
-				if spriteN >= CheckBoxMark.Count {
-					spriteN = CheckBoxMark.Count - 1
-				}
-
-				drawSprite(CheckBoxMark, spriteN, size, checkBoxScale, dimmC(item.CheckmarkColor, fade))
+			if spriteN >= CheckBoxMark.Count {
+				spriteN = CheckBoxMark.Count - 1
 			}
+
+			drawCheckBox(item.BValue, spriteN, size, checkBoxScale, boxColor, item.CheckmarkColor, fade)
 
 			xDrawOffset = 0
 			yDrawOffset = 0
@@ -917,14 +1042,14 @@ func (md *MenuDrawer) Draw() {
 			// =====================================
 			switch item.Type {
 			case MenuItemToggle, MenuItemList, MenuItemNumber:
-				arrowFill := fadeC(Col(1, 1, 1, 1), fade)
+				arrowFill := Col(1, 1, 1, 1)
 				arrowStroke := Col(0, 0, 0, 1)
 
 				if index != md.selectedIndex {
 					arrowStroke = Color{}
 				}
 
-				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke)
+				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke, fade)
 
 				xAdvance += 10 // <- 10 value 10 ->
 
@@ -961,7 +1086,7 @@ func (md *MenuDrawer) Draw() {
 				xAdvance += valueWidthMax
 				xAdvance += 10 // <- 10 value 10 ->
 
-				drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke)
+				drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke, fade)
 			}
 		}
 
