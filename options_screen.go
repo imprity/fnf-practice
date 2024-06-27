@@ -285,7 +285,7 @@ func (op *OptionsScreen) Update(deltaTime time.Duration) {
 }
 
 func (op *OptionsScreen) Draw() {
-	DrawPatternBackground(MenuScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
+	DrawPatternBackground(MenuScreenSimpleBg, 0, 0, rl.Color{255, 255, 255, 255})
 
 	op.Menu.Draw()
 }

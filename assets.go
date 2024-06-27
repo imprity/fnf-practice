@@ -13,7 +13,7 @@ import (
 var EmebededAssets embed.FS
 
 var (
-	ArrowsFillSprite Sprite
+	ArrowsFillSprite   Sprite
 	ArrowsStrokeSprite Sprite
 )
 
@@ -38,8 +38,9 @@ var (
 )
 
 var (
-	GameScreenBg rl.Texture2D
-	MenuScreenBg rl.Texture2D
+	GameScreenBg       rl.Texture2D
+	MenuScreenBg       rl.Texture2D
+	MenuScreenSimpleBg rl.Texture2D
 )
 
 var (
@@ -237,6 +238,7 @@ func loadAssets(isReload bool) {
 
 	GameScreenBg = loadTexture("assets/background 1.png", true, ".png")
 	MenuScreenBg = loadTexture("assets/menu_background.png", true, ".png")
+	MenuScreenSimpleBg = loadTexture("assets/menu_background_simple.png", true, ".png")
 	SongLoadingScreen = loadTexture("assets/song loading screen.png", true, ".png")
 	DirSelectScreen = loadTexture("assets/directory select screen.png", true, ".png")
 

@@ -31,7 +31,7 @@ var TheTransitionManager struct {
 	ImageSizeLoc int32
 }
 
-//go:embed mask.fs
+//go:embed shaders/mask.fs
 var maskFsShader string
 
 func InitTransition() {
@@ -50,11 +50,8 @@ func InitTransition() {
 		ErrorLogger.Fatal("failed to load mask render texture")
 	}
 
+	// load shader
 	manager.MaskShader = rl.LoadShaderFromMemory("", maskFsShader)
-
-	// NOTE : There's no point in checking if shader is successfuly loaded
-	// using IsShaderReady since raylib assigns default shader if something goes wrong
-	// look at tracelog to check if anything failed...
 
 	// get locations
 	manager.MaskLoc = rl.GetShaderLocation(manager.MaskShader, "mask")
@@ -72,7 +69,7 @@ func FreeTransition() {
 	rl.UnloadShader(manager.MaskShader)
 }
 
-func CallTransitionCallbackIfNeeded() {
+func callTransitionCallbackIfNeeded() {
 	manager := &TheTransitionManager
 
 	// NOTE : wait extra couple millisecond to ensure that callback is called after transition
@@ -85,7 +82,7 @@ func CallTransitionCallbackIfNeeded() {
 	}
 }
 
-func UpdateTransitionTexture() {
+func updateTransitionTexture() {
 	manager := &TheTransitionManager
 
 	timeT := float32(TimeSinceNow(manager.AnimStartedAt))
@@ -205,6 +202,11 @@ func UpdateTransitionTexture() {
 
 	rl.EndShaderMode()
 	FnfEndTextureMode()
+}
+
+func UpdateTransition() {
+	updateTransitionTexture()
+	callTransitionCallbackIfNeeded()
 }
 
 func ShowTransition(texture rl.Texture2D, callback func()) {

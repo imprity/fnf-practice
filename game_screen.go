@@ -217,7 +217,14 @@ func NewGameScreen() *GameScreen {
 	// set up menu
 	gs.Menu = NewMenuDrawer()
 	{
-		resumeItem := NewMenuItem()
+		whiteMenuItem := func() *MenuItem {
+			item := NewMenuItem()
+			item.Color = Col(1, 1, 1, 1)
+			item.Fade = 0.63
+			return item
+		}
+
+		resumeItem := whiteMenuItem()
 		resumeItem.Type = MenuItemTrigger
 		resumeItem.Name = "Resume"
 		resumeItem.TriggerCallback = func() {
@@ -225,7 +232,7 @@ func NewGameScreen() *GameScreen {
 		}
 		gs.Menu.AddItems(resumeItem)
 
-		rewindItem := NewMenuItem()
+		rewindItem := whiteMenuItem()
 		rewindItem.Type = MenuItemToggle
 		rewindItem.Name = "Rewind On Mistake"
 		rewindItem.ToggleCallback = func(bValue bool) {
@@ -234,19 +241,19 @@ func NewGameScreen() *GameScreen {
 		gs.RewindOnMistakeMenuItemId = rewindItem.Id
 		gs.Menu.AddItems(rewindItem)
 
-		botPlayItem := NewMenuItem()
+		botPlayItem := whiteMenuItem()
 		botPlayItem.Type = MenuItemToggle
 		botPlayItem.Name = "Bot Play"
 		gs.BotPlayMenuItemId = botPlayItem.Id
 		gs.Menu.AddItems(botPlayItem)
 
-		difficultyItem := NewMenuItem()
+		difficultyItem := whiteMenuItem()
 		difficultyItem.Type = MenuItemList
 		difficultyItem.Name = "Difficulty"
 		gs.DifficultyMenuItemId = difficultyItem.Id
 		gs.Menu.AddItems(difficultyItem)
 
-		quitItem := NewMenuItem()
+		quitItem := whiteMenuItem()
 		quitItem.Type = MenuItemTrigger
 		quitItem.Name = "Return To Menu"
 		quitItem.TriggerCallback = func() {
@@ -653,6 +660,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// rewind stuff
 	// =============================================
 
+	gs.rewindHightLight -= f64(deltaTime) / f64(GSC.RewindHightlightDuration)
+	gs.rewindHightLight = Clamp(gs.rewindHightLight, 0, 1)
+
 	if !gs.rewindQueue.IsEmpty() && !gs.DrawMenu {
 		gs.TempPause(time.Millisecond * 5)
 
@@ -684,9 +694,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			gs.rewindQueue.Dequeue()
 			gs.rewindStarted = false
 		}
-
-		gs.rewindHightLight -= f64(deltaTime) / f64(GSC.RewindHightlightDuration)
-		gs.rewindHightLight = Clamp(gs.rewindHightLight, 0, 1)
 
 		positionArbitraryChange = true
 	}

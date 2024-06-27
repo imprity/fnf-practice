@@ -86,22 +86,24 @@ func main() {
 
 	rl.SetTextureFilter(TheRenderTexture.Texture, rl.FilterBilinear)
 
-	if err := InitAudio(); err != nil {
-		ErrorLogger.Fatal(err)
-	}
-
-	InitUnitext()
-
+	// load assets
 	LoadAssets()
 	defer UnloadAssets()
 
+	// init stuffs
+	if err := InitAudio(); err != nil {
+		ErrorLogger.Fatal(err)
+	}
+	InitUnitext()
+	InitAlert()
 	InitTransition()
 	defer FreeTransition()
 	InitPopupDialog()
 	defer FreePopupDialog()
-	InitMenuManager()
-	defer FreeMenuManager()
-	InitAlert()
+	InitMenuResources()
+	defer FreeMenuResources()
+	InitOutlineDrawer()
+	defer FreeOutlineDrawer()
 
 	// load settings
 	if err := LoadSettings(); err != nil {
@@ -189,6 +191,8 @@ func main() {
 			deltaTime = desiredDelta
 		}
 
+		var updateDelta time.Duration = time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1))
+
 		for timeAccumulator > time.Duration(float64(time.Second)/float64(TheOptions.TargetFPS+1)) {
 			// ========================
 			// update routine
@@ -213,17 +217,12 @@ func main() {
 				ReloadAssets()
 			}
 
+			// update stuffs
 			UpdateAudio()
-
-			UpdatePopup(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
-
-			UpdateTransitionTexture()
-
-			UpdateMenuManager(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
-
-			UpdateAlert(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
-
-			CallTransitionCallbackIfNeeded()
+			UpdatePopup(updateDelta)
+			UpdateTransition()
+			UpdateMenuManager(updateDelta)
+			UpdateAlert(updateDelta)
 
 			//update screen
 			if !TheTransitionManager.ShowTransition {
@@ -233,7 +232,7 @@ func main() {
 					NextScreen = nil
 				}
 
-				screen.Update(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
+				screen.Update(updateDelta)
 			}
 
 			// ========================
@@ -298,7 +297,7 @@ func main() {
 				DebugPrint("estimate fps", fpsEstimateValueStr)
 			}
 
-			timeAccumulator -= time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1))
+			timeAccumulator -= updateDelta
 
 			if timeAccumulator < 0 {
 				timeAccumulator = 0

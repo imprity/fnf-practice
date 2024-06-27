@@ -55,7 +55,10 @@ type MenuItem struct {
 	SizeRegular  float32
 	SizeSelected float32
 
-	Color            Color
+	Color Color
+
+	// transparency when it's unselected
+	Fade             float64
 	FadeIfUnselected bool
 
 	// margin between next item
@@ -122,7 +125,9 @@ var MenuItemDefaults = MenuItem{
 
 	Color: Col(0, 0, 0, 1),
 
-	FadeIfUnselected:    true,
+	Fade:             0.35,
+	FadeIfUnselected: true,
+
 	ToggleStyleCheckBox: true,
 
 	BottomMargin:       30,
@@ -133,7 +138,7 @@ var MenuItemDefaults = MenuItem{
 
 	CheckmarkColor: Color255(0xFF, 0xFF, 0xFF, 0xFF),
 
-	KeyColorRegular:  Color255(0x00, 0x00, 0x00, 0xC8),
+	KeyColorRegular:  Color255(0x00, 0x00, 0x00, 200),
 	KeyColorSelected: Color255(0x21, 0x3A, 0xFF, 0xFF),
 }
 
@@ -187,13 +192,13 @@ func (mi *MenuItem) IsSelectable() bool {
 // MenuManger stuffs
 // ===============================
 
-var TheMenuManager struct {
+var TheMenuResources struct {
 	CheckBoxRenderTex rl.RenderTexture2D
 	UIarrowRenderTex  rl.RenderTexture2D
 }
 
-func InitMenuManager() {
-	tm := &TheMenuManager
+func InitMenuResources() {
+	tm := &TheMenuResources
 
 	cbw := max(i32(CheckBoxMark.Width), CheckBoxBox.Width)
 	cbh := max(i32(CheckBoxMark.Height), CheckBoxBox.Height)
@@ -203,15 +208,15 @@ func InitMenuManager() {
 	tm.UIarrowRenderTex = rl.LoadRenderTexture(i32(UIarrowsSprite.Width), i32(UIarrowsSprite.Height))
 }
 
-func FreeMenuManager() {
-	tm := &TheMenuManager
+func FreeMenuResources() {
+	tm := &TheMenuResources
 
 	rl.UnloadRenderTexture(tm.CheckBoxRenderTex)
 	rl.UnloadRenderTexture(tm.UIarrowRenderTex)
 }
 
 func UpdateMenuManager(deltaTime time.Duration) {
-	tm := &TheMenuManager
+	tm := &TheMenuResources
 
 	cbw := max(i32(CheckBoxMark.Width), CheckBoxBox.Width)
 	cbh := max(i32(CheckBoxMark.Height), CheckBoxBox.Height)
@@ -229,7 +234,7 @@ func UpdateMenuManager(deltaTime time.Duration) {
 
 // Get check box texture drawn with specified colors.
 func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl.Texture2D {
-	tm := &TheMenuManager
+	tm := &TheMenuResources
 
 	flipY := rl.MatrixIdentity()
 	flipY = rl.MatrixMultiply(flipY, rl.MatrixScale(1, -1, 1))
@@ -264,7 +269,7 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl
 }
 
 func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
-	tm := &TheMenuManager
+	tm := &TheMenuResources
 
 	fillSpriteN := UIarrowRightFill
 	strokeSpriteN := UIarrowRightStroke
@@ -840,7 +845,7 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	drawImage := func(
-		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col Color) float32 {
+		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
 
 		wScale := height / srcRect.Height
 
@@ -852,7 +857,7 @@ func (md *MenuDrawer) Draw() {
 		dstRect.X += xDrawOffset
 		dstRect.Y += yDrawOffset
 
-		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col.ToImageRGBA())
+		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col)
 
 		updateItemBound(dstRect)
 		return wScale * srcRect.Width
@@ -872,7 +877,7 @@ func (md *MenuDrawer) Draw() {
 		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
 
 		return drawImage(
-			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, Col(1, 1, 1, alpha),
+			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, Col(1, 1, 1, alpha).ToRlColor(),
 		)
 	}
 
@@ -882,7 +887,7 @@ func (md *MenuDrawer) Draw() {
 		return drawImage(
 			checkBoxTex, RectWH(checkBoxTex.Width, checkBoxTex.Height),
 			height, scale,
-			Col(1, 1, 1, alpha),
+			Col(1, 1, 1, alpha).ToRlColor(),
 		)
 	}
 
@@ -911,11 +916,11 @@ func (md *MenuDrawer) Draw() {
 
 		xAdvance = xOffset
 
-		fade := float64(0.5)
+		fade := item.Fade
 		size := item.SizeRegular
 
 		if index == md.selectedIndex {
-			fade = Lerp(0.5, 1.0, float64(md.scrollAnimT))
+			fade = Lerp(item.Fade, 1.0, float64(md.scrollAnimT))
 			size = Lerp(item.SizeRegular, item.SizeSelected, md.scrollAnimT)
 			xAdvance += Lerp(0, item.SelectedLeftMargin, md.scrollAnimT)
 		}
