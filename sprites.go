@@ -112,7 +112,7 @@ type spriteJsonMetadata struct {
 	SpriteMargin float32
 }
 
-// Parsed sprite json metadata.
+// Parse sprite json metadata.
 // Parsed sprite doen't contain texture.
 func ParseSpriteJsonMetadata(jsonReader io.Reader) (Sprite, error) {
 	sprite := Sprite{}

@@ -99,6 +99,8 @@ func main() {
 	defer FreeTransition()
 	InitPopupDialog()
 	defer FreePopupDialog()
+	InitMenuManager()
+	defer FreeMenuManager()
 	InitAlert()
 
 	// load settings
@@ -216,6 +218,8 @@ func main() {
 			UpdatePopup(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 
 			UpdateTransitionTexture()
+
+			UpdateMenuManager(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 
 			UpdateAlert(time.Duration(float64(time.Second) / float64(TheOptions.TargetFPS-1)))
 

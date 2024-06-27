@@ -2342,7 +2342,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.botPlay = false
 
 	gs.DrawMenu = false
-	gs.Menu.SelectedIndex = 0
+	gs.Menu.SelectItemAt(0, false)
 
 	gs.prevPlayerPosition = 0
 
@@ -2354,7 +2354,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.BookMarkSet = false
 
-	gs.Menu.ResetAnimation()
+	gs.Menu.BeforeScreenTransition()
 
 	gs.SetAudioPosition(0)
 

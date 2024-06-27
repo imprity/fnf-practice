@@ -195,6 +195,13 @@ func IsClockWise(v1, v2, v3 rl.Vector2) bool {
 	return (v2.X-v1.X)*(v3.Y-v1.Y)-(v2.Y-v1.Y)*(v3.X-v1.X) < 0
 }
 
+func RectWH[N constraints.Integer | constraints.Float](width, height N) rl.Rectangle {
+	return rl.Rectangle{
+		X: 0, Y: 0,
+		Width: float32(width), Height: float32(height),
+	}
+}
+
 func IsRectEmpty(r rl.Rectangle) bool {
 	return r.Width <= 0 || r.Height <= 0
 }

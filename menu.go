@@ -9,6 +9,10 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// ===============================
+// MenuItem stuffs
+// ===============================
+
 type MenuItemType int
 
 const (
@@ -179,22 +183,153 @@ func (mi *MenuItem) IsSelectable() bool {
 	return !mi.IsHidden && mi.Type != MenuItemDeco
 }
 
+// ===============================
+// MenuManger stuffs
+// ===============================
+
+var TheMenuManager struct {
+	CheckBoxRenderTex rl.RenderTexture2D
+	UIarrowRenderTex  rl.RenderTexture2D
+}
+
+func InitMenuManager() {
+	tm := &TheMenuManager
+
+	cbw := max(i32(CheckBoxMark.Width), CheckBoxBox.Width)
+	cbh := max(i32(CheckBoxMark.Height), CheckBoxBox.Height)
+
+	tm.CheckBoxRenderTex = rl.LoadRenderTexture(cbw, cbh)
+
+	tm.UIarrowRenderTex = rl.LoadRenderTexture(i32(UIarrowsSprite.Width), i32(UIarrowsSprite.Height))
+}
+
+func FreeMenuManager() {
+	tm := &TheMenuManager
+
+	rl.UnloadRenderTexture(tm.CheckBoxRenderTex)
+	rl.UnloadRenderTexture(tm.UIarrowRenderTex)
+}
+
+func UpdateMenuManager(deltaTime time.Duration) {
+	tm := &TheMenuManager
+
+	cbw := max(i32(CheckBoxMark.Width), CheckBoxBox.Width)
+	cbh := max(i32(CheckBoxMark.Height), CheckBoxBox.Height)
+
+	if cbw != tm.CheckBoxRenderTex.Texture.Width || cbh != tm.CheckBoxRenderTex.Texture.Height {
+		rl.UnloadRenderTexture(tm.CheckBoxRenderTex)
+		tm.CheckBoxRenderTex = rl.LoadRenderTexture(cbw, cbh)
+	}
+
+	if i32(UIarrowsSprite.Width) != tm.UIarrowRenderTex.Texture.Width || i32(UIarrowsSprite.Height) != tm.UIarrowRenderTex.Texture.Height {
+		rl.UnloadRenderTexture(tm.UIarrowRenderTex)
+		tm.UIarrowRenderTex = rl.LoadRenderTexture(i32(UIarrowsSprite.Width), i32(UIarrowsSprite.Height))
+	}
+}
+
+// Get check box texture drawn with specified colors.
+func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl.Texture2D {
+	tm := &TheMenuManager
+
+	flipY := rl.MatrixIdentity()
+	flipY = rl.MatrixMultiply(flipY, rl.MatrixScale(1, -1, 1))
+	flipY = rl.MatrixMultiply(
+		flipY,
+		rl.MatrixTranslate(0, f32(tm.CheckBoxRenderTex.Texture.Height), 0),
+	)
+
+	FnfBeginTextureMode(tm.CheckBoxRenderTex)
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+
+	DrawTextureTransfromed(
+		CheckBoxBox,
+		rl.Rectangle{0, 0, f32(CheckBoxBox.Width), f32(CheckBoxBox.Height)},
+		flipY,
+		boxColor.ToImageRGBA())
+
+	if checked {
+		DrawSpriteTransfromed(
+			CheckBoxMark, spriteN,
+			rl.Rectangle{0, 0, CheckBoxMark.Width, CheckBoxMark.Height},
+			flipY,
+			markColor.ToImageRGBA())
+	}
+
+	rl.EndBlendMode()
+	FnfEndTextureMode()
+
+	return tm.CheckBoxRenderTex.Texture
+}
+
+func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
+	tm := &TheMenuManager
+
+	innerSpriteN := UIarrowRightInner
+	outerSpriteN := UIarrowRightOuter
+
+	if drawLeft {
+		innerSpriteN = UIarrowLeftInner
+		outerSpriteN = UIarrowLeftOuter
+	}
+
+	flipY := rl.MatrixIdentity()
+	flipY = rl.MatrixMultiply(flipY, rl.MatrixScale(1, -1, 1))
+	flipY = rl.MatrixMultiply(
+		flipY,
+		rl.MatrixTranslate(0, f32(tm.UIarrowRenderTex.Texture.Height), 0),
+	)
+
+	FnfBeginTextureMode(tm.UIarrowRenderTex)
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+
+	DrawSpriteTransfromed(
+		UIarrowsSprite, innerSpriteN,
+		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
+		flipY,
+		fill.ToImageRGBA())
+
+	DrawSpriteTransfromed(
+		UIarrowsSprite, outerSpriteN,
+		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
+		flipY,
+		stroke.ToImageRGBA())
+
+	rl.EndBlendMode()
+	FnfEndTextureMode()
+
+	return tm.UIarrowRenderTex.Texture
+}
+
+// ===============================
+// MenuDrawer stuffs
+// ===============================
+
 const (
 	MenuInputStateNotSelectingKey = iota
 	MenuInputStateWaitingKeyPress
 	MenuInputStateWaitingKeyRelease
 )
 
+type MenuBackground struct {
+	Texture rl.Texture2D
+	OffsetX float32
+	OffsetY float32
+}
+
 type MenuDrawer struct {
-	SelectedIndex int
-
-	Yoffset float32
-
-	ScrollAnimT float32
-
-	InputState int
-
 	InputId InputGroupId
+
+	selectedIndex int
+
+	yOffset float32
+
+	scrollAnimT float32
+
+	inputState int
 
 	keySelectedIndex int
 
@@ -204,7 +339,7 @@ type MenuDrawer struct {
 func NewMenuDrawer() *MenuDrawer {
 	md := new(MenuDrawer)
 
-	md.ScrollAnimT = 1
+	md.scrollAnimT = 1
 
 	md.InputId = NewInputGroupId()
 
@@ -251,7 +386,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		}
 	}
 
-	prevSelected := md.SelectedIndex
+	prevSelected := md.selectedIndex
 
 	noSelectable := true
 	selectableItemCount := 0
@@ -266,25 +401,25 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	scrollUntilSelectable := func(forward bool) {
 		for {
 			if forward {
-				md.SelectedIndex += 1
+				md.selectedIndex += 1
 			} else {
-				md.SelectedIndex -= 1
+				md.selectedIndex -= 1
 			}
 
-			if md.SelectedIndex >= len(md.items) {
-				md.SelectedIndex = 0
-			} else if md.SelectedIndex < 0 {
-				md.SelectedIndex = len(md.items) - 1
+			if md.selectedIndex >= len(md.items) {
+				md.selectedIndex = 0
+			} else if md.selectedIndex < 0 {
+				md.selectedIndex = len(md.items) - 1
 			}
 
-			if md.items[md.SelectedIndex].IsSelectable() {
+			if md.items[md.selectedIndex].IsSelectable() {
 				break
 			}
 		}
 	}
 
 	if !noSelectable {
-		if !md.items[md.SelectedIndex].IsSelectable() {
+		if !md.items[md.selectedIndex].IsSelectable() {
 			scrollUntilSelectable(true)
 		}
 	}
@@ -300,9 +435,9 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// ==========================
 	// handling input
 	// ==========================
-	if md.InputState == MenuInputStateWaitingKeyPress {
+	if md.inputState == MenuInputStateWaitingKeyPress {
 		if pressed, key := AnyKeyPressed(md.InputId); pressed {
-			selected := md.items[md.SelectedIndex]
+			selected := md.items[md.selectedIndex]
 
 			if selected.Type == MenuItemKey {
 				keySelected := md.keySelected()
@@ -317,9 +452,9 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 				ErrorLogger.Fatalf("wrong type of MenuItem : %v", MenuItemTypeName(selected.Type))
 			}
 
-			md.InputState = MenuInputStateWaitingKeyRelease
+			md.inputState = MenuInputStateWaitingKeyRelease
 		}
-	} else if md.InputState == MenuInputStateWaitingKeyRelease {
+	} else if md.inputState == MenuInputStateWaitingKeyRelease {
 		var menuKeys []int32
 		menuKeys = append(menuKeys, TheKM[SelectKey], TheKM[EscapeKey])
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
@@ -330,7 +465,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			if IsInputSoloEnabled(md.InputId) {
 				ClearSoloInput()
 			}
-			md.InputState = MenuInputStateNotSelectingKey
+			md.inputState = MenuInputStateNotSelectingKey
 		}
 	} else {
 		callItemCallback := func(item *MenuItem) {
@@ -390,7 +525,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 		}
 
 		if !noSelectable {
-			selected := md.items[md.SelectedIndex]
+			selected := md.items[md.selectedIndex]
 
 			// ===================================
 			// handle select key interaction
@@ -409,7 +544,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 					selected.ValueClickTimer = GlobalTimerNow()
 					if len(selected.KeyValues) > 0 {
 						SetSoloInput(md.InputId)
-						md.InputState = MenuInputStateWaitingKeyPress
+						md.inputState = MenuInputStateWaitingKeyPress
 					}
 				}
 			}
@@ -535,43 +670,30 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	// end of handling input
 	// ==========================
 
-	if md.SelectedIndex != prevSelected {
-		md.ScrollAnimT = 0
+	if md.selectedIndex != prevSelected {
+		md.scrollAnimT = 0
 	}
 
 	// but I have a strong feeling that this is not frame indipendent
 	// but it's just for menu so I don't think it matters too much...
-	selected := md.items[md.SelectedIndex]
+	selected := md.items[md.selectedIndex]
+
+	selectionY := md.calculateSelectionY(md.selectedIndex)
 
 	blend := Clamp(float32(deltaTime.Seconds()*20), 0.00, 1.0)
-
-	seletionY := float32(SCREEN_HEIGHT * 0.5)
-	seletionY -= selected.SizeRegular * 0.5
-
-	for index, item := range md.items {
-		if index >= md.SelectedIndex {
-			break
-		}
-
-		if item.IsHidden {
-			continue
-		}
-
-		seletionY -= item.SizeRegular + item.BottomMargin
-	}
 
 	if tryingToMove && canNotMove {
 		push := (selected.SizeRegular*0.5 + 30) * 0.8
 		if tryingToMoveUp {
-			seletionY += push
+			selectionY += push
 		} else {
-			seletionY -= push
+			selectionY -= push
 		}
 	}
 
-	md.Yoffset = Lerp(md.Yoffset, seletionY, blend)
+	md.yOffset = Lerp(md.yOffset, selectionY, blend)
 
-	md.ScrollAnimT = Lerp(md.ScrollAnimT, 1.0, blend)
+	md.scrollAnimT = Lerp(md.scrollAnimT, 1.0, blend)
 
 	// ================================
 	// actually call item callback
@@ -579,7 +701,34 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	if itemCallback != nil {
 		itemCallback()
 	}
+}
 
+// calculate yOffset if item at index is selected
+func (md *MenuDrawer) calculateSelectionY(index int) float32 {
+	if len(md.items) <= 0 {
+		return float32(SCREEN_HEIGHT * 0.5)
+	}
+
+	index = Clamp(index, 0, len(md.items))
+
+	selected := md.items[index]
+
+	selectionY := float32(SCREEN_HEIGHT * 0.5)
+	selectionY -= selected.SizeRegular * 0.5
+
+	for index, item := range md.items {
+		if index >= md.selectedIndex {
+			break
+		}
+
+		if item.IsHidden {
+			continue
+		}
+
+		selectionY -= item.SizeRegular + item.BottomMargin
+	}
+
+	return selectionY
 }
 
 func (md *MenuDrawer) Draw() {
@@ -622,7 +771,7 @@ func (md *MenuDrawer) Draw() {
 		return float32(tt*0.1 + 0.9)
 	}
 
-	yOffset := md.Yoffset
+	yOffset := md.yOffset
 	xOffset := float32(100)
 
 	xAdvance := xOffset
@@ -709,30 +858,32 @@ func (md *MenuDrawer) Draw() {
 		return wScale * srcRect.Width
 	}
 
-	drawSprite := func(sprite Sprite, spriteN int, height, scale float32, col Color) float32 {
-		spriteRect := SpriteRect(sprite, spriteN)
+	/*
+		drawSprite := func(sprite Sprite, spriteN int, height, scale float32, col Color) float32 {
+			spriteRect := SpriteRect(sprite, spriteN)
 
-		return drawImage(sprite.Texture, spriteRect, height, scale, col)
+			return drawImage(sprite.Texture, spriteRect, height, scale, col)
+		}
+	*/
+
+	drawArrow := func(
+		drawLeft bool, height, scale float32, fill, stroke Color, alpha float64) float32 {
+
+		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
+
+		return drawImage(
+			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, Col(1, 1, 1, alpha),
+		)
 	}
 
-	drawArrow := func(drawLeft bool, height, scale float32, fill, stroke Color) float32 {
-		var innerSpriteN int
-		var outerSpriteN int
-
-		if drawLeft {
-			innerSpriteN = UIarrowLeftInner
-			outerSpriteN = UIarrowLeftOuter
-		} else {
-			innerSpriteN = UIarrowRightInner
-			outerSpriteN = UIarrowRightOuter
-		}
-
-		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-		advance := drawSprite(UIarrowsSprite, innerSpriteN, height, scale, fill)
-		drawSprite(UIarrowsSprite, outerSpriteN, height, scale, stroke)
-		rl.EndBlendMode()
-
-		return advance
+	drawCheckBox := func(
+		checked bool, spriteN int, height, scale float32, boxColor, markColor Color, alpha float64) float32 {
+		checkBoxTex := getCheckBoxTexture(checked, spriteN, boxColor, markColor)
+		return drawImage(
+			checkBoxTex, RectWH(checkBoxTex.Width, checkBoxTex.Height),
+			height, scale,
+			Col(1, 1, 1, alpha),
+		)
 	}
 
 	fadeC := func(col Color, fade float64) Color {
@@ -740,14 +891,16 @@ func (md *MenuDrawer) Draw() {
 		return col
 	}
 
-	dimmC := func(col Color, dimm float64) Color {
-		hsv := ToHSV(col)
+	/*
+		dimmC := func(col Color, dimm float64) Color {
+			hsv := ToHSV(col)
 
-		hsv[1] *= dimm
-		hsv[2] *= dimm
+			hsv[1] *= dimm
+			hsv[2] *= dimm
 
-		return FromHSV(hsv)
-	}
+			return FromHSV(hsv)
+		}
+	*/
 
 	for index, item := range md.items {
 		if item.IsHidden {
@@ -761,10 +914,10 @@ func (md *MenuDrawer) Draw() {
 		fade := float64(0.5)
 		size := item.SizeRegular
 
-		if index == md.SelectedIndex {
-			fade = Lerp(0.5, 1.0, float64(md.ScrollAnimT))
-			size = Lerp(item.SizeRegular, item.SizeSelected, md.ScrollAnimT)
-			xAdvance += Lerp(0, item.SelectedLeftMargin, md.ScrollAnimT)
+		if index == md.selectedIndex {
+			fade = Lerp(0.5, 1.0, float64(md.scrollAnimT))
+			size = Lerp(item.SizeRegular, item.SizeSelected, md.scrollAnimT)
+			xAdvance += Lerp(0, item.SelectedLeftMargin, md.scrollAnimT)
 		}
 
 		if !item.FadeIfUnselected {
@@ -804,33 +957,25 @@ func (md *MenuDrawer) Draw() {
 			xDrawOffset = checkBoxOffsetX
 			yDrawOffset = checkBoxOffsetY
 
-			boxRect := rl.Rectangle{
-				X: 0, Y: 0,
-				Width: f32(CheckBoxBox.Width), Height: f32(CheckBoxBox.Height),
-			}
-
+			boxColor := item.UncheckedBoxColor
 			if item.BValue {
-				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.CheckedBoxColor, fade))
-			} else {
-				drawImage(CheckBoxBox, boxRect, size, checkBoxScale, dimmC(item.UncheckedBoxColor, fade))
+				boxColor = item.CheckedBoxColor
 			}
 
-			if item.BValue {
-				const animDuration = time.Millisecond * 200
+			const animDuration = time.Millisecond * 200
 
-				delta := TimeSinceNow(item.ValueClickTimer)
+			delta := TimeSinceNow(item.ValueClickTimer)
 
-				t := f32(delta) / f32(animDuration)
-				t = Clamp(t, 0, 1)
+			t := f32(delta) / f32(animDuration)
+			t = Clamp(t, 0, 1)
 
-				spriteN := int(f32(CheckBoxMark.Count) * t)
+			spriteN := int(f32(CheckBoxMark.Count) * t)
 
-				if spriteN >= CheckBoxMark.Count {
-					spriteN = CheckBoxMark.Count - 1
-				}
-
-				drawSprite(CheckBoxMark, spriteN, size, checkBoxScale, dimmC(item.CheckmarkColor, fade))
+			if spriteN >= CheckBoxMark.Count {
+				spriteN = CheckBoxMark.Count - 1
 			}
+
+			drawCheckBox(item.BValue, spriteN, size, checkBoxScale, boxColor, item.CheckmarkColor, fade)
 
 			xDrawOffset = 0
 			yDrawOffset = 0
@@ -846,7 +991,7 @@ func (md *MenuDrawer) Draw() {
 
 				desiredWidth := item.SizeRegular * 4
 
-				if i == md.keySelected() && index == md.SelectedIndex {
+				if i == md.keySelected() && index == md.selectedIndex {
 					const animDuration = time.Millisecond * 70
 					t := f32(TimeSinceNow(item.KeySelectTimer)) / f32(animDuration)
 					t = Clamp(t, 0, 1)
@@ -857,9 +1002,9 @@ func (md *MenuDrawer) Draw() {
 					keyScale *= calcClick(item.ValueClickTimer)
 				}
 
-				drawStrikeThrough := md.InputState == MenuInputStateWaitingKeyPress
+				drawStrikeThrough := md.inputState == MenuInputStateWaitingKeyPress
 				drawStrikeThrough = drawStrikeThrough && i == md.keySelected()
-				drawStrikeThrough = drawStrikeThrough && index == md.SelectedIndex
+				drawStrikeThrough = drawStrikeThrough && index == md.selectedIndex
 
 				if drawStrikeThrough {
 					keyNameSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
@@ -895,16 +1040,10 @@ func (md *MenuDrawer) Draw() {
 			// =====================================
 			switch item.Type {
 			case MenuItemToggle, MenuItemList, MenuItemNumber:
-				arrowFill := fadeC(Col(1, 1, 1, 1), fade)
+				arrowFill := Col(1, 1, 1, 1)
 				arrowStroke := Col(0, 0, 0, 1)
 
-				/*
-				if index != md.SelectedIndex {
-					arrowStroke = Color{}
-				}
-				*/
-
-				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke)
+				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke, fade)
 
 				xAdvance += 10 // <- 10 value 10 ->
 
@@ -941,7 +1080,7 @@ func (md *MenuDrawer) Draw() {
 				xAdvance += valueWidthMax
 				xAdvance += 10 // <- 10 value 10 ->
 
-				drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke)
+				drawArrow(false, size, rightArrowScale, arrowFill, arrowStroke, fade)
 			}
 		}
 
@@ -953,11 +1092,47 @@ func (md *MenuDrawer) Draw() {
 	}
 }
 
+// Try to select the item at index.
+// If no item at, per say, 0 is unselectable, tries to select next and next and so on.
+// Returns -1, 0 if no item can be selected.
+// Else returns actually selected index and id.
+//
+// Set playScrollAnimation to control whether menu scrolls towards selected item
+// or just jumps with out any animation.
+func (md *MenuDrawer) SelectItemAt(index int, playScrollAnimation bool) (int, MenuItemId) {
+	selectedIndex := -1
+	var selectedId MenuItemId
+
+	for i, item := range md.items {
+		if i >= index && item.IsSelectable() {
+			selectedIndex = i
+			selectedId = item.Id
+
+			md.selectedIndex = i
+
+			if playScrollAnimation {
+				md.scrollAnimT = 0
+			} else {
+				md.scrollAnimT = 1
+				md.yOffset = md.calculateSelectionY(md.selectedIndex)
+			}
+
+			break
+		}
+	}
+
+	return selectedIndex, selectedId
+}
+
+func (md *MenuDrawer) SelectedIndex() int {
+	return md.selectedIndex
+}
+
 func (md *MenuDrawer) GetSelectedItem() *MenuItem {
 	if len(md.items) <= 0 {
 		return nil
 	}
-	item := md.items[md.SelectedIndex]
+	item := md.items[md.selectedIndex]
 	if item.IsSelectable() {
 		return item
 	}
@@ -968,7 +1143,7 @@ func (md *MenuDrawer) GetSelectedId() MenuItemId {
 	if len(md.items) <= 0 {
 		return 0
 	}
-	item := md.items[md.SelectedIndex]
+	item := md.items[md.selectedIndex]
 	if item.IsSelectable() {
 		return item.Id
 	}
@@ -1175,6 +1350,11 @@ func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
 	return rl.Rectangle{}, false
 }
 
-func (md *MenuDrawer) ResetAnimation() {
-	md.ScrollAnimT = 1
+func (md *MenuDrawer) BeforeScreenTransition() {
+	md.scrollAnimT = 1
+	md.yOffset = md.calculateSelectionY(md.selectedIndex)
+}
+
+func (md *MenuDrawer) Free() {
+	// pass
 }

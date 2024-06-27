@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type TransitionManager struct {
+var TheTransitionManager struct {
 	DiamonWidth  float32
 	DiamonHeight float32
 
@@ -30,8 +30,6 @@ type TransitionManager struct {
 
 	ImageSizeLoc int32
 }
-
-var TheTransitionManager TransitionManager
 
 //go:embed mask.fs
 var maskFsShader string

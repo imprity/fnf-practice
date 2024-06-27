@@ -529,10 +529,10 @@ func (ss *SelectScreen) Draw() {
 func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.DrawDeleteMenu = false
 
-	ss.Menu.ResetAnimation()
+	ss.Menu.BeforeScreenTransition()
 
 	ss.DeleteMenu.ClearItems()
-	ss.DeleteMenu.ResetAnimation()
+	ss.DeleteMenu.BeforeScreenTransition()
 }
 
 func (ss *SelectScreen) Free() {

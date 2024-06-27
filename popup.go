@@ -31,7 +31,7 @@ type PopupDialog struct {
 	KeyCallback PopupDialogKeyCallback
 }
 
-type PopupDialogManager struct {
+var ThePopupDialogManager struct {
 	PopupRect rl.Rectangle
 
 	// variables about select dialog
@@ -49,8 +49,6 @@ type PopupDialogManager struct {
 
 	SelectAnimT float32
 }
-
-var ThePopupDialogManager PopupDialogManager
 
 func InitPopupDialog() {
 	pdm := &ThePopupDialogManager
