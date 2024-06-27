@@ -37,7 +37,10 @@ var (
 	CheckBoxBox  rl.Texture2D
 )
 
-var GameScreenBg rl.Texture2D
+var (
+	GameScreenBg rl.Texture2D
+	MenuScreenBg rl.Texture2D
+)
 
 var (
 	SongLoadingScreen rl.Texture2D
@@ -233,6 +236,7 @@ func loadAssets(isReload bool) {
 	BookMarkSmallTex = loadTexture("assets/bookmark_small.png", true, ".png")
 
 	GameScreenBg = loadTexture("assets/background 1.png", true, ".png")
+	MenuScreenBg = loadTexture("assets/menu_background.png", true, ".png")
 	SongLoadingScreen = loadTexture("assets/song loading screen.png", true, ".png")
 	DirSelectScreen = loadTexture("assets/directory select screen.png", true, ".png")
 

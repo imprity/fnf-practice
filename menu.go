@@ -55,10 +55,8 @@ type MenuItem struct {
 	FadeIfUnselected bool
 
 	// margin between next item
-	// default is 30
 	BottomMargin float32
 
-	// default is 30
 	SelectedLeftMargin float32
 
 	NameMinWidth float32
@@ -94,13 +92,13 @@ type MenuItem struct {
 	// whether if toggle item will use checkbox or < yes, no >
 	ToggleStyleCheckBox bool
 
-	CheckedBoxColor   Color // default is 0x79 E4 AF FF
-	UncheckedBoxColor Color // default is 0xD1 D1 D1 FF
+	CheckedBoxColor   Color
+	UncheckedBoxColor Color
 
-	CheckmarkColor Color // default is 0xFF FF FF FF
+	CheckmarkColor Color
 
-	KeyColorRegular  Color // default is 0xFF FF FF C8
-	KeyColorSelected Color // default is 0x0A FA 72 FF
+	KeyColorRegular  Color
+	KeyColorSelected Color
 
 	// variables for animations
 	NameClickTimer       time.Duration
@@ -118,7 +116,7 @@ var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
 	SizeSelected: 80,
 
-	Color: Col(1, 1, 1, 1),
+	Color: Col(0, 0, 0, 1),
 
 	FadeIfUnselected:    true,
 	ToggleStyleCheckBox: true,
@@ -131,8 +129,8 @@ var MenuItemDefaults = MenuItem{
 
 	CheckmarkColor: Color255(0xFF, 0xFF, 0xFF, 0xFF),
 
-	KeyColorRegular:  Color255(0xFF, 0xFF, 0xFF, 0xC8),
-	KeyColorSelected: Color255(0x0A, 0xFA, 0x72, 0xFF),
+	KeyColorRegular:  Color255(0x00, 0x00, 0x00, 0xC8),
+	KeyColorSelected: Color255(0x21, 0x3A, 0xFF, 0xFF),
 }
 
 func NewMenuItem() *MenuItem {
@@ -900,9 +898,11 @@ func (md *MenuDrawer) Draw() {
 				arrowFill := fadeC(Col(1, 1, 1, 1), fade)
 				arrowStroke := Col(0, 0, 0, 1)
 
+				/*
 				if index != md.SelectedIndex {
 					arrowStroke = Color{}
 				}
+				*/
 
 				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke)
 

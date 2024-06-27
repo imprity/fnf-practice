@@ -472,8 +472,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 }
 
 func (ss *SelectScreen) Draw() {
-	bgColor := Col(0.2, 0.2, 0.2, 1.0)
-	rl.ClearBackground(bgColor.ToImageRGBA())
+	DrawPatternBackground(MenuScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
 
 	drawPathText := func() {
 		for id, tex := range ss.PathDecoToPathTex {
@@ -518,7 +517,7 @@ func (ss *SelectScreen) Draw() {
 			y := float32(20)
 
 			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
-				size, 0, rl.Color{255, 255, 255, 255})
+				size, 0, rl.Color{0, 0, 0, 255})
 		}
 	} else {
 		ss.DeleteMenu.Draw()
