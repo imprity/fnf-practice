@@ -292,8 +292,8 @@ func (op *OptionsScreen) Draw() {
 }
 
 func (op *OptionsScreen) BeforeScreenTransition() {
-	op.Menu.ResetAnimation()
-	op.Menu.SelectedIndex = 1
+	op.Menu.BeforeScreenTransition()
+	op.Menu.SelectItemAt(0, false) // select first item
 
 	if op.setItemValuesToOptions != nil {
 		op.setItemValuesToOptions()
