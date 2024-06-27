@@ -263,7 +263,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		dummyDeco.UserData = collection.Id()
 
 		// generate path image
-		desiredFont := unitext.MakeDesiredFont()
+		desiredFont := unitext.NewDesiredFont()
 
 		pathImg := RenderUnicodeText(
 			collection.BasePath,

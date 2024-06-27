@@ -534,7 +534,7 @@ func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
 
 func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 	{
-		timer := MakeProfTimer("DecodeWholeAudio")
+		timer := NewProfTimer("DecodeWholeAudio")
 		defer timer.Report()
 	}
 

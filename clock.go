@@ -33,7 +33,7 @@ type ProfTimer struct {
 	Name  string
 }
 
-func MakeProfTimer(name string) ProfTimer {
+func NewProfTimer(name string) ProfTimer {
 	return ProfTimer{
 		Start: time.Now(),
 		Name:  name,

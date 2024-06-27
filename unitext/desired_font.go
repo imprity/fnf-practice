@@ -39,7 +39,7 @@ type DesiredFont struct {
 	Stretch FontStretch
 }
 
-func MakeDesiredFont() DesiredFont {
+func NewDesiredFont() DesiredFont {
 	df := DesiredFont{}
 	df.Style = StyleNormal
 	df.Weight = WeightNormal
