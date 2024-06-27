@@ -11,12 +11,10 @@ type Alert struct {
 	Age     time.Duration
 }
 
-type AlertManager struct {
+var TheAlertManager struct {
 	Alerts        Queue[Alert]
 	AlertLifetime time.Duration
 }
-
-var TheAlertManager AlertManager
 
 func InitAlert() {
 	am := &TheAlertManager

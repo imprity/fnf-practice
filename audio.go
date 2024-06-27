@@ -20,12 +20,10 @@ const BytesPerSample = 4
 
 var TheContext *oto.Context
 
-type AudioManager struct {
+var TheAudioManager struct {
 	globalVolume float64
 	players      []*VaryingSpeedPlayer
 }
-
-var TheAudioManager AudioManager
 
 func InitAudio() error {
 	TheAudioManager.globalVolume = 1.0
