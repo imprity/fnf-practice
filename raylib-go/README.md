@@ -11,7 +11,7 @@ Here's the changes I made:
 - removed unused modules (easings, physics, raygui), exmaples, and rres
 - removed .git, .github, and .gitignore
 - custom binding are at ./raylib/custom.go
-- modified rtext.c's MeasureTextEx to use version from raylib v5.1-dev since it had a bug
+- modification to source code is marked with S##### at start and E##### at the end
 
 and probably other things that I forgot
 

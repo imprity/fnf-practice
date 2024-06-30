@@ -61,6 +61,7 @@ var (
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
 	fontBoldData  []byte
 	FontBold      rl.Font
+	SdfFontBold SdfFont
 	KeySelectFont rl.Font
 
 	//go:embed fonts/Pangolin/Pangolin-Regular.ttf
@@ -153,6 +154,25 @@ func loadAssets(isReload bool) {
 		rl.SetTextureFilter(font.Texture, rl.FilterTrilinear)
 
 		fontsToUnload = append(fontsToUnload, font)
+
+		return font
+	}
+
+	loadSdfFont := func(fontData []byte, fontName string, fontSize int32) SdfFont {
+		// NOTE : for code points we are supplying empty code points
+		// this will default to loading only ascii characters
+		// I thougt about adding all the Korean code points but I think that would be too expensive
+		var emptyCodePoints []rune
+		font := LoadSdfFontFromMemory(
+			fontData, fontSize, emptyCodePoints,
+			21, 180, 5, // NOTE : hard coded values for sdf font
+		)
+
+		if !rl.IsFontReady(font.Font) {
+			ErrorLogger.Fatalf("failed to load font : %v", fontName)
+		}
+
+		fontsToUnload = append(fontsToUnload, font.Font)
 
 		return font
 	}
@@ -264,6 +284,7 @@ func loadAssets(isReload bool) {
 	if !isReload {
 		FontRegular = loadFont(fontRegularData, "FontRegular", 128, ".ttf")
 		FontBold = loadFont(fontBoldData, "FontBold", 128, ".ttf")
+		SdfFontBold = loadSdfFont(fontBoldData, "SdfFontBold", 64)
 		KeySelectFont = loadFont(fontBoldData, "KeySelectFont", 240, ".ttf")
 
 		FontClear = loadFont(FontClearData, "HelpMsgFont", 30, ".ttf")

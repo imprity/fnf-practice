@@ -29,7 +29,13 @@ var (
 	TheGameScreen    *GameScreen
 
 	NextScreen Screen
+
+	nonDefaultFirstScreenConstructor func() Screen
 )
+
+func OverrideFirstScreen(constructor func() Screen) {
+	nonDefaultFirstScreenConstructor = constructor
+}
 
 var (
 	DrawDebugGraphics bool
@@ -102,8 +108,8 @@ func main() {
 	defer FreePopupDialog()
 	InitMenuResources()
 	defer FreeMenuResources()
-	InitOutlineDrawer()
-	defer FreeOutlineDrawer()
+	InitSdfFontDrawer()
+	defer FreeSdfFontDrawer()
 
 	// load settings
 	if err := LoadSettings(); err != nil {
@@ -133,6 +139,10 @@ func main() {
 
 	// set the first screen
 	var screen Screen = TheSelectScreen
+
+	if nonDefaultFirstScreenConstructor != nil {
+		screen = nonDefaultFirstScreenConstructor()
+	}
 
 	GlobalTimerStart()
 

@@ -78,19 +78,29 @@ func LoadFontFromImage(image Image, key color.RGBA, firstChar int32) Font {
 	return v
 }
 
+// S#############################
+
 // LoadFontFromMemory - Load font from memory buffer, fileType refers to extension: i.e. ".ttf"
-func LoadFontFromMemory(fileType string, fileData []byte, fontSize int32, codepoints []rune) Font {
+func LoadFontFromMemory(fileType string, fileData []byte, fontSize int32, codePoints []rune) Font {
 	cfileType := C.CString(fileType)
 	defer C.free(unsafe.Pointer(cfileType))
 	cfileData := (*C.uchar)(unsafe.Pointer(&fileData[0]))
 	cdataSize := (C.int)(len(fileData))
 	cfontSize := (C.int)(fontSize)
-	cfontChars := (*C.int)(unsafe.SliceData(codepoints))
-	ccharsCount := (C.int)(len(codepoints))
-	ret := C.LoadFontFromMemory(cfileType, cfileData, cdataSize, cfontSize, cfontChars, ccharsCount)
+
+	// we do this because we want to make sure that zero length array is passed as nil
+	var ccodePoints (*C.int) = nil
+	if len(codePoints) > 0 {
+		ccodePoints = (*C.int)(unsafe.SliceData(codePoints))
+	}
+	ccharsCount := (C.int)(len(codePoints))
+
+	ret := C.LoadFontFromMemory(cfileType, cfileData, cdataSize, cfontSize, ccodePoints, ccharsCount)
 	v := newFontFromPointer(unsafe.Pointer(&ret))
 	return v
 }
+
+// E#############################
 
 // IsFontReady - Check if a font is ready
 func IsFontReady(font Font) bool {
@@ -100,18 +110,35 @@ func IsFontReady(font Font) bool {
 	return v
 }
 
+// S#############################
+
 // LoadFontData - Load font data for further use
-func LoadFontData(fileData []byte, fontSize int32, codePoints []int32, typ int32) []GlyphInfo {
+func LoadFontData(fileData []byte, fontSize int32, codePoints []rune, typ int32) []GlyphInfo {
 	cfileData := (*C.uchar)(unsafe.Pointer(&fileData[0]))
 	cdataSize := (C.int)(len(fileData))
 	cfontSize := (C.int)(fontSize)
-	ccodePoints := (*C.int)(unsafe.Pointer(&codePoints[0]))
-	ccodePointCount := (C.int)(len(codePoints))
+
+	// we do this because we want to make sure that zero length array is passed as nil
+	var ccodePoints (*C.int) = nil
+	if len(codePoints) > 0 {
+		ccodePoints = (*C.int)(unsafe.SliceData(codePoints))
+	}
+
+	// It's kinda sad to use hard coded value but this is what happens if you pass zero length
+	// array
+	var ccodePointCount C.int = 95
+
+	if len(codePoints) > 0 {
+		ccodePointCount = (C.int)(len(codePoints))
+	}
+
 	ctype := (C.int)(typ)
 	ret := C.LoadFontData(cfileData, cdataSize, cfontSize, ccodePoints, ccodePointCount, ctype)
 	v := unsafe.Slice((*GlyphInfo)(unsafe.Pointer(ret)), ccodePointCount)
 	return v
 }
+
+// E#############################
 
 // UnloadFontData - Unload font chars info data (RAM)
 func UnloadFontData(glyphs []GlyphInfo) {

@@ -75,3 +75,86 @@ func NewImageFromImagePro(img image.Image, bgColor Color, alphaMultiply bool) *I
 	v := newImageFromPointer(unsafe.Pointer(&ret))
 	return v
 }
+
+func LoadFontDataSdf(
+	fileData []byte,
+	fontSize int32,
+	codepoints []rune,
+
+	sdfPadding int32,
+	sdfOnEdgeValue uint8,
+	sdfPixelDistScale float32,
+) []GlyphInfo {
+	cFileData := (*C.uchar)(unsafe.Pointer(&fileData[0]))
+	cDataSize := (C.int)(len(fileData))
+	cFontSize := (C.int)(fontSize)
+
+	// we do this because we want to make sure that zero length array is passed as nil
+	var cCodepoints (*C.int) = nil
+	if len(codepoints) > 0 {
+		cCodepoints = (*C.int)(unsafe.SliceData(codepoints))
+	}
+
+	// It's kinda sad to use hard coded value but this is what happens if you pass zero length
+	// array
+	var cCodePointCount C.int = 95
+
+	if len(codepoints) > 0 {
+		cCodePointCount = (C.int)(len(codepoints))
+	}
+
+	cSdfPadding := (C.int)(sdfPadding)
+	cSdfOnEdgeValue := (C.uchar)(sdfOnEdgeValue)
+	cSdfPixelDistScale := (C.float)(sdfPixelDistScale)
+
+	ret := C.LoadFontDataSdf(
+		cFileData, cDataSize,
+		cFontSize,
+		cCodepoints, cCodePointCount,
+
+		cSdfPadding,
+		cSdfOnEdgeValue,
+		cSdfPixelDistScale,
+	)
+
+	v := unsafe.Slice((*GlyphInfo)(unsafe.Pointer(ret)), cCodePointCount)
+	return v
+}
+
+func GenImageFontAtlas(glyphs []GlyphInfo, fontSize, padding, packMethod int32) (*Image, []Rectangle) {
+	cGlyphs := (unsafe.SliceData(glyphs)).cptr()
+
+	cGlyphsCount := (C.int)(len(glyphs))
+
+	cFontSize := (C.int)(fontSize)
+	cPadding := (C.int)(padding)
+	cPackMethod := (C.int)(packMethod)
+
+	var cRectPointer *(C.Rectangle)
+
+	cImage := C.GenImageFontAtlas(
+		cGlyphs,
+		(**C.Rectangle)(unsafe.Pointer(&cRectPointer)), cGlyphsCount, cFontSize, cPadding, cPackMethod,
+	)
+
+	if unsafe.Pointer(cRectPointer) == nil {
+		return newImageFromPointer(unsafe.Pointer(&cImage)), []Rectangle{}
+	} else {
+		return newImageFromPointer(unsafe.Pointer(&cImage)), unsafe.Slice(
+			(*Rectangle)(unsafe.Pointer(cRectPointer)),
+			len(glyphs),
+		)
+	}
+
+}
+
+// SetFontCharGlyphs - Set font Chars
+func SetFontCharGlyphs(font *Font, glyphs []GlyphInfo) {
+	font.Chars = unsafe.SliceData(glyphs)
+	font.CharsCount = int32(len(glyphs))
+}
+
+// SetFontRecs - Set font Recs
+func SetFontRecs(font *Font, recs []Rectangle) {
+	font.Recs = unsafe.SliceData(recs)
+}

@@ -32,7 +32,7 @@ var TheTransitionManager struct {
 }
 
 //go:embed shaders/mask.fs
-var maskFsShader string
+var maskShaderFsCode string
 
 func InitTransition() {
 	manager := &TheTransitionManager
@@ -51,7 +51,7 @@ func InitTransition() {
 	}
 
 	// load shader
-	manager.MaskShader = rl.LoadShaderFromMemory("", maskFsShader)
+	manager.MaskShader = rl.LoadShaderFromMemory("", maskShaderFsCode)
 
 	// get locations
 	manager.MaskLoc = rl.GetShaderLocation(manager.MaskShader, "mask")

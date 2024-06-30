@@ -685,6 +685,127 @@ GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSiz
     return chars;
 }
 
+// S#######################################################
+
+// Load font data for further use
+// This is basically a copy paste of LoadFontData but made specifically for sdf font
+// Since original raylib implementation didn't allow changing specific settings
+// NOTE: Requires TTF font memory data and can generate SDF data
+GlyphInfo *LoadFontDataSdf(
+        const unsigned char *fileData, int dataSize,
+        int fontSize,
+        int *codepoints, int codepointCount,
+
+        int sdfPadding,
+        unsigned char sdfOnEdgeValue,
+        float sdfPixelDistScale
+)
+{
+    GlyphInfo *chars = NULL;
+
+#if defined(SUPPORT_FILEFORMAT_TTF)
+    // Load font data (including pixel data) from TTF memory file
+    // NOTE: Loaded information should be enough to generate font image atlas, using any packaging method
+    if (fileData != NULL)
+    {
+        bool genFontChars = false;
+        stbtt_fontinfo fontInfo = { 0 };
+
+        if (stbtt_InitFont(&fontInfo, (unsigned char *)fileData, 0))     // Initialize font for data reading
+        {
+            // Calculate font scale factor
+            float scaleFactor = stbtt_ScaleForPixelHeight(&fontInfo, (float)fontSize);
+
+            // Calculate font basic metrics
+            // NOTE: ascent is equivalent to font baseline
+            int ascent, descent, lineGap;
+            stbtt_GetFontVMetrics(&fontInfo, &ascent, &descent, &lineGap);
+
+            // In case no chars count provided, default to 95
+            codepointCount = (codepointCount > 0)? codepointCount : 95;
+
+            // Fill fontChars in case not provided externally
+            // NOTE: By default we fill glyphCount consecutively, starting at 32 (Space)
+
+            if (codepoints == NULL)
+            {
+                codepoints = (int *)RL_MALLOC(codepointCount*sizeof(int));
+                for (int i = 0; i < codepointCount; i++) codepoints[i] = i + 32;
+                genFontChars = true;
+            }
+
+            chars = (GlyphInfo *)RL_MALLOC(codepointCount*sizeof(GlyphInfo));
+
+            // NOTE: Using simple packaging, one char after another
+            for (int i = 0; i < codepointCount; i++)
+            {
+                int chw = 0, chh = 0;   // Character width and height (on generation)
+                int ch = codepoints[i];  // Character value to get info for
+                chars[i].value = ch;
+
+                //  Render a unicode codepoint to a bitmap
+                //      stbtt_GetCodepointBitmap()           -- allocates and returns a bitmap
+                //      stbtt_GetCodepointBitmapBox()        -- how big the bitmap must be
+                //      stbtt_MakeCodepointBitmap()          -- renders into bitmap you provide
+
+                if (ch != 32) {
+                    chars[i].image.data = stbtt_GetCodepointSDF(
+                            &fontInfo,
+                            scaleFactor,
+                            ch,
+                            sdfPadding,
+                            sdfOnEdgeValue,
+                            sdfPixelDistScale,
+                            &chw, &chh,
+                            &chars[i].offsetX, &chars[i].offsetY);
+                }
+
+                stbtt_GetCodepointHMetrics(&fontInfo, ch, &chars[i].advanceX, NULL);
+                chars[i].advanceX = (int)((float)chars[i].advanceX*scaleFactor);
+
+                // Load characters images
+                chars[i].image.width = chw;
+                chars[i].image.height = chh;
+                chars[i].image.mipmaps = 1;
+                chars[i].image.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
+
+                chars[i].offsetY += (int)((float)ascent*scaleFactor);
+
+                // NOTE: We create an empty image for space character, it could be further required for atlas packing
+                if (ch == 32)
+                {
+                    Image imSpace = {
+                        .data = RL_CALLOC(chars[i].advanceX*fontSize, 2),
+                        .width = chars[i].advanceX,
+                        .height = fontSize,
+                        .mipmaps = 1,
+                        .format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
+                    };
+
+                    chars[i].image = imSpace;
+                }
+
+                // Get bounding box for character (maybe offset to account for chars that dip above or below the line)
+                /*
+                   int chX1, chY1, chX2, chY2;
+                   stbtt_GetCodepointBitmapBox(&fontInfo, ch, scaleFactor, scaleFactor, &chX1, &chY1, &chX2, &chY2);
+
+                   TRACELOGD("FONT: Character box measures: %i, %i, %i, %i", chX1, chY1, chX2 - chX1, chY2 - chY1);
+                   TRACELOGD("FONT: Character offsetY: %i", (int)((float)ascent*scaleFactor) + chY1);
+                   */
+            }
+        }
+        else TRACELOG(LOG_WARNING, "FONT: Failed to process TTF font data");
+
+        if (genFontChars) RL_FREE(codepoints);
+    }
+#endif
+
+    return chars;
+}
+// E#######################################################
+
+
 // Generate image font atlas using chars info
 // NOTE: Packing method: 0-Default, 1-Skyline
 #if defined(SUPPORT_FILEFORMAT_TTF)
@@ -1230,6 +1351,8 @@ int MeasureText(const char *text, int fontSize)
     return (int)textSize.x;
 }
 
+// S##############################
+
 // Measure string size for Font
 Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing)
 {
@@ -1285,6 +1408,7 @@ Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing
 
     return textSize;
 }
+// E##########################
 
 // Get index position for a unicode character on font
 // NOTE: If codepoint is not found in the font it fallbacks to '?'
