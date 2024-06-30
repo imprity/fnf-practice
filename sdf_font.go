@@ -98,6 +98,8 @@ func DrawTextSdf(
 
 // Fill and stroke doesn't work well with color with transparency.
 // Set alpha to control transparency
+// Also this function ignores text outside of game screen.
+// May need to change later if there is a need to draw text at some big offscreen buffer
 func DrawTextSdfOutlined(
 	font SdfFont,
 	text string,
@@ -117,10 +119,7 @@ func DrawTextSdfOutlined(
 	}
 
 	// expand text rect with thick
-	textRect.X -= thick * 1.1
-	textRect.Y -= thick * 1.1
-	textRect.Width += thick * 2 * 1.1
-	textRect.Height += thick * 2 * 1.1
+	textRect = RectExpand(textRect, thick * 1.1)
 
 	// if we have nothing to draw skip
 	if !rl.CheckCollisionRecs(GetScreenRect(), textRect) {
@@ -189,17 +188,6 @@ func DrawTextSdfOutlined(
 	verts[3] = rl.Vector2{(intersect.X + intersect.Width), intersect.Y}
 
 	alphaUint := uint8(255 * alpha)
-
-	/*
-		rl.DrawTexturePro(
-			ts.RenderTexture.Texture,
-			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-			GetScreenRect(),
-			rl.Vector2{},
-			0,
-			rl.Color{alphaUint, alphaUint, alphaUint, alphaUint},
-		)
-	*/
 
 	DrawTextureUvVertices(
 		ts.RenderTexture.Texture,

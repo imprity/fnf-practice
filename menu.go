@@ -762,8 +762,6 @@ func (md *MenuDrawer) Draw() {
 		return
 	}
 
-	//fmt.Printf("debug print %v\n", DrawDebugGraphics)
-
 	if DrawDebugGraphics {
 		rl.DrawLine(
 			0, SCREEN_HEIGHT*0.5,
@@ -898,66 +896,7 @@ func (md *MenuDrawer) Draw() {
 		return width
 	}
 
-	/*
-		drawTextCentered := func(text string, fontSize, scale, width float32, col Color) float32 {
-			textSize := rl.MeasureTextEx(font, text, fontSize, 0)
-
-			width = max(textSize.X, width)
-
-			pos := rl.Vector2{
-				X: xAdvance + (width-textSize.X*scale)*0.5,
-				Y: yCenter - textSize.Y*scale*0.5,
-			}
-
-			pos.X += xDrawOffset
-			pos.Y += yDrawOffset
-
-			rl.DrawTextEx(font, text, pos, fontSize*scale, 0, col.ToRlColor())
-
-			bound := rl.Rectangle{
-				X: pos.X, Y: pos.Y,
-				Width: textSize.X * scale, Height: textSize.Y * scale,
-			}
-
-			updateItemBound(bound)
-
-			return width
-		}
-	*/
-
-	drawImage := func(
-		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
-
-		wScale := height / srcRect.Height
-
-		dstRect := rl.Rectangle{
-			X: xAdvance, Y: yCenter - height*0.5*scale,
-			Width: wScale * srcRect.Width * scale, Height: height * scale,
-		}
-
-		dstRect.X += xDrawOffset
-		dstRect.Y += yDrawOffset
-
-		updateItemBound(dstRect)
-
-		if !rl.CheckCollisionRecs(screenRect, dstRect) {
-			return wScale * srcRect.Width
-		}
-
-		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col)
-
-		return wScale * srcRect.Width
-	}
-
-	/*
-		drawSprite := func(sprite Sprite, spriteN int, height, scale float32, col Color) float32 {
-			spriteRect := SpriteRect(sprite, spriteN)
-
-			return drawImage(sprite.Texture, spriteRect, height, scale, col)
-		}
-	*/
-
-	drawCheck := func(imgW, imgH, height, scale float32) (float32, bool) {
+	drawCheck := func(imgW, imgH, height, scale float32) (rl.Rectangle, bool) {
 		wScale := height / imgH
 
 		dstRect := rl.Rectangle{
@@ -970,7 +909,20 @@ func (md *MenuDrawer) Draw() {
 
 		updateItemBound(dstRect)
 
-		return wScale * imgW, rl.CheckCollisionRecs(screenRect, dstRect)
+		return dstRect, rl.CheckCollisionRecs(screenRect, dstRect)
+	}
+
+
+	drawImage := func(
+		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
+
+		rect, draw := drawCheck(srcRect.Width, srcRect.Height, height, scale)
+
+		if draw{
+			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, col)
+		}
+
+		return rect.Width
 	}
 
 	drawArrow := func(
@@ -978,8 +930,8 @@ func (md *MenuDrawer) Draw() {
 
 		w, h := getUIarrowsTextureWH()
 
-		if advance, draw := drawCheck(w, h, height, scale); !draw {
-			return advance
+		if rect, draw := drawCheck(w, h, height, scale); !draw {
+			return rect.Width
 		}
 
 		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
@@ -994,8 +946,8 @@ func (md *MenuDrawer) Draw() {
 
 		w, h := getCheckBoxTextureWH()
 
-		if advance, draw := drawCheck(w, h, height, scale); !draw {
-			return advance
+		if rect, draw := drawCheck(w, h, height, scale); !draw {
+			return rect.Width
 		}
 
 		checkBoxTex := getCheckBoxTexture(checked, spriteN, boxColor, markColor)
@@ -1005,17 +957,6 @@ func (md *MenuDrawer) Draw() {
 			Col(1, 1, 1, alpha).ToRlColor(),
 		)
 	}
-
-	/*
-		dimmC := func(col Color, dimm float64) Color {
-			hsv := ToHSV(col)
-
-			hsv[1] *= dimm
-			hsv[2] *= dimm
-
-			return FromHSV(hsv)
-		}
-	*/
 
 	for index, item := range md.items {
 		if item.IsHidden {
@@ -1130,6 +1071,9 @@ func (md *MenuDrawer) Draw() {
 				drawStrikeThrough = drawStrikeThrough && index == md.selectedIndex
 
 				if drawStrikeThrough {
+					// ==========================
+					// draw key strike through
+					// ==========================
 					keyNameSize := rl.MeasureTextEx(FontBold, keyName, size, 0)
 
 					keyNameRect := rl.Rectangle{
@@ -1147,11 +1091,11 @@ func (md *MenuDrawer) Draw() {
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					if keyStrokeWidth > 0.5 {
-						strikeStrokeRect := RectExpand(strikeRect, keyStrokeWidth*0.5)
-						rl.DrawRectangleRoundedLines(strikeStrokeRect, 1, 7, keyStrokeWidth, keyColorStroke.ToRlColor())
+						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, keyColorStroke.ToRlColor())
 					}
 
 					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor.ToRlColor())
+					updateItemBound(strikeRect)
 
 					xAdvance += max(desiredWidth, keyNameSize.X)
 				} else {

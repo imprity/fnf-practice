@@ -76,6 +76,10 @@ func NewImageFromImagePro(img image.Image, bgColor Color, alphaMultiply bool) *I
 	return v
 }
 
+// Load font data for further use.
+// This is basically a copy paste of LoadFontData but made specifically for sdf font.
+// Since original raylib implementation didn't allow changing specific settings.
+// NOTE: Requires TTF font memory data and can generate SDF data.
 func LoadFontDataSdf(
 	fileData []byte,
 	fontSize int32,
@@ -121,6 +125,8 @@ func LoadFontDataSdf(
 	return v
 }
 
+// Generate image font atlas using chars info.
+// NOTE: Packing method: 0-Default, 1-Skyline.
 func GenImageFontAtlas(glyphs []GlyphInfo, fontSize, padding, packMethod int32) (*Image, []Rectangle) {
 	cGlyphs := (unsafe.SliceData(glyphs)).cptr()
 
@@ -145,7 +151,6 @@ func GenImageFontAtlas(glyphs []GlyphInfo, fontSize, padding, packMethod int32) 
 			len(glyphs),
 		)
 	}
-
 }
 
 // SetFontCharGlyphs - Set font Chars

@@ -509,15 +509,20 @@ func (ss *SelectScreen) Draw() {
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 			str := DifficultyStrs[difficulty]
-			size := float32(60)
+			size := float32(65)
 
-			textSize := rl.MeasureTextEx(FontBold, DifficultyStrs[difficulty], size, 0)
+			textSize := rl.MeasureTextEx(SdfFontBold.Font, DifficultyStrs[difficulty], size, 0)
 
 			x := SCREEN_WIDTH - (100 + textSize.X)
 			y := float32(20)
 
 			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
 				size, 0, rl.Color{0, 0, 0, 255})
+
+			DrawTextSdfOutlined(
+				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
+				rl.Color{255,255,255,255}, rl.Color{0,0,0,255}, 1, 4,
+			)
 		}
 	} else {
 		ss.DeleteMenu.Draw()
