@@ -61,7 +61,7 @@ var (
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
 	fontBoldData  []byte
 	FontBold      rl.Font
-	SdfFontBold SdfFont
+	SdfFontBold   SdfFont
 	KeySelectFont rl.Font
 
 	//go:embed fonts/Pangolin/Pangolin-Regular.ttf

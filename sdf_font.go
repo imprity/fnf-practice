@@ -111,51 +111,101 @@ func DrawTextSdfOutlined(
 		return
 	}
 
-	if position.X > SCREEN_HEIGHT || position.Y > SCREEN_WIDTH{
+	textSize := rl.MeasureTextEx(font.Font, text, fontSize, spacing)
+	textRect := rl.Rectangle{
+		X: position.X, Y: position.Y, Width: textSize.X, Height: textSize.Y,
+	}
+
+	// expand text rect with thick
+	textRect.X -= thick * 1.1
+	textRect.Y -= thick * 1.1
+	textRect.Width += thick * 2 * 1.1
+	textRect.Height += thick * 2 * 1.1
+
+	// if we have nothing to draw skip
+	if !rl.CheckCollisionRecs(GetScreenRect(), textRect) {
 		return
 	}
 
 	ts := &TheSdfDrawer
 	uniform := make([]float32, 4)
 
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	// ===============================
+	// draw text to off screen buffer
+	// ===============================
 	FnfBeginTextureMode(ts.RenderTexture)
 
 	rl.ClearBackground(rl.Color{0, 0, 0, 0})
-
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 	rl.BeginShaderMode(ts.SdfShader)
 	{
 		uniform[0] = f32(font.SdfOnEdgeValue) / 255
 		uniform[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
 		rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
-		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, stroke)
 
+		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, stroke)
 	}
 	rl.EndShaderMode()
 
 	rl.BeginShaderMode(ts.SdfShader)
 	{
-
 		uniform[1] = 0
 		rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
 
 		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, fill)
-
 	}
 	rl.EndShaderMode()
 
-	rl.EndBlendMode()
-
 	FnfEndTextureMode()
 
-	rl.DrawTexturePro(
+	// ===============================
+	// draw to actual screen
+	// ===============================
+	intersect := RectIntersect(textRect, GetScreenRect())
+
+	//	0 -- 3
+	//	|    |
+	//	|    |
+	//	1 -- 2
+
+	var uvs [4]rl.Vector2
+
+	uvs[0] = rl.Vector2{intersect.X / SCREEN_WIDTH, intersect.Y / SCREEN_HEIGHT}
+	uvs[1] = rl.Vector2{intersect.X / SCREEN_WIDTH, (intersect.Y + intersect.Height) / SCREEN_HEIGHT}
+	uvs[2] = rl.Vector2{(intersect.X + intersect.Width) / SCREEN_WIDTH, (intersect.Y + intersect.Height) / SCREEN_HEIGHT}
+	uvs[3] = rl.Vector2{(intersect.X + intersect.Width) / SCREEN_WIDTH, intersect.Y / SCREEN_HEIGHT}
+
+	for i := range uvs {
+		uvs[i].Y = 1 - uvs[i].Y
+	}
+
+	var verts [4]rl.Vector2
+
+	verts[0] = rl.Vector2{intersect.X, intersect.Y}
+	verts[1] = rl.Vector2{intersect.X, (intersect.Y + intersect.Height)}
+	verts[2] = rl.Vector2{(intersect.X + intersect.Width), (intersect.Y + intersect.Height)}
+	verts[3] = rl.Vector2{(intersect.X + intersect.Width), intersect.Y}
+
+	alphaUint := uint8(255 * alpha)
+
+	/*
+		rl.DrawTexturePro(
+			ts.RenderTexture.Texture,
+			rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+			GetScreenRect(),
+			rl.Vector2{},
+			0,
+			rl.Color{alphaUint, alphaUint, alphaUint, alphaUint},
+		)
+	*/
+
+	DrawTextureUvVertices(
 		ts.RenderTexture.Texture,
-		rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-		GetScreenRect(),
-		rl.Vector2{},
-		0,
-		rl.Color{255, 255, 255, uint8(255 * alpha)},
+		uvs, verts,
+		rl.Color{alphaUint, alphaUint, alphaUint, alphaUint},
 	)
 
+	rl.EndBlendMode()
 }

@@ -34,7 +34,7 @@ type SdfTestScreen struct {
 	drawRegularTextOverly bool
 
 	pinText bool
-	pinPos rl.Vector2
+	pinPos  rl.Vector2
 
 	pointerCircle float32
 
@@ -193,7 +193,7 @@ func (st *SdfTestScreen) Update(deltaTime time.Duration) {
 		st.LoadSdfFontShader()
 	}
 
-	if IsMouseButtonPressed(st.InputId, rl.MouseButtonRight){
+	if IsMouseButtonPressed(st.InputId, rl.MouseButtonRight) {
 		st.pinText = !st.pinText
 		st.pinPos = MouseV()
 	}
@@ -210,7 +210,7 @@ func (st *SdfTestScreen) Draw() {
 
 	textPos := MouseV()
 
-	if st.pinText{
+	if st.pinText {
 		textPos = st.pinPos
 	}
 
@@ -228,9 +228,9 @@ func (st *SdfTestScreen) Draw() {
 		rl.DrawTextEx(FontBold, "Hello World!", textPos, st.fontSizeRender, 0, rl.Color{0, 0, 0, 100})
 	}
 
-	rl.DrawCircleV(MouseV(), st.pointerCircle * 0.5, rl.Color{255,0,0,100})
+	rl.DrawCircleV(MouseV(), st.pointerCircle*0.5, rl.Color{255, 0, 0, 100})
 
-	rl.DrawText(fmt.Sprintf("%.2f", st.pointerCircle), 20, SCREEN_HEIGHT - 50, 30, rl.Color{255,0,0,255})
+	rl.DrawText(fmt.Sprintf("%.2f", st.pointerCircle), 20, SCREEN_HEIGHT-50, 30, rl.Color{255, 0, 0, 255})
 }
 
 func (st *SdfTestScreen) BeforeScreenTransition() {

@@ -106,12 +106,13 @@ type MenuItem struct {
 
 	CheckmarkColor Color
 
-	KeyColorRegular        Color
-	KeyColorSelected       Color
+	KeyColorRegular  Color
+	KeyColorSelected Color
 
 	KeyColorStrokeRegular  Color
 	KeyColorStrokeSelected Color
-	KeyStrokeWidth    float32
+	KeyStrokeWidthRegular  float32
+	KeyStrokeWidthSelected float32
 
 	// variables for animations
 	NameClickTimer       time.Duration
@@ -129,12 +130,7 @@ var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
 	SizeSelected: 80,
 
-	//Color: Col(0, 0, 0, 1),
-	// TEST TEST TEST TEST TEST
-	Color: Col(1,0,1,1),
-	StrokeColor : Col(1,0,0,1),
-	StrokeWidth : 10,
-	// TEST TEST TEST TEST TEST
+	Color: Col(0, 0, 0, 1),
 
 	Fade:             0.35,
 	FadeIfUnselected: true,
@@ -150,7 +146,11 @@ var MenuItemDefaults = MenuItem{
 	CheckmarkColor: Color255(0xFF, 0xFF, 0xFF, 0xFF),
 
 	KeyColorRegular:  Color255(0x00, 0x00, 0x00, 200),
-	KeyColorSelected: Color255(0x21, 0x3A, 0xFF, 0xFF),
+	KeyColorSelected: Color255(0xFF, 0xFF, 0xFF, 0xFF),
+
+	KeyColorStrokeSelected: Color255(0, 0, 0, 0xFF),
+
+	KeyStrokeWidthSelected: 10,
 }
 
 func NewMenuItem() *MenuItem {
@@ -243,6 +243,11 @@ func UpdateMenuManager(deltaTime time.Duration) {
 	}
 }
 
+func getCheckBoxTextureWH() (float32, float32) {
+	tm := &TheMenuResources
+	return f32(tm.CheckBoxRenderTex.Texture.Width), f32(tm.CheckBoxRenderTex.Texture.Height)
+}
+
 // Get check box texture drawn with specified colors.
 func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl.Texture2D {
 	tm := &TheMenuResources
@@ -277,6 +282,11 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl
 	FnfEndTextureMode()
 
 	return tm.CheckBoxRenderTex.Texture
+}
+
+func getUIarrowsTextureWH() (float32, float32) {
+	tm := &TheMenuResources
+	return f32(tm.UIarrowRenderTex.Texture.Width), f32(tm.UIarrowRenderTex.Texture.Height)
 }
 
 func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
@@ -813,6 +823,8 @@ func (md *MenuDrawer) Draw() {
 		return col
 	}
 
+	screenRect := GetScreenRect()
+
 	drawText := func(text string, fontSize, scale float32, fill, stroke Color, strokeWidth float32, alpha float64) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
@@ -824,21 +836,25 @@ func (md *MenuDrawer) Draw() {
 		pos.X += xDrawOffset
 		pos.Y += yDrawOffset
 
-		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
-		}else{
-			DrawTextSdfOutlined(
-				SdfFontBold, text, pos, fontSize * scale, 0,
-				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
-				strokeWidth,
-			)
-		}
-
 		bound := rl.Rectangle{
 			X: pos.X, Y: pos.Y,
 			Width: textSize.X * scale, Height: textSize.Y * scale,
 		}
 		updateItemBound(bound)
+
+		if !rl.CheckCollisionRecs(screenRect, bound) {
+			return textSize.X
+		}
+
+		if strokeWidth <= 0 {
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
+		} else {
+			DrawTextSdfOutlined(
+				SdfFontBold, text, pos, fontSize*scale, 0,
+				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
+				strokeWidth,
+			)
+		}
 
 		return textSize.X
 	}
@@ -858,51 +874,55 @@ func (md *MenuDrawer) Draw() {
 		pos.X += xDrawOffset
 		pos.Y += yDrawOffset
 
+		bound := rl.Rectangle{
+			X: pos.X, Y: pos.Y,
+			Width: textSize.X * scale, Height: textSize.Y * scale,
+		}
+
+		updateItemBound(bound)
+
+		if !rl.CheckCollisionRecs(screenRect, bound) {
+			return width
+		}
+
 		if strokeWidth <= 0 {
 			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
-		}else{
+		} else {
 			DrawTextSdfOutlined(
-				SdfFontBold, text, pos, fontSize * scale, 0,
+				SdfFontBold, text, pos, fontSize*scale, 0,
 				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
 				strokeWidth,
 			)
 		}
 
-		bound := rl.Rectangle{
-			X: pos.X, Y: pos.Y,
-			Width: textSize.X * scale, Height: textSize.Y * scale,
-		}
-
-		updateItemBound(bound)
-
 		return width
 	}
 
 	/*
-	drawTextCentered := func(text string, fontSize, scale, width float32, col Color) float32 {
-		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
+		drawTextCentered := func(text string, fontSize, scale, width float32, col Color) float32 {
+			textSize := rl.MeasureTextEx(font, text, fontSize, 0)
 
-		width = max(textSize.X, width)
+			width = max(textSize.X, width)
 
-		pos := rl.Vector2{
-			X: xAdvance + (width-textSize.X*scale)*0.5,
-			Y: yCenter - textSize.Y*scale*0.5,
+			pos := rl.Vector2{
+				X: xAdvance + (width-textSize.X*scale)*0.5,
+				Y: yCenter - textSize.Y*scale*0.5,
+			}
+
+			pos.X += xDrawOffset
+			pos.Y += yDrawOffset
+
+			rl.DrawTextEx(font, text, pos, fontSize*scale, 0, col.ToRlColor())
+
+			bound := rl.Rectangle{
+				X: pos.X, Y: pos.Y,
+				Width: textSize.X * scale, Height: textSize.Y * scale,
+			}
+
+			updateItemBound(bound)
+
+			return width
 		}
-
-		pos.X += xDrawOffset
-		pos.Y += yDrawOffset
-
-		rl.DrawTextEx(font, text, pos, fontSize*scale, 0, col.ToRlColor())
-
-		bound := rl.Rectangle{
-			X: pos.X, Y: pos.Y,
-			Width: textSize.X * scale, Height: textSize.Y * scale,
-		}
-
-		updateItemBound(bound)
-
-		return width
-	}
 	*/
 
 	drawImage := func(
@@ -918,9 +938,14 @@ func (md *MenuDrawer) Draw() {
 		dstRect.X += xDrawOffset
 		dstRect.Y += yDrawOffset
 
+		updateItemBound(dstRect)
+
+		if !rl.CheckCollisionRecs(screenRect, dstRect) {
+			return wScale * srcRect.Width
+		}
+
 		rl.DrawTexturePro(img, srcRect, dstRect, rl.Vector2{}, 0, col)
 
-		updateItemBound(dstRect)
 		return wScale * srcRect.Width
 	}
 
@@ -932,8 +957,30 @@ func (md *MenuDrawer) Draw() {
 		}
 	*/
 
+	drawCheck := func(imgW, imgH, height, scale float32) (float32, bool) {
+		wScale := height / imgH
+
+		dstRect := rl.Rectangle{
+			X: xAdvance, Y: yCenter - height*0.5*scale,
+			Width: wScale * imgW * scale, Height: height * scale,
+		}
+
+		dstRect.X += xDrawOffset
+		dstRect.Y += yDrawOffset
+
+		updateItemBound(dstRect)
+
+		return wScale * imgW, rl.CheckCollisionRecs(screenRect, dstRect)
+	}
+
 	drawArrow := func(
 		drawLeft bool, height, scale float32, fill, stroke Color, alpha float64) float32 {
+
+		w, h := getUIarrowsTextureWH()
+
+		if advance, draw := drawCheck(w, h, height, scale); !draw {
+			return advance
+		}
 
 		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
 
@@ -944,6 +991,13 @@ func (md *MenuDrawer) Draw() {
 
 	drawCheckBox := func(
 		checked bool, spriteN int, height, scale float32, boxColor, markColor Color, alpha float64) float32 {
+
+		w, h := getCheckBoxTextureWH()
+
+		if advance, draw := drawCheck(w, h, height, scale); !draw {
+			return advance
+		}
+
 		checkBoxTex := getCheckBoxTexture(checked, spriteN, boxColor, markColor)
 		return drawImage(
 			checkBoxTex, RectWH(checkBoxTex.Width, checkBoxTex.Height),
@@ -1054,6 +1108,7 @@ func (md *MenuDrawer) Draw() {
 
 				keyColor := item.KeyColorRegular
 				keyColorStroke := item.KeyColorStrokeRegular
+				keyStrokeWidth := item.KeyStrokeWidthRegular
 
 				desiredWidth := item.SizeRegular * 4
 
@@ -1064,6 +1119,7 @@ func (md *MenuDrawer) Draw() {
 
 					keyScale = Lerp(0.9, 1, t)
 					keyColor = LerpRGBA(item.KeyColorRegular, item.KeyColorSelected, f64(t))
+					keyStrokeWidth = Lerp(item.KeyStrokeWidthRegular, item.KeyStrokeWidthSelected, t)
 					keyColorStroke = LerpRGBA(item.KeyColorStrokeRegular, item.KeyColorStrokeSelected, f64(t))
 
 					keyScale *= calcClick(item.ValueClickTimer)
@@ -1090,12 +1146,17 @@ func (md *MenuDrawer) Draw() {
 					strikeRect.Height = size * 0.1 * keyScale
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
+					if keyStrokeWidth > 0.5 {
+						strikeStrokeRect := RectExpand(strikeRect, keyStrokeWidth*0.5)
+						rl.DrawRectangleRoundedLines(strikeStrokeRect, 1, 7, keyStrokeWidth, keyColorStroke.ToRlColor())
+					}
+
 					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor.ToRlColor())
 
 					xAdvance += max(desiredWidth, keyNameSize.X)
 				} else {
 					xAdvance += drawTextCentered(keyName, size, keyScale, desiredWidth,
-						keyColor, keyColorStroke, item.KeyStrokeWidth, fade)
+						keyColor, keyColorStroke, keyStrokeWidth, fade)
 				}
 
 				xAdvance += 30
@@ -1139,8 +1200,8 @@ func (md *MenuDrawer) Draw() {
 							item.Color, item.StrokeColor, item.StrokeWidth, fade)
 					}
 				case MenuItemList:
-						drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax,
-							item.Color, item.StrokeColor, item.StrokeWidth, fade)
+					drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax,
+						item.Color, item.StrokeColor, item.StrokeWidth, fade)
 				case MenuItemNumber:
 					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
 					drawTextCentered(toDraw, size, valueScale, valueWidthMax,

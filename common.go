@@ -257,6 +257,15 @@ func RectCenetered(rect rl.Rectangle, x, y float32) rl.Rectangle {
 	return rect
 }
 
+func RectExpand(rect rl.Rectangle, amount float32) rl.Rectangle {
+	rect.X -= amount
+	rect.Y -= amount
+	rect.Width += amount * 2
+	rect.Height += amount * 2
+
+	return rect
+}
+
 // TODO : support rotation and scaling
 func DrawPatternBackground(
 	texture rl.Texture2D,
