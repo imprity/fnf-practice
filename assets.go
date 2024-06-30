@@ -165,7 +165,7 @@ func loadAssets(isReload bool) {
 		var emptyCodePoints []rune
 		font := LoadSdfFontFromMemory(
 			fontData, fontSize, emptyCodePoints,
-			21, 180, 5, // NOTE : hard coded values for sdf font
+			21, 200, 10, // NOTE : hard coded values for sdf font
 		)
 
 		if !rl.IsFontReady(font.Font) {

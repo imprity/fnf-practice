@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -49,9 +50,11 @@ func LoadSdfFontFromMemory(
 var TheSdfDrawer struct {
 	SdfShader rl.Shader
 
-	UniformLoc int32
+	UniformLoc    int32
+	RenderTexture rl.RenderTexture2D
 }
 
+//go:embed shaders/sdf.fs
 var sdfShaderFsCode string
 
 func InitSdfFontDrawer() {
@@ -59,11 +62,13 @@ func InitSdfFontDrawer() {
 
 	ts.SdfShader = rl.LoadShaderFromMemory("", sdfShaderFsCode)
 	ts.UniformLoc = rl.GetShaderLocation(ts.SdfShader, "uValues")
+	ts.RenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 }
 
-func FreeSdfFontDrawer(){
+func FreeSdfFontDrawer() {
 	ts := &TheSdfDrawer
 	rl.UnloadShader(ts.SdfShader)
+	rl.UnloadRenderTexture(ts.RenderTexture)
 }
 
 // Tint expects alpha premultiplied color
@@ -91,35 +96,66 @@ func DrawTextSdf(
 	rl.EndBlendMode()
 }
 
-// fill and stroke doesn't work well with color with transparency
+// Fill and stroke doesn't work well with color with transparency.
+// Set alpha to control transparency
 func DrawTextSdfOutlined(
 	font SdfFont,
 	text string,
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
-	fill, stroke rl.Color,
+	fill, stroke rl.Color, alpha float64,
 	thick float32,
 ) {
 	if fontSize < 1 {
 		return
 	}
-	ts := &TheSdfDrawer
 
+	if position.X > SCREEN_HEIGHT || position.Y > SCREEN_WIDTH{
+		return
+	}
+
+	ts := &TheSdfDrawer
 	uniform := make([]float32, 4)
-	uniform[0] = f32(font.SdfOnEdgeValue) / 255
-	uniform[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
+
+	FnfBeginTextureMode(ts.RenderTexture)
+
+	rl.ClearBackground(rl.Color{0, 0, 0, 0})
 
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
 	rl.BeginShaderMode(ts.SdfShader)
+	{
+		uniform[0] = f32(font.SdfOnEdgeValue) / 255
+		uniform[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
+		rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
+		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, stroke)
 
-	rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, stroke)
-
-	uniform[1] = 0
-
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, fill)
-
+	}
 	rl.EndShaderMode()
+
+	rl.BeginShaderMode(ts.SdfShader)
+	{
+
+		uniform[1] = 0
+		rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
+
+		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, fill)
+
+	}
+	rl.EndShaderMode()
+
 	rl.EndBlendMode()
+
+	FnfEndTextureMode()
+
+	rl.DrawTexturePro(
+		ts.RenderTexture.Texture,
+		rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+		GetScreenRect(),
+		rl.Vector2{},
+		0,
+		rl.Color{255, 255, 255, uint8(255 * alpha)},
+	)
+
 }

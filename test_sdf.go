@@ -44,7 +44,7 @@ type SdfTestScreen struct {
 func (st *SdfTestScreen) LoadSdfFontShader() {
 	rl.UnloadShader(st.sdfShader)
 
-	st.sdfShader = rl.LoadShader("", "./shaders/sdf.fs")
+	st.sdfShader = rl.LoadShader("", "./shaders/test_sdf.fs")
 
 	st.uValuesLoc = rl.GetShaderLocation(st.sdfShader, "uValues")
 }

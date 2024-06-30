@@ -55,7 +55,9 @@ type MenuItem struct {
 	SizeRegular  float32
 	SizeSelected float32
 
-	Color Color
+	Color       Color
+	StrokeColor Color
+	StrokeWidth float32
 
 	// transparency when it's unselected
 	Fade             float64
@@ -104,8 +106,12 @@ type MenuItem struct {
 
 	CheckmarkColor Color
 
-	KeyColorRegular  Color
-	KeyColorSelected Color
+	KeyColorRegular        Color
+	KeyColorSelected       Color
+
+	KeyColorStrokeRegular  Color
+	KeyColorStrokeSelected Color
+	KeyStrokeWidth    float32
 
 	// variables for animations
 	NameClickTimer       time.Duration
@@ -123,7 +129,12 @@ var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
 	SizeSelected: 80,
 
-	Color: Col(0, 0, 0, 1),
+	//Color: Col(0, 0, 0, 1),
+	// TEST TEST TEST TEST TEST
+	Color: Col(1,0,1,1),
+	StrokeColor : Col(1,0,0,1),
+	StrokeWidth : 10,
+	// TEST TEST TEST TEST TEST
 
 	Fade:             0.35,
 	FadeIfUnselected: true,
@@ -797,8 +808,13 @@ func (md *MenuDrawer) Draw() {
 	xDrawOffset := float32(0)
 	yDrawOffset := float32(0)
 
-	drawText := func(text string, font rl.Font, fontSize, scale float32, col Color) float32 {
-		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
+	fadeC := func(col Color, fade float64) Color {
+		col.A *= fade
+		return col
+	}
+
+	drawText := func(text string, fontSize, scale float32, fill, stroke Color, strokeWidth float32, alpha float64) float32 {
+		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
 		pos := rl.Vector2{
 			X: xAdvance + textSize.X*0.5*(1-scale),
@@ -808,7 +824,15 @@ func (md *MenuDrawer) Draw() {
 		pos.X += xDrawOffset
 		pos.Y += yDrawOffset
 
-		rl.DrawTextEx(font, text, pos, fontSize*scale, 0, col.ToRlColor())
+		if strokeWidth <= 0 {
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
+		}else{
+			DrawTextSdfOutlined(
+				SdfFontBold, text, pos, fontSize * scale, 0,
+				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
+				strokeWidth,
+			)
+		}
 
 		bound := rl.Rectangle{
 			X: pos.X, Y: pos.Y,
@@ -819,7 +843,43 @@ func (md *MenuDrawer) Draw() {
 		return textSize.X
 	}
 
-	drawTextCentered := func(text string, font rl.Font, fontSize, scale, width float32, col Color) float32 {
+	drawTextCentered := func(
+		text string, fontSize, scale, width float32, fill, stroke Color, strokeWidth float32, alpha float64) float32 {
+
+		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
+
+		width = max(textSize.X, width)
+
+		pos := rl.Vector2{
+			X: xAdvance + (width-textSize.X*scale)*0.5,
+			Y: yCenter - textSize.Y*scale*0.5,
+		}
+
+		pos.X += xDrawOffset
+		pos.Y += yDrawOffset
+
+		if strokeWidth <= 0 {
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
+		}else{
+			DrawTextSdfOutlined(
+				SdfFontBold, text, pos, fontSize * scale, 0,
+				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
+				strokeWidth,
+			)
+		}
+
+		bound := rl.Rectangle{
+			X: pos.X, Y: pos.Y,
+			Width: textSize.X * scale, Height: textSize.Y * scale,
+		}
+
+		updateItemBound(bound)
+
+		return width
+	}
+
+	/*
+	drawTextCentered := func(text string, fontSize, scale, width float32, col Color) float32 {
 		textSize := rl.MeasureTextEx(font, text, fontSize, 0)
 
 		width = max(textSize.X, width)
@@ -843,6 +903,7 @@ func (md *MenuDrawer) Draw() {
 
 		return width
 	}
+	*/
 
 	drawImage := func(
 		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
@@ -891,11 +952,6 @@ func (md *MenuDrawer) Draw() {
 		)
 	}
 
-	fadeC := func(col Color, fade float64) Color {
-		col.A *= fade
-		return col
-	}
-
 	/*
 		dimmC := func(col Color, dimm float64) Color {
 			hsv := ToHSV(col)
@@ -938,14 +994,17 @@ func (md *MenuDrawer) Draw() {
 		// draw name
 		// ==========================
 		{
-			renderedWidth := drawText(item.Name, FontBold, size, nameScale, fadeC(item.Color, fade))
+			renderedWidth := drawText(
+				item.Name, size, nameScale, item.Color, item.StrokeColor, item.StrokeWidth, fade)
+
 			xAdvance += max(renderedWidth, item.NameMinWidth)
 
 			if item.NameValueSeperator == "" {
 				xAdvance += 40
 			} else {
 				xAdvance += 20
-				xAdvance += drawText(item.NameValueSeperator, FontBold, size, 1, fadeC(item.Color, fade))
+				xAdvance += drawText(
+					item.NameValueSeperator, size, 1, item.Color, item.StrokeColor, item.StrokeWidth, fade)
 				xAdvance += 40
 			}
 		}
@@ -992,7 +1051,9 @@ func (md *MenuDrawer) Draw() {
 				keyName := GetKeyName(key)
 
 				keyScale := float32(0.9)
+
 				keyColor := item.KeyColorRegular
+				keyColorStroke := item.KeyColorStrokeRegular
 
 				desiredWidth := item.SizeRegular * 4
 
@@ -1003,6 +1064,7 @@ func (md *MenuDrawer) Draw() {
 
 					keyScale = Lerp(0.9, 1, t)
 					keyColor = LerpRGBA(item.KeyColorRegular, item.KeyColorSelected, f64(t))
+					keyColorStroke = LerpRGBA(item.KeyColorStrokeRegular, item.KeyColorStrokeSelected, f64(t))
 
 					keyScale *= calcClick(item.ValueClickTimer)
 				}
@@ -1032,9 +1094,8 @@ func (md *MenuDrawer) Draw() {
 
 					xAdvance += max(desiredWidth, keyNameSize.X)
 				} else {
-					keyColor = fadeC(keyColor, fade)
-
-					xAdvance += drawTextCentered(keyName, FontBold, size, keyScale, desiredWidth, keyColor)
+					xAdvance += drawTextCentered(keyName, size, keyScale, desiredWidth,
+						keyColor, keyColorStroke, item.KeyStrokeWidth, fade)
 				}
 
 				xAdvance += 30
@@ -1071,15 +1132,19 @@ func (md *MenuDrawer) Draw() {
 				switch item.Type {
 				case MenuItemToggle:
 					if item.BValue {
-						drawTextCentered("Yes", FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+						drawTextCentered("Yes", size, valueScale, valueWidthMax,
+							item.Color, item.StrokeColor, item.StrokeWidth, fade)
 					} else {
-						drawTextCentered("No", FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+						drawTextCentered("No", size, valueScale, valueWidthMax,
+							item.Color, item.StrokeColor, item.StrokeWidth, fade)
 					}
 				case MenuItemList:
-					drawTextCentered(item.List[item.ListSelected], FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+						drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax,
+							item.Color, item.StrokeColor, item.StrokeWidth, fade)
 				case MenuItemNumber:
 					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
-					drawTextCentered(toDraw, FontBold, size, valueScale, valueWidthMax, fadeC(item.Color, fade))
+					drawTextCentered(toDraw, size, valueScale, valueWidthMax,
+						item.Color, item.StrokeColor, item.StrokeWidth, fade)
 				}
 
 				xAdvance += valueWidthMax
