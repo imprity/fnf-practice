@@ -50,7 +50,8 @@ func LoadSdfFontFromMemory(
 var TheSdfDrawer struct {
 	SdfShader rl.Shader
 
-	UniformLoc    int32
+	Uniform0Loc   int32
+	Uniform1Loc   int32
 	RenderTexture rl.RenderTexture2D
 }
 
@@ -61,7 +62,8 @@ func InitSdfFontDrawer() {
 	ts := &TheSdfDrawer
 
 	ts.SdfShader = rl.LoadShaderFromMemory("", sdfShaderFsCode)
-	ts.UniformLoc = rl.GetShaderLocation(ts.SdfShader, "uValues")
+	ts.Uniform0Loc = rl.GetShaderLocation(ts.SdfShader, "uValues0")
+	ts.Uniform1Loc = rl.GetShaderLocation(ts.SdfShader, "uValues1")
 	ts.RenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 }
 
@@ -72,6 +74,7 @@ func FreeSdfFontDrawer() {
 }
 
 // Tint expects alpha premultiplied color
+/* TODO : uncomment this
 func DrawTextSdf(
 	font SdfFont,
 	text string,
@@ -95,10 +98,9 @@ func DrawTextSdf(
 	rl.EndShaderMode()
 	rl.EndBlendMode()
 }
+*/
 
-// Fill and stroke doesn't work well with color with transparency.
-// Set alpha to control transparency
-// Also this function ignores text outside of game screen.
+// This function ignores text outside of game screen.
 // May need to change later if there is a need to draw text at some big offscreen buffer
 func DrawTextSdfOutlined(
 	font SdfFont,
@@ -106,7 +108,7 @@ func DrawTextSdfOutlined(
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
-	fill, stroke rl.Color, alpha float64,
+	fill, stroke rl.Color,
 	thick float32,
 ) {
 	if fontSize < 1 {
@@ -119,7 +121,7 @@ func DrawTextSdfOutlined(
 	}
 
 	// expand text rect with thick
-	textRect = RectExpand(textRect, thick * 1.1)
+	textRect = RectExpand(textRect, thick*1.1)
 
 	// if we have nothing to draw skip
 	if !rl.CheckCollisionRecs(GetScreenRect(), textRect) {
@@ -127,9 +129,6 @@ func DrawTextSdfOutlined(
 	}
 
 	ts := &TheSdfDrawer
-	uniform := make([]float32, 4)
-
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 	// ===============================
 	// draw text to off screen buffer
@@ -137,31 +136,32 @@ func DrawTextSdfOutlined(
 	FnfBeginTextureMode(ts.RenderTexture)
 
 	rl.ClearBackground(rl.Color{0, 0, 0, 0})
-
-	rl.BeginShaderMode(ts.SdfShader)
-	{
-		uniform[0] = f32(font.SdfOnEdgeValue) / 255
-		uniform[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
-		rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
-
-		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, stroke)
-	}
-	rl.EndShaderMode()
-
-	rl.BeginShaderMode(ts.SdfShader)
-	{
-		uniform[1] = 0
-		rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
-
-		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, fill)
-	}
-	rl.EndShaderMode()
+	rl.SetBlendFactors(rl.RlOne, rl.RlOne, rl.RlMax)
+	rl.BeginBlendMode(rl.BlendCustom)
+	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, rl.Color{255, 255, 255, 255})
+	rl.EndBlendMode()
 
 	FnfEndTextureMode()
 
 	// ===============================
 	// draw to actual screen
 	// ===============================
+	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
+	rl.BeginShaderMode(ts.SdfShader)
+
+	uniform0 := make([]float32, 4)
+	uniform0[0] = f32(font.SdfOnEdgeValue) / 255
+	uniform0[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
+	rl.SetShaderValue(ts.SdfShader, ts.Uniform0Loc, uniform0, rl.ShaderUniformVec4)
+
+	uniform1 := make([]float32, 4)
+	uniform1[0] = f32(stroke.R) / 255
+	uniform1[1] = f32(stroke.G) / 255
+	uniform1[2] = f32(stroke.B) / 255
+	uniform1[3] = f32(stroke.A) / 255
+	rl.SetShaderValue(ts.SdfShader, ts.Uniform1Loc, uniform1, rl.ShaderUniformVec4)
+
 	intersect := RectIntersect(textRect, GetScreenRect())
 
 	//	0 -- 3
@@ -187,13 +187,12 @@ func DrawTextSdfOutlined(
 	verts[2] = rl.Vector2{(intersect.X + intersect.Width), (intersect.Y + intersect.Height)}
 	verts[3] = rl.Vector2{(intersect.X + intersect.Width), intersect.Y}
 
-	alphaUint := uint8(255 * alpha)
-
 	DrawTextureUvVertices(
 		ts.RenderTexture.Texture,
 		uvs, verts,
-		rl.Color{alphaUint, alphaUint, alphaUint, alphaUint},
+		fill,
 	)
 
+	rl.EndShaderMode()
 	rl.EndBlendMode()
 }

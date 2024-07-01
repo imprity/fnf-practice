@@ -823,7 +823,7 @@ func (md *MenuDrawer) Draw() {
 
 	screenRect := GetScreenRect()
 
-	drawText := func(text string, fontSize, scale float32, fill, stroke Color, strokeWidth float32, alpha float64) float32 {
+	drawText := func(text string, fontSize, scale float32, fill, stroke Color, strokeWidth float32) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
 		pos := rl.Vector2{
@@ -845,11 +845,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill.ToRlColor())
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
+				fill.ToImageRGBA(), stroke.ToImageRGBA(),
 				strokeWidth,
 			)
 		}
@@ -858,7 +858,7 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	drawTextCentered := func(
-		text string, fontSize, scale, width float32, fill, stroke Color, strokeWidth float32, alpha float64) float32 {
+		text string, fontSize, scale, width float32, fill, stroke Color, strokeWidth float32) float32 {
 
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
@@ -884,11 +884,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fadeC(fill, alpha).ToRlColor())
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill.ToRlColor())
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				fill.ToImageRGBA(), stroke.ToImageRGBA(), alpha,
+				fill.ToImageRGBA(), stroke.ToImageRGBA(),
 				strokeWidth,
 			)
 		}
@@ -912,13 +912,12 @@ func (md *MenuDrawer) Draw() {
 		return dstRect, rl.CheckCollisionRecs(screenRect, dstRect)
 	}
 
-
 	drawImage := func(
 		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
 
 		rect, draw := drawCheck(srcRect.Width, srcRect.Height, height, scale)
 
-		if draw{
+		if draw {
 			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, col)
 		}
 
@@ -990,7 +989,7 @@ func (md *MenuDrawer) Draw() {
 		// ==========================
 		{
 			renderedWidth := drawText(
-				item.Name, size, nameScale, item.Color, item.StrokeColor, item.StrokeWidth, fade)
+				item.Name, size, nameScale, fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
 
 			xAdvance += max(renderedWidth, item.NameMinWidth)
 
@@ -999,7 +998,7 @@ func (md *MenuDrawer) Draw() {
 			} else {
 				xAdvance += 20
 				xAdvance += drawText(
-					item.NameValueSeperator, size, 1, item.Color, item.StrokeColor, item.StrokeWidth, fade)
+					item.NameValueSeperator, size, 1, fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
 				xAdvance += 40
 			}
 		}
@@ -1100,7 +1099,7 @@ func (md *MenuDrawer) Draw() {
 					xAdvance += max(desiredWidth, keyNameSize.X)
 				} else {
 					xAdvance += drawTextCentered(keyName, size, keyScale, desiredWidth,
-						keyColor, keyColorStroke, keyStrokeWidth, fade)
+						fadeC(keyColor, fade), fadeC(keyColorStroke, fade), keyStrokeWidth)
 				}
 
 				xAdvance += 30
@@ -1138,18 +1137,18 @@ func (md *MenuDrawer) Draw() {
 				case MenuItemToggle:
 					if item.BValue {
 						drawTextCentered("Yes", size, valueScale, valueWidthMax,
-							item.Color, item.StrokeColor, item.StrokeWidth, fade)
+							fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
 					} else {
 						drawTextCentered("No", size, valueScale, valueWidthMax,
-							item.Color, item.StrokeColor, item.StrokeWidth, fade)
+							fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
 					}
 				case MenuItemList:
 					drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax,
-						item.Color, item.StrokeColor, item.StrokeWidth, fade)
+						fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
 				case MenuItemNumber:
 					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
 					drawTextCentered(toDraw, size, valueScale, valueWidthMax,
-						item.Color, item.StrokeColor, item.StrokeWidth, fade)
+						fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
 				}
 
 				xAdvance += valueWidthMax

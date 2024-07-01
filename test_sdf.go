@@ -39,6 +39,8 @@ type SdfTestScreen struct {
 	pointerCircle float32
 
 	needToReloadSdf bool
+
+	renderTexture rl.RenderTexture2D
 }
 
 func (st *SdfTestScreen) LoadSdfFontShader() {
@@ -77,6 +79,8 @@ func NewSdfTestScreen() *SdfTestScreen {
 	st.sdfFont.SdfPixelDistScale = 10
 
 	st.pointerCircle = 5
+
+	st.renderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 	st.uValues = make([]float32, 4)
 	for i := range st.uValues {
@@ -215,12 +219,32 @@ func (st *SdfTestScreen) Draw() {
 	}
 
 	// draw sdf font ========
-	rl.SetShaderValue(st.sdfShader, st.uValuesLoc, st.uValues[:], rl.ShaderUniformVec4)
+	FnfBeginTextureMode(st.renderTexture)
+	{
+		rl.ClearBackground(rl.Color{0, 0, 0, 0})
+		rl.SetBlendFactors(rl.RlOne, rl.RlOne, rl.RlMax)
+		rl.BeginBlendMode(rl.BlendCustom)
+		rl.DrawTextEx(st.sdfFont.Font, "Hello World!", textPos, st.fontSizeRender, 0, rl.Color{255, 255, 255, 255})
+		rl.EndBlendMode()
+	}
+	FnfEndTextureMode()
 
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
+
 	rl.BeginShaderMode(st.sdfShader)
-	rl.DrawTextEx(st.sdfFont.Font, "Hello World!", textPos, st.fontSizeRender, 0, rl.Color{255, 255, 255, 255})
+	rl.SetShaderValue(st.sdfShader, st.uValuesLoc, st.uValues[:], rl.ShaderUniformVec4)
+
+	rl.DrawTexturePro(
+		st.renderTexture.Texture,
+		rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
+		GetScreenRect(),
+		rl.Vector2{},
+		0,
+		rl.Color{255, 255, 255, 255},
+	)
+
 	rl.EndShaderMode()
+
 	rl.EndBlendMode()
 	// ===============================
 

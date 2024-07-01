@@ -14,6 +14,9 @@ uniform vec4 uValues;
 // Output fragment color
 out vec4 finalColor;
 
+const vec4 fillC = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 strokeC = vec4(0.0, 0.0, 0.5, 0.5);
+
 /*
 void main(){
     float dist = texture(texture0, fragTexCoord).a;
@@ -40,5 +43,8 @@ void main(){
     float alpha2 = smoothstep(-distDelta2, distDelta2, dist2);
 
     // Calculate final fragment color
-    finalColor = vec4(alpha1 - alpha2);
+    //finalColor = vec4(alpha1 - alpha2);
+    //finalColor = vec4(alpha2);
+
+    finalColor = fillC * alpha2 + strokeC * (alpha1 - alpha2);
 }

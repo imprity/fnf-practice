@@ -521,7 +521,7 @@ func (ss *SelectScreen) Draw() {
 
 			DrawTextSdfOutlined(
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
-				rl.Color{255,255,255,255}, rl.Color{0,0,0,255}, 1, 4,
+				rl.Color{255, 255, 255, 255}, rl.Color{0, 0, 0, 255}, 4,
 			)
 		}
 	} else {

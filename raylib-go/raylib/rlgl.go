@@ -139,3 +139,43 @@ const (
 
 // FramebufferAttachTextureType type
 type FramebufferAttachTextureType = int32
+
+// S#######################################
+
+// GL blending factors
+const (
+	RlZero                  int32 = 0      // GL_ZERO
+	RlOne                   int32 = 1      // GL_ONE
+	RlSrcColor              int32 = 0x0300 // GL_SRC_COLOR
+	RlOneMinusSrcColor      int32 = 0x0301 // GL_ONE_MINUS_SRC_COLOR
+	RlSrcAlpha              int32 = 0x0302 // GL_SRC_ALPHA
+	RlOneMinusSrcAlpha      int32 = 0x0303 // GL_ONE_MINUS_SRC_ALPHA
+	RlDstAlpha              int32 = 0x0304 // GL_DST_ALPHA
+	RlOneMinusDstAlpha      int32 = 0x0305 // GL_ONE_MINUS_DST_ALPHA
+	RlDstColor              int32 = 0x0306 // GL_DST_COLOR
+	RlOneMinusDstColor      int32 = 0x0307 // GL_ONE_MINUS_DST_COLOR
+	RlSrcAlphaSaturate      int32 = 0x0308 // GL_SRC_ALPHA_SATURATE
+	RlConstantColor         int32 = 0x8001 // GL_CONSTANT_COLOR
+	RlOneMinusConstantColor int32 = 0x8002 // GL_ONE_MINUS_CONSTANT_COLOR
+	RlConstantAlpha         int32 = 0x8003 // GL_CONSTANT_ALPHA
+	RlOneMinusConstantAlpha int32 = 0x8004 // GL_ONE_MINUS_CONSTANT_ALPHA
+)
+
+// GL blending functions/equations
+const (
+	RlFuncAdd             int32 = 0x8006 // GL_FUNC_ADD
+	RlMin                 int32 = 0x8007 // GL_MIN
+	RlMax                 int32 = 0x8008 // GL_MAX
+	RlFuncSubtract        int32 = 0x800a // GL_FUNC_SUBTRAct
+	RlFuncReverseSubtract int32 = 0x800b // GL_FUNC_REVERSE_SUBTRACT
+	RlBlendEquation       int32 = 0x8009 // GL_BLEND_EQUATION
+	RlBlendEquationRgb    int32 = 0x8009 // GL_BLEND_EQUATION_RGB   // (same as blend_equation)
+	RlBlendEquationAlpha  int32 = 0x883d // GL_BLEND_EQUATION_ALPHA
+	RlBlendDstRgb         int32 = 0x80c8 // GL_BLEND_DST_RGB
+	RlBlendSrcRgb         int32 = 0x80c9 // GL_BLEND_SRC_RGB
+	RlBlendDstAlpha       int32 = 0x80ca // GL_BLEND_DST_ALPHA
+	RlBlendSrcAlpha       int32 = 0x80cb // GL_BLEND_SRC_ALPHA
+	RlBlendColor          int32 = 0x8005 // GL_BLEND_COLOR
+)
+
+// E#######################################
