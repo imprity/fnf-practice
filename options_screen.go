@@ -27,7 +27,7 @@ func NewOptionsScreen() *OptionsScreen {
 	optionsDeco := NewMenuItem()
 	optionsDeco.Name = "Options"
 	optionsDeco.Type = MenuItemDeco
-	optionsDeco.Color = Color255(0xE3, 0x9C, 0x02, 0xFF)
+	optionsDeco.Color = rl.Color{0xE3, 0x9C, 0x02, 0xFF}
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
@@ -104,7 +104,7 @@ func NewOptionsScreen() *OptionsScreen {
 		deco.Type = MenuItemDeco
 		deco.SizeRegular = MenuItemDefaults.SizeRegular * 1.4
 		deco.SizeSelected = MenuItemDefaults.SizeSelected * 1.4
-		deco.Color = Color255(0xFC, 0x9F, 0x7C, 0xFF)
+		deco.Color = rl.Color{0xFC, 0x9F, 0x7C, 0xFF}
 		deco.FadeIfUnselected = false
 		op.Menu.AddItems(deco)
 
@@ -156,7 +156,7 @@ func NewOptionsScreen() *OptionsScreen {
 		deco.Type = MenuItemDeco
 		deco.SizeRegular = MenuItemDefaults.SizeRegular * 1.4
 		deco.SizeSelected = MenuItemDefaults.SizeSelected * 1.4
-		deco.Color = Color255(0xFC, 0x9F, 0x7C, 0xFF)
+		deco.Color = rl.Color{0xFC, 0x9F, 0x7C, 0xFF}
 		deco.FadeIfUnselected = false
 		op.Menu.AddItems(deco)
 

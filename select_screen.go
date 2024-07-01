@@ -65,7 +65,7 @@ func NewSelectScreen() *SelectScreen {
 	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
 	menuDeco.Type = MenuItemDeco
-	menuDeco.Color = Color255(0x4A, 0x7F, 0xD7, 0xFF)
+	menuDeco.Color = rl.Color{0x4A, 0x7F, 0xD7, 0xFF}
 	menuDeco.FadeIfUnselected = false
 	menuDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	menuDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
@@ -139,7 +139,7 @@ func NewSelectScreen() *SelectScreen {
 	songDeco := NewMenuItem()
 	songDeco.Type = MenuItemDeco
 	songDeco.Name = "Songs"
-	songDeco.Color = Color255(0xF4, 0x6F, 0xAD, 0xFF)
+	songDeco.Color = rl.Color{0xF4, 0x6F, 0xAD, 0xFF}
 	songDeco.FadeIfUnselected = false
 	songDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	songDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
@@ -267,7 +267,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		pathImg := RenderUnicodeText(
 			collection.BasePath,
-			desiredFont, ss.PathFontSize, Color255(255, 255, 255, 255),
+			desiredFont, ss.PathFontSize, rl.Color{255, 255, 255, 255},
 		)
 
 		pathTex := rl.LoadTextureFromImage(pathImg)

@@ -219,7 +219,7 @@ func NewGameScreen() *GameScreen {
 	{
 		whiteMenuItem := func() *MenuItem {
 			item := NewMenuItem()
-			item.Color = Col(1, 1, 1, 1)
+			item.Color = rl.White
 			item.Fade = 0.63
 			return item
 		}
@@ -1318,88 +1318,89 @@ func (gs *GameScreen) Draw() {
 
 	// NOTE : I guess I could precalculate these and have this as members
 	// But I have a strong feeling that we will need to dynamically change these at runtime in future
-	noteFill := [4]Color{
-		Color255(0xBA, 0x6E, 0xCE, 0xFF),
-		Color255(0x53, 0xBE, 0xFF, 0xFF),
-		Color255(0x63, 0xD1, 0x92, 0xFF),
-		Color255(0xFA, 0x4F, 0x55, 0xFF),
+	noteFill := [4]rl.Color{
+		{0xBA, 0x6E, 0xCE, 0xFF},
+		{0x53, 0xBE, 0xFF, 0xFF},
+		{0x63, 0xD1, 0x92, 0xFF},
+		{0xFA, 0x4F, 0x55, 0xFF},
 	}
 
-	noteStroke := [4]Color{}
+	noteStroke := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[2] *= 0.1
-		hsv[1] *= 0.3
+		hsv := rl.ColorToHSV(c)
+		hsv.Z *= 0.1
+		hsv.Y *= 0.3
 
-		noteStroke[i] = FromHSV(hsv)
+		noteStroke[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillLight := [4]Color{}
+	noteFillLight := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[1] *= 0.3
-		hsv[2] *= 1.9
 
-		if hsv[2] > 100 {
-			hsv[2] = 100
+		hsv := rl.ColorToHSV(c)
+		hsv.Y *= 0.3
+		hsv.Z *= 1.9
+
+		if hsv.Z > 1 {
+			hsv.Z = 1
 		}
 
-		noteFillLight[i] = FromHSV(hsv)
+		noteFillLight[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeLight := [4]Color{}
+	noteStrokeLight := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[2] *= 0.5
+		hsv := rl.ColorToHSV(c)
+		hsv.Z *= 0.5
 
-		noteStrokeLight[i] = FromHSV(hsv)
+		noteStrokeLight[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFlash := [4]Color{}
+	noteFlash := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[1] *= 0.1
-		hsv[2] *= 3
+		hsv := rl.ColorToHSV(c)
+		hsv.Y *= 0.1
+		hsv.Z *= 3
 
-		if hsv[2] > 100 {
-			hsv[2] = 100
+		if hsv.Z > 1 {
+			hsv.Z = 1
 		}
 
-		noteFlash[i] = FromHSV(hsv)
+		noteFlash[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillGrey := [4]Color{}
+	noteFillGrey := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[1] *= 0.3
-		hsv[2] *= 0.7
+		hsv := rl.ColorToHSV(c)
+		hsv.Y *= 0.3
+		hsv.Z *= 0.7
 
-		noteFillGrey[i] = FromHSV(hsv)
+		noteFillGrey[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeGrey := [4]Color{}
+	noteStrokeGrey := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[1] *= 0.2
-		hsv[2] *= 0.3
+		hsv := rl.ColorToHSV(c)
+		hsv.Y *= 0.2
+		hsv.Z *= 0.3
 
-		noteStrokeGrey[i] = FromHSV(hsv)
+		noteStrokeGrey[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillMistake := [4]Color{}
+	noteFillMistake := [4]rl.Color{}
 	for i, c := range noteFill {
-		hsv := ToHSV(c)
-		hsv[1] *= 0.7
-		hsv[2] *= 0.3
+		hsv := rl.ColorToHSV(c)
+		hsv.Y *= 0.7
+		hsv.Z *= 0.3
 
-		noteFillMistake[i] = FromHSV(hsv)
+		noteFillMistake[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeMistake := [4]Color{
-		Color255(0, 0, 0, 255),
-		Color255(0, 0, 0, 255),
-		Color255(0, 0, 0, 255),
-		Color255(0, 0, 0, 255),
+	noteStrokeMistake := [4]rl.Color{
+		{0, 0, 0, 255},
+		{0, 0, 0, 255},
+		{0, 0, 0, 255},
+		{0, 0, 0, 255},
 	}
 
 	// ============================================
@@ -1495,15 +1496,15 @@ func (gs *GameScreen) Draw() {
 			DrawNoteArrow(x, y, scale, dir, fill, stroke)
 
 			glow := noteFill[dir]
-			glow.A = glowT * 0.5
+			glow.A = uint8(glowT * 0.5 * 255)
 			DrawNoteGlow(x, y, scale, dir, glow)
 		}
 
 		// draw flash
 		if !gs.Pstates[player].IsHoldingBadKey[dir] && flashT >= 0 {
-			color := Color{}
+			color := rl.Color{}
 
-			color = Col(noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, flashT)
+			color = rl.Color{noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, uint8(flashT * 255)}
 
 			DrawNoteArrow(x, y, scale*1.1, dir, color, color)
 		}
@@ -1527,10 +1528,10 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 		for player := 0; player <= 1; player++ {
-			color := Col(0.5, 0.5, 0.5, 1.0)
+			color := Col01(0.5, 0.5, 0.5, 1.0)
 
 			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] && !gs.positionChangedWhilePaused {
-				color = Col(1, 0, 0, 1)
+				color = rl.Color{255, 0, 0, 255}
 			}
 
 			var x, y float32
@@ -1691,7 +1692,7 @@ func (gs *GameScreen) Draw() {
 				DrawNoteArrow(
 					gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
 					GSC.NotesSize, miss.Direction,
-					Col(0, 0, 0, 0), Col(1, 0, 0, 1),
+					rl.Color{0, 0, 0, 0}, rl.Color{255, 0, 0, 255},
 				)
 			}
 		}
@@ -1841,13 +1842,13 @@ type SustainColor struct {
 	Begin time.Duration
 	End   time.Duration
 
-	Color Color
+	Color rl.Color
 }
 
 func (gs *GameScreen) DrawSustainBar(
 	player int, dir NoteDir,
 	from, to time.Duration,
-	baseColor Color,
+	baseColor rl.Color,
 	otherColors []SustainColor,
 	fromOffset float32, toOffset float32,
 ) {
@@ -1901,7 +1902,7 @@ func (gs *GameScreen) DrawSustainBar(
 		}
 	}
 
-	drawLineWithSustainTex(fromV, toV, GSC.SustainBarWidth, baseColor.ToRlColor())
+	drawLineWithSustainTex(fromV, toV, GSC.SustainBarWidth, baseColor)
 
 	durationF := float32(duration)
 
@@ -1920,11 +1921,11 @@ func (gs *GameScreen) DrawSustainBar(
 		bv := rl.Vector2Lerp(fromV, toV, float32(b-from)/durationF)
 		ev := rl.Vector2Lerp(fromV, toV, float32(e-from)/durationF)
 
-		drawLineWithSustainTex(bv, ev, GSC.SustainBarWidth, c.Color.ToRlColor())
+		drawLineWithSustainTex(bv, ev, GSC.SustainBarWidth, c.Color)
 	}
 }
 
-func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
+func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c rl.Color) {
 	rl.BeginBlendMode(rl.BlendAddColors)
 
 	arrowH := ArrowsStrokeSprite.Height
@@ -1949,12 +1950,12 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c Color) {
 		Width: glowW, Height: glowH,
 	}
 
-	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, c.ToImageRGBA())
+	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, PreMultiplyAlpha(c))
 
 	rl.EndBlendMode()
 }
 
-func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke Color) {
+func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke rl.Color) {
 	texW := ArrowsStrokeSprite.Width
 	texH := ArrowsStrokeSprite.Height
 
@@ -2007,8 +2008,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, fill.ToImageRGBA())
-	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, stroke.ToImageRGBA())
+	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, PreMultiplyAlpha(fill))
+	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, PreMultiplyAlpha(stroke))
 
 	rl.EndBlendMode()
 }
@@ -2286,8 +2287,8 @@ func (gs *GameScreen) DrawRewindHighlight() {
 
 		t *= 0.1
 
-		col1 := Col(0, 0, 0, t)
-		col2 := Col(0, 0, 0, 0)
+		col1 := rl.Color{0, 0, 0, uint8(255 * t)}
+		col2 := rl.Color{}
 
 		if TheOptions.DownScroll {
 			col1, col2 = col2, col1
@@ -2298,7 +2299,7 @@ func (gs *GameScreen) DrawRewindHighlight() {
 
 		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 		rl.DrawRectangleGradientV(
-			i32(x), 0, i32(width), SCREEN_HEIGHT, col1.ToImageRGBA(), col2.ToImageRGBA(),
+			i32(x), 0, i32(width), SCREEN_HEIGHT, PreMultiplyAlpha(col1), PreMultiplyAlpha(col2),
 		)
 		rl.EndBlendMode()
 	}

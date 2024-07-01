@@ -55,8 +55,8 @@ type MenuItem struct {
 	SizeRegular  float32
 	SizeSelected float32
 
-	Color       Color
-	StrokeColor Color
+	Color       rl.Color
+	StrokeColor rl.Color
 	StrokeWidth float32
 
 	// transparency when it's unselected
@@ -101,16 +101,16 @@ type MenuItem struct {
 	// whether if toggle item will use checkbox or < yes, no >
 	ToggleStyleCheckBox bool
 
-	CheckedBoxColor   Color
-	UncheckedBoxColor Color
+	CheckedBoxColor   rl.Color
+	UncheckedBoxColor rl.Color
 
-	CheckmarkColor Color
+	CheckmarkColor rl.Color
 
-	KeyColorRegular  Color
-	KeyColorSelected Color
+	KeyColorRegular  rl.Color
+	KeyColorSelected rl.Color
 
-	KeyColorStrokeRegular  Color
-	KeyColorStrokeSelected Color
+	KeyColorStrokeRegular  rl.Color
+	KeyColorStrokeSelected rl.Color
 	KeyStrokeWidthRegular  float32
 	KeyStrokeWidthSelected float32
 
@@ -130,7 +130,7 @@ var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
 	SizeSelected: 80,
 
-	Color: Col(0, 0, 0, 1),
+	Color: rl.Color{0, 0, 0, 255},
 
 	Fade:             0.35,
 	FadeIfUnselected: true,
@@ -140,15 +140,15 @@ var MenuItemDefaults = MenuItem{
 	BottomMargin:       30,
 	SelectedLeftMargin: 10,
 
-	CheckedBoxColor:   Color255(0x79, 0xE4, 0xAF, 0xFF),
-	UncheckedBoxColor: Color255(0xD1, 0xD1, 0xD1, 0xFF),
+	CheckedBoxColor:   rl.Color{0x79, 0xE4, 0xAF, 0xFF},
+	UncheckedBoxColor: rl.Color{0xD1, 0xD1, 0xD1, 0xFF},
 
-	CheckmarkColor: Color255(0xFF, 0xFF, 0xFF, 0xFF),
+	CheckmarkColor: rl.Color{0xFF, 0xFF, 0xFF, 0xFF},
 
-	KeyColorRegular:  Color255(0x00, 0x00, 0x00, 200),
-	KeyColorSelected: Color255(0xFF, 0xFF, 0xFF, 0xFF),
+	KeyColorRegular:  rl.Color{0x00, 0x00, 0x00, 200},
+	KeyColorSelected: rl.Color{0xFF, 0xFF, 0xFF, 0xFF},
 
-	KeyColorStrokeSelected: Color255(0, 0, 0, 0xFF),
+	KeyColorStrokeSelected: rl.Color{0, 0, 0, 0xFF},
 
 	KeyStrokeWidthSelected: 10,
 }
@@ -249,7 +249,7 @@ func getCheckBoxTextureWH() (float32, float32) {
 }
 
 // Get check box texture drawn with specified colors.
-func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl.Texture2D {
+func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor rl.Color) rl.Texture2D {
 	tm := &TheMenuResources
 
 	flipY := rl.MatrixIdentity()
@@ -268,14 +268,14 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor Color) rl
 		CheckBoxBox,
 		rl.Rectangle{0, 0, f32(CheckBoxBox.Width), f32(CheckBoxBox.Height)},
 		flipY,
-		boxColor.ToImageRGBA())
+		PreMultiplyAlpha(boxColor))
 
 	if checked {
 		DrawSpriteTransfromed(
 			CheckBoxMark, spriteN,
 			rl.Rectangle{0, 0, CheckBoxMark.Width, CheckBoxMark.Height},
 			flipY,
-			markColor.ToImageRGBA())
+			PreMultiplyAlpha(markColor))
 	}
 
 	rl.EndBlendMode()
@@ -289,7 +289,7 @@ func getUIarrowsTextureWH() (float32, float32) {
 	return f32(tm.UIarrowRenderTex.Texture.Width), f32(tm.UIarrowRenderTex.Texture.Height)
 }
 
-func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
+func getUIarrowsTexture(drawLeft bool, fill, stroke rl.Color) rl.Texture2D {
 	tm := &TheMenuResources
 
 	fillSpriteN := UIarrowRightFill
@@ -316,13 +316,13 @@ func getUIarrowsTexture(drawLeft bool, fill, stroke Color) rl.Texture2D {
 		UIarrowsSprite, fillSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		fill.ToImageRGBA())
+		PreMultiplyAlpha(fill))
 
 	DrawSpriteTransfromed(
 		UIarrowsSprite, strokeSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		stroke.ToImageRGBA())
+		PreMultiplyAlpha(stroke))
 
 	rl.EndBlendMode()
 	FnfEndTextureMode()
@@ -816,14 +816,14 @@ func (md *MenuDrawer) Draw() {
 	xDrawOffset := float32(0)
 	yDrawOffset := float32(0)
 
-	fadeC := func(col Color, fade float64) Color {
-		col.A *= fade
+	fadeC := func(col rl.Color, fade float64) rl.Color {
+		col.A = uint8(f64(col.A) * fade)
 		return col
 	}
 
 	screenRect := GetScreenRect()
 
-	drawText := func(text string, fontSize, scale float32, fill, stroke Color, strokeWidth float32) float32 {
+	drawText := func(text string, fontSize, scale float32, fill, stroke rl.Color, strokeWidth float32) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
 		pos := rl.Vector2{
@@ -845,11 +845,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill.ToRlColor())
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill)
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				fill.ToImageRGBA(), stroke.ToImageRGBA(),
+				PreMultiplyAlpha(fill), PreMultiplyAlpha(stroke),
 				strokeWidth,
 			)
 		}
@@ -858,7 +858,7 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	drawTextCentered := func(
-		text string, fontSize, scale, width float32, fill, stroke Color, strokeWidth float32) float32 {
+		text string, fontSize, scale, width float32, fill, stroke rl.Color, strokeWidth float32) float32 {
 
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
@@ -884,11 +884,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill.ToRlColor())
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill)
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				fill.ToImageRGBA(), stroke.ToImageRGBA(),
+				PreMultiplyAlpha(fill), PreMultiplyAlpha(stroke),
 				strokeWidth,
 			)
 		}
@@ -925,7 +925,7 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	drawArrow := func(
-		drawLeft bool, height, scale float32, fill, stroke Color, alpha float64) float32 {
+		drawLeft bool, height, scale float32, fill, stroke rl.Color, alpha float64) float32 {
 
 		w, h := getUIarrowsTextureWH()
 
@@ -936,12 +936,12 @@ func (md *MenuDrawer) Draw() {
 		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
 
 		return drawImage(
-			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, Col(1, 1, 1, alpha).ToRlColor(),
+			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, rl.Color{255, 255, 255, uint8(alpha * 255)},
 		)
 	}
 
 	drawCheckBox := func(
-		checked bool, spriteN int, height, scale float32, boxColor, markColor Color, alpha float64) float32 {
+		checked bool, spriteN int, height, scale float32, boxColor, markColor rl.Color, alpha float64) float32 {
 
 		w, h := getCheckBoxTextureWH()
 
@@ -953,7 +953,7 @@ func (md *MenuDrawer) Draw() {
 		return drawImage(
 			checkBoxTex, RectWH(checkBoxTex.Width, checkBoxTex.Height),
 			height, scale,
-			Col(1, 1, 1, alpha).ToRlColor(),
+			Col01(1, 1, 1, f32(alpha)),
 		)
 	}
 
@@ -1090,10 +1090,10 @@ func (md *MenuDrawer) Draw() {
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					if keyStrokeWidth > 0.5 {
-						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, keyColorStroke.ToRlColor())
+						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, keyColorStroke)
 					}
 
-					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor.ToRlColor())
+					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor)
 					updateItemBound(strikeRect)
 
 					xAdvance += max(desiredWidth, keyNameSize.X)
@@ -1110,8 +1110,8 @@ func (md *MenuDrawer) Draw() {
 			// =====================================
 			switch item.Type {
 			case MenuItemToggle, MenuItemList, MenuItemNumber:
-				arrowFill := Col(1, 1, 1, 1)
-				arrowStroke := Col(0, 0, 0, 1)
+				arrowFill := rl.Color{255, 255, 255, 255}
+				arrowStroke := rl.Color{0, 0, 0, 255}
 
 				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke, fade)
 

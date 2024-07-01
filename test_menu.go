@@ -21,7 +21,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testDeco.Name = "TestMenu"
 	testDeco.Type = MenuItemDeco
 	testDeco.FadeIfUnselected = false
-	testDeco.Color = Color255(255, 195, 130, 255)
+	testDeco.Color = rl.Color{255, 195, 130, 255}
 	testDeco.SizeRegular = testDeco.SizeRegular * 1.5
 	mt.Menu.AddItems(testDeco)
 
