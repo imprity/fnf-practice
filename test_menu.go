@@ -2,20 +2,28 @@ package main
 
 import (
 	rl "github.com/gen2brain/raylib-go/raylib"
-	"time"
 )
 
 var _ = rl.KeyA
 
-type MenuTestScreen struct {
-	Menu *MenuDrawer
-
-	InputId InputGroupId
+/*
+func init() {
+	OverrideFirstScreen(func() Screen {
+		return NewTestMenu()
+	})
 }
+*/
 
-func NewMenuTestScreen() *MenuTestScreen {
-	mt := new(MenuTestScreen)
-	mt.Menu = NewMenuDrawer()
+func NewTestMenu() *MenuDrawer {
+	menu := NewMenuDrawer()
+
+	menu.DrawBackground = true
+
+	menu.Background = MenuBackground{
+		Texture: GameScreenBg,
+		OffsetX: 0, OffsetY: 0,
+		Tint: rl.White,
+	}
 
 	testDeco := NewMenuItem()
 	testDeco.Name = "TestMenu"
@@ -23,7 +31,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testDeco.FadeIfUnselected = false
 	testDeco.Color = rl.Color{255, 195, 130, 255}
 	testDeco.SizeRegular = testDeco.SizeRegular * 1.5
-	mt.Menu.AddItems(testDeco)
+	menu.AddItems(testDeco)
 
 	testTrigger := NewMenuItem()
 	testTrigger.Name = "trigger item"
@@ -31,7 +39,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testTrigger.TriggerCallback = func() {
 		FnfLogger.Println("item triggered")
 	}
-	mt.Menu.AddItems(testTrigger)
+	menu.AddItems(testTrigger)
 
 	testToggle := NewMenuItem()
 	testToggle.Name = "toggle item"
@@ -40,7 +48,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testToggle.ToggleCallback = func(bValue bool) {
 		FnfLogger.Printf("toggle %v\n", bValue)
 	}
-	mt.Menu.AddItems(testToggle)
+	menu.AddItems(testToggle)
 
 	testCheckbox := NewMenuItem()
 	testCheckbox.Name = "checkbox item"
@@ -49,7 +57,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testCheckbox.ToggleCallback = func(bValue bool) {
 		FnfLogger.Printf("checkbox %v\n", bValue)
 	}
-	mt.Menu.AddItems(testCheckbox)
+	menu.AddItems(testCheckbox)
 
 	testNumber := NewMenuItem()
 	testNumber.Name = "number item"
@@ -62,7 +70,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testNumber.NumberCallback = func(nValue float32) {
 		FnfLogger.Printf("number : %v", nValue)
 	}
-	mt.Menu.AddItems(testNumber)
+	menu.AddItems(testNumber)
 
 	testList := NewMenuItem()
 	testList.Name = "list item"
@@ -71,7 +79,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testList.ListCallback = func(selected int, list []string) {
 		FnfLogger.Printf("list selected : %v", list[selected])
 	}
-	mt.Menu.AddItems(testList)
+	menu.AddItems(testList)
 
 	testKey := NewMenuItem()
 	testKey.Name = "key item"
@@ -80,7 +88,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testKey.KeyCallback = func(index int, prevKey, newKey int32) {
 		FnfLogger.Printf("%vth key changed from %v to %v", index, GetKeyName(prevKey), GetKeyName(newKey))
 	}
-	mt.Menu.AddItems(testKey)
+	menu.AddItems(testKey)
 
 	testKeyMany := NewMenuItem()
 	testKeyMany.Name = "key item many"
@@ -90,7 +98,7 @@ func NewMenuTestScreen() *MenuTestScreen {
 	testKeyMany.KeyCallback = func(index int, prevKey, newKey int32) {
 		FnfLogger.Printf("%vth key changed from %v to %v", index, GetKeyName(prevKey), GetKeyName(newKey))
 	}
-	mt.Menu.AddItems(testKeyMany)
+	menu.AddItems(testKeyMany)
 
 	{
 		testKeyMany := NewMenuItem()
@@ -102,25 +110,8 @@ func NewMenuTestScreen() *MenuTestScreen {
 		testKeyMany.KeyCallback = func(index int, prevKey, newKey int32) {
 			FnfLogger.Printf("%vth key changed from %v to %v", index, GetKeyName(prevKey), GetKeyName(newKey))
 		}
-		mt.Menu.AddItems(testKeyMany)
+		menu.AddItems(testKeyMany)
 	}
 
-	return mt
-}
-
-func (mt *MenuTestScreen) Update(deltaTime time.Duration) {
-	mt.Menu.Update(deltaTime)
-}
-
-func (mt *MenuTestScreen) Draw() {
-	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{100, 100, 100, 255})
-
-	mt.Menu.Draw()
-}
-
-func (mt *MenuTestScreen) BeforeScreenTransition() {
-}
-
-func (mt *MenuTestScreen) Free() {
-	// pass
+	return menu
 }

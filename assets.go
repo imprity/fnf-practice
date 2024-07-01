@@ -72,6 +72,7 @@ var (
 var PopupBg rl.Texture2D
 
 var BlackPixel rl.Texture2D
+var WhitePixel rl.Texture2D
 
 var (
 	imgsToUnload  []*rl.Image
@@ -280,6 +281,13 @@ func loadAssets(isReload bool) {
 
 	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 	texsToUnload = append(texsToUnload, BlackPixel)
+
+	// create white pixel
+	whitePixelImg := rl.GenImageColor(2, 2, rl.Color{255, 255, 255, 255})
+	imgsToUnload = append(imgsToUnload, whitePixelImg)
+
+	WhitePixel = rl.LoadTextureFromImage(whitePixelImg)
+	texsToUnload = append(texsToUnload, WhitePixel)
 
 	if !isReload {
 		FontRegular = loadFont(fontRegularData, "FontRegular", 128, ".ttf")

@@ -407,7 +407,6 @@ func DrawTextureVertices(
 	}
 }
 
-// TODO : refactor this to use mat2
 func DrawTextureTransfromed(
 	texture rl.Texture2D,
 	srcRect rl.Rectangle,

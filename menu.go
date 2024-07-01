@@ -342,12 +342,20 @@ const (
 
 type MenuBackground struct {
 	Texture rl.Texture2D
+
 	OffsetX float32
 	OffsetY float32
+
+	Tint rl.Color
+
+	BlendMode rl.BlendMode
 }
 
 type MenuDrawer struct {
 	InputId InputGroupId
+
+	Background     MenuBackground
+	DrawBackground bool
 
 	selectedIndex int
 
@@ -758,6 +766,15 @@ func (md *MenuDrawer) calculateSelectionY(index int) float32 {
 }
 
 func (md *MenuDrawer) Draw() {
+	if md.DrawBackground {
+		rl.BeginBlendMode(md.Background.BlendMode)
+
+		DrawPatternBackground(
+			md.Background.Texture, md.Background.OffsetX, md.Background.OffsetY, md.Background.Tint)
+
+		rl.EndBlendMode()
+	}
+
 	if len(md.items) <= 0 {
 		return
 	}
@@ -896,7 +913,7 @@ func (md *MenuDrawer) Draw() {
 		return width
 	}
 
-	drawCheck := func(imgW, imgH, height, scale float32) (rl.Rectangle, bool) {
+	drawCheck := func(imgW, imgH, height, scale float32) (rl.Rectangle, float32, bool) {
 		wScale := height / imgH
 
 		dstRect := rl.Rectangle{
@@ -909,19 +926,19 @@ func (md *MenuDrawer) Draw() {
 
 		updateItemBound(dstRect)
 
-		return dstRect, rl.CheckCollisionRecs(screenRect, dstRect)
+		return dstRect, imgW * wScale, rl.CheckCollisionRecs(screenRect, dstRect)
 	}
 
 	drawImage := func(
 		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
 
-		rect, draw := drawCheck(srcRect.Width, srcRect.Height, height, scale)
+		rect, advance, draw := drawCheck(srcRect.Width, srcRect.Height, height, scale)
 
 		if draw {
 			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, col)
 		}
 
-		return rect.Width
+		return advance
 	}
 
 	drawArrow := func(
@@ -929,8 +946,8 @@ func (md *MenuDrawer) Draw() {
 
 		w, h := getUIarrowsTextureWH()
 
-		if rect, draw := drawCheck(w, h, height, scale); !draw {
-			return rect.Width
+		if _, advance, draw := drawCheck(w, h, height, scale); !draw {
+			return advance
 		}
 
 		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
@@ -945,8 +962,8 @@ func (md *MenuDrawer) Draw() {
 
 		w, h := getCheckBoxTextureWH()
 
-		if rect, draw := drawCheck(w, h, height, scale); !draw {
-			return rect.Width
+		if _, advance, draw := drawCheck(w, h, height, scale); !draw {
+			return advance
 		}
 
 		checkBoxTex := getCheckBoxTexture(checked, spriteN, boxColor, markColor)

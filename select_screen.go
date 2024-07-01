@@ -362,6 +362,9 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 			ss.DeleteMenu.AddItems(deleteItem)
 		}
 	}
+
+	// make delete menu select 0
+	ss.DeleteMenu.SelectItemAt(0, false)
 }
 
 func (ss *SelectScreen) HideDeleteMenu(deleteMarked bool) {
