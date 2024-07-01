@@ -48,33 +48,43 @@ func LoadSdfFontFromMemory(
 }
 
 var TheSdfDrawer struct {
-	SdfShader rl.Shader
+	OutlineShader      rl.Shader
+	OutlineUniform0Loc int32
+	OutlineUniform1Loc int32
 
-	Uniform0Loc   int32
-	Uniform1Loc   int32
+	FillShader      rl.Shader
+	FillUniform0Loc int32
+
 	RenderTexture rl.RenderTexture2D
 }
 
+//go:embed shaders/sdf_outline.fs
+var sdfOutlineShaderFsCode string
+
 //go:embed shaders/sdf.fs
-var sdfShaderFsCode string
+var sdfFillShaderFsCode string
 
 func InitSdfFontDrawer() {
 	ts := &TheSdfDrawer
 
-	ts.SdfShader = rl.LoadShaderFromMemory("", sdfShaderFsCode)
-	ts.Uniform0Loc = rl.GetShaderLocation(ts.SdfShader, "uValues0")
-	ts.Uniform1Loc = rl.GetShaderLocation(ts.SdfShader, "uValues1")
+	ts.OutlineShader = rl.LoadShaderFromMemory("", sdfOutlineShaderFsCode)
+	ts.OutlineUniform0Loc = rl.GetShaderLocation(ts.OutlineShader, "uValues0")
+	ts.OutlineUniform1Loc = rl.GetShaderLocation(ts.OutlineShader, "uValues1")
+
+	ts.FillShader = rl.LoadShaderFromMemory("", sdfFillShaderFsCode)
+	ts.FillUniform0Loc = rl.GetShaderLocation(ts.FillShader, "uValues0")
+
 	ts.RenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 }
 
 func FreeSdfFontDrawer() {
 	ts := &TheSdfDrawer
-	rl.UnloadShader(ts.SdfShader)
+	rl.UnloadShader(ts.OutlineShader)
+	rl.UnloadShader(ts.FillShader)
 	rl.UnloadRenderTexture(ts.RenderTexture)
 }
 
 // Tint expects alpha premultiplied color
-/* TODO : uncomment this
 func DrawTextSdf(
 	font SdfFont,
 	text string,
@@ -88,17 +98,15 @@ func DrawTextSdf(
 	uniform := make([]float32, 4)
 	uniform[0] = f32(font.SdfOnEdgeValue) / 255
 
-	rl.SetShaderValue(ts.SdfShader, ts.UniformLoc, uniform, rl.ShaderUniformVec4)
-
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-	rl.BeginShaderMode(ts.SdfShader)
+	rl.BeginShaderMode(ts.FillShader)
+	rl.SetShaderValue(ts.FillShader, ts.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
 
 	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
 
 	rl.EndShaderMode()
 	rl.EndBlendMode()
 }
-*/
 
 // This function ignores text outside of game screen.
 // May need to change later if there is a need to draw text at some big offscreen buffer
@@ -148,19 +156,19 @@ func DrawTextSdfOutlined(
 	// ===============================
 	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-	rl.BeginShaderMode(ts.SdfShader)
+	rl.BeginShaderMode(ts.OutlineShader)
 
 	uniform0 := make([]float32, 4)
 	uniform0[0] = f32(font.SdfOnEdgeValue) / 255
 	uniform0[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
-	rl.SetShaderValue(ts.SdfShader, ts.Uniform0Loc, uniform0, rl.ShaderUniformVec4)
+	rl.SetShaderValue(ts.OutlineShader, ts.OutlineUniform0Loc, uniform0, rl.ShaderUniformVec4)
 
 	uniform1 := make([]float32, 4)
 	uniform1[0] = f32(stroke.R) / 255
 	uniform1[1] = f32(stroke.G) / 255
 	uniform1[2] = f32(stroke.B) / 255
 	uniform1[3] = f32(stroke.A) / 255
-	rl.SetShaderValue(ts.SdfShader, ts.Uniform1Loc, uniform1, rl.ShaderUniformVec4)
+	rl.SetShaderValue(ts.OutlineShader, ts.OutlineUniform1Loc, uniform1, rl.ShaderUniformVec4)
 
 	intersect := RectIntersect(textRect, GetScreenRect())
 
