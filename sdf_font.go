@@ -90,7 +90,7 @@ func DrawTextSdf(
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
-	tint FnfColor,
+	tint rl.Color,
 ) {
 	ts := &TheSdfDrawer
 
@@ -100,7 +100,7 @@ func DrawTextSdf(
 	rl.BeginShaderMode(ts.FillShader)
 	rl.SetShaderValue(ts.FillShader, ts.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
 
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, ToRlColorPremult(tint))
+	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
 
 	rl.EndShaderMode()
 }
@@ -113,7 +113,7 @@ func DrawTextSdfOutlined(
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
-	fill, stroke FnfColor,
+	fill, stroke rl.Color,
 	thick float32,
 ) {
 	if fontSize < 1 {

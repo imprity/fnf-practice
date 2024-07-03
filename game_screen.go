@@ -219,7 +219,7 @@ func NewGameScreen() *GameScreen {
 	{
 		whiteMenuItem := func() *MenuItem {
 			item := NewMenuItem()
-			item.Color = FnfColor{255,255,255,255}
+			item.Color = FnfColor{255, 255, 255, 255}
 			item.Fade = 0.63
 			return item
 		}
@@ -1292,7 +1292,7 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 }
 
 func (gs *GameScreen) Draw() {
-	DrawPatternBackground(GameScreenBg, 0, 0, FnfColor{255, 255, 255, 255})
+	DrawPatternBackground(GameScreenBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	if !gs.IsSongLoaded {
 		return
@@ -1764,7 +1764,7 @@ func (gs *GameScreen) Draw() {
 				alpha = t
 			}
 
-			DrawTextureTransfromed(tex, texRect, mat, Col01(1,1,1,alpha))
+			DrawTextureTransfromed(tex, texRect, mat, ToRlColorPremult(Col01(1, 1, 1, alpha)))
 		}
 
 		for range dequeue {
@@ -1940,7 +1940,7 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c FnfColor) {
 		Width: glowW, Height: glowH,
 	}
 
-	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, c)
+	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, ToRlColorPremult(c))
 
 	FnfEndBlendMode()
 }
@@ -1996,8 +1996,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0),
 	)
 
-	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, fill)
-	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, stroke)
+	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, ToRlColorPremult(fill))
+	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, ToRlColorPremult(stroke))
 }
 
 func (gs *GameScreen) DrawBigBookMark() {
@@ -2553,13 +2553,13 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCornersLines(
 		buttonRect,
 		buttonRoundnessArray, buttonSegmentsArray,
-		lineThick, FnfColor{0, 0, 0, 255},
+		lineThick, ToRlColorPremult(FnfColor{0, 0, 0, 255}),
 	)
 
 	DrawRectangleRoundedCornersLines(
 		textBoxRect,
 		boxRoundnessArray, boxSegmentsArray,
-		lineThick, FnfColor{0, 0, 0, 255},
+		lineThick, ToRlColorPremult(FnfColor{0, 0, 0, 255}),
 	)
 
 	// ==========================
@@ -2570,7 +2570,7 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCorners(
 		textBoxRect,
 		boxRoundnessArray, boxSegmentsArray,
-		FnfColor{255, 255, 255, 255},
+		ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 	)
 
 	// draw text
@@ -2601,7 +2601,7 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCorners(
 		buttonRect,
 		buttonRoundnessArray, buttonSegmentsArray,
-		FnfColor{255, 255, 255, 255},
+		ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 	)
 
 	// draw button text
@@ -2803,7 +2803,7 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 	}
 
 	DrawTextureVertices(
-		SustainTex, topSrcRect, topVertices, color,
+		SustainTex, topSrcRect, topVertices, ToRlColorPremult(color),
 	)
 
 	// draw the middle part
@@ -2849,7 +2849,7 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 						end1,
 						start1,
 					},
-					color,
+					ToRlColorPremult(color),
 				)
 			} else {
 				DrawTextureUvVertices(
@@ -2866,7 +2866,7 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 						end1,
 						start1,
 					},
-					color,
+					ToRlColorPremult(color),
 				)
 			}
 
@@ -2898,11 +2898,11 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 				bottomVertices[3],
 				start1,
 			},
-			color,
+			ToRlColorPremult(color),
 		)
 	}
 
 	DrawTextureVertices(
-		SustainTex, bottomSrcRect, bottomVertices, color,
+		SustainTex, bottomSrcRect, bottomVertices, ToRlColorPremult(color),
 	)
 }

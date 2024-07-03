@@ -475,7 +475,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 }
 
 func (ss *SelectScreen) Draw() {
-	DrawPatternBackground(MenuScreenBg, 0, 0, FnfColor{255, 255, 255, 255})
+	DrawPatternBackground(MenuScreenBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	drawPathText := func() {
 		for id, tex := range ss.PathDecoToPathTex {
@@ -524,7 +524,7 @@ func (ss *SelectScreen) Draw() {
 
 			DrawTextSdfOutlined(
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
-				FnfColor{255, 255, 255, 255}, FnfColor{0, 0, 0, 255}, 4,
+				ToRlColorPremult(FnfColor{255, 255, 255, 255}), ToRlColorPremult(FnfColor{0, 0, 0, 255}), 4,
 			)
 		}
 	} else {

@@ -7,7 +7,7 @@ import (
 
 type FnfColor rl.Color
 
-func Col(r, g, b, a uint8) FnfColor{
+func Col(r, g, b, a uint8) FnfColor {
 	return FnfColor{r, g, b, a}
 }
 
@@ -15,16 +15,15 @@ func Col01(r, g, b, a float32) FnfColor {
 	return FnfColor(rl.ColorFromNormalized(rl.Vector4{r, g, b, a}))
 }
 
-
 func Col01Vec4(v rl.Vector4) FnfColor {
 	return FnfColor(rl.ColorFromNormalized(v))
 }
 
-func ColFromHSV(h, s, v float32) FnfColor{
+func ColFromHSV(h, s, v float32) FnfColor {
 	return FnfColor(rl.ColorFromHSV(h, s, v))
 }
 
-func ColToHSV(c FnfColor) rl.Vector3{
+func ColToHSV(c FnfColor) rl.Vector3 {
 	return rl.Vector3(rl.ColorToHSV(rl.Color(c)))
 }
 
@@ -56,6 +55,9 @@ func ToRlColorPremult(c FnfColor) rl.Color {
 	}
 }
 
+func ToRlColor(c FnfColor) rl.Color {
+	return rl.Color(c)
+}
 
 // Copy pasted from https://bottosson.github.io/posts/oklab/
 func ColToOkLab(c FnfColor) rl.Vector3 {
@@ -99,6 +101,6 @@ func ColFromOkLab(lab rl.Vector3) FnfColor {
 	return Col01Vec4(cv)
 }
 
-func FnfEndBlendMode(){
+func FnfEndBlendMode() {
 	rl.SetBlendMode(i32(rl.BlendAlphaPremultiply))
 }

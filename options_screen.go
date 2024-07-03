@@ -283,7 +283,7 @@ func (op *OptionsScreen) Update(deltaTime time.Duration) {
 }
 
 func (op *OptionsScreen) Draw() {
-	DrawPatternBackground(MenuScreenSimpleBg, 0, 0, FnfColor{255, 255, 255, 255})
+	DrawPatternBackground(MenuScreenSimpleBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	op.Menu.Draw()
 }

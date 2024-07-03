@@ -91,7 +91,7 @@ func updateTransitionTexture() {
 	if timeT < 0 || timeT > 1 {
 		if manager.ShowTransition {
 			FnfBeginTextureMode(manager.TransitionTexture)
-			DrawPatternBackground(manager.ImgTexture, 0, 0, FnfColor{255, 255, 255, 255})
+			DrawPatternBackground(manager.ImgTexture, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 			FnfEndTextureMode()
 		} else {
 			FnfBeginTextureMode(manager.TransitionTexture)

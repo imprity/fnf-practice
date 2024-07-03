@@ -22,7 +22,7 @@ func NewTestMenu() *MenuDrawer {
 	menu.Background = MenuBackground{
 		Texture: GameScreenBg,
 		OffsetX: 0, OffsetY: 0,
-		Tint: FnfColor{255,255,255,255},
+		Tint: rl.Color{255, 255, 255, 255},
 	}
 
 	testDeco := NewMenuItem()

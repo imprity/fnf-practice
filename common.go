@@ -270,7 +270,7 @@ func RectExpand(rect rl.Rectangle, amount float32) rl.Rectangle {
 func DrawPatternBackground(
 	texture rl.Texture2D,
 	offsetX, offsetY float32,
-	fnfTint FnfColor,
+	tint rl.Color,
 ) {
 	/*
 		0 -- 3
@@ -280,7 +280,6 @@ func DrawPatternBackground(
 	*/
 
 	if texture.ID > 0 {
-		tint := ToRlColorPremult(fnfTint)
 		rl.SetTextureWrap(texture, rl.WrapRepeat)
 
 		uvEndX := float32(SCREEN_WIDTH) / float32(texture.Width)
@@ -333,10 +332,9 @@ func DrawTextureUvVertices(
 	texture rl.Texture2D,
 	uvs [4]rl.Vector2,
 	vertices [4]rl.Vector2,
-	fnfTint FnfColor,
+	tint rl.Color,
 ) {
 	if texture.ID > 0 {
-		tint := ToRlColorPremult(fnfTint)
 
 		rl.SetTexture(texture.ID)
 		rl.Begin(rl.Quads)
@@ -388,7 +386,7 @@ func DrawTextureVertices(
 	texture rl.Texture2D,
 	srcRect rl.Rectangle,
 	vertices [4]rl.Vector2,
-	tint FnfColor,
+	tint rl.Color,
 ) {
 	if texture.ID > 0 {
 		texW := float32(texture.Width)
@@ -414,7 +412,7 @@ func DrawTextureTransfromed(
 	texture rl.Texture2D,
 	srcRect rl.Rectangle,
 	mat rl.Matrix,
-	tint FnfColor,
+	tint rl.Color,
 ) {
 	vertices := [4]rl.Vector2{
 		{0, 0},
@@ -434,7 +432,7 @@ func DrawTextureTransfromed(
 func drawRectangleRoundedCornersImpl(
 	rec rl.Rectangle,
 	roundness [4]float32, segements [4]int32,
-	col FnfColor, fill bool, lineThick float32,
+	col rl.Color, fill bool, lineThick float32,
 ) {
 
 	for i, r := range roundness {
@@ -518,12 +516,12 @@ func drawRectangleRoundedCornersImpl(
 		r := radius[i]
 
 		if fill {
-			rl.DrawCircleSector(c, r, start, end, segements[i], ToRlColorPremult(col))
+			rl.DrawCircleSector(c, r, start, end, segements[i], col)
 		} else {
 			rl.DrawRing(c,
 				r-lineThick*0.5, r+lineThick*0.5,
 				start, end,
-				segements[i], ToRlColorPremult(col))
+				segements[i], col)
 		}
 	}
 
@@ -568,21 +566,21 @@ func drawRectangleRoundedCornersImpl(
 	ps[0] = rectCenter
 
 	if fill {
-		rl.DrawTriangleFan(ps[:], ToRlColorPremult(col))
+		rl.DrawTriangleFan(ps[:], col)
 	} else {
 		// yes we do some unnecessary calculations but it will be too dirty
 		// if I don't
-		rl.DrawLineEx(ps[1], ps[12], lineThick, ToRlColorPremult(col)) // 11 - 00
-		rl.DrawLineEx(ps[10], ps[9], lineThick, ToRlColorPremult(col)) // 02 - 03
-		rl.DrawLineEx(ps[7], ps[6], lineThick, ToRlColorPremult(col))  // 05 - 06
-		rl.DrawLineEx(ps[4], ps[3], lineThick, ToRlColorPremult(col))  // 08 - 09
+		rl.DrawLineEx(ps[1], ps[12], lineThick, col) // 11 - 00
+		rl.DrawLineEx(ps[10], ps[9], lineThick, col) // 02 - 03
+		rl.DrawLineEx(ps[7], ps[6], lineThick, col)  // 05 - 06
+		rl.DrawLineEx(ps[4], ps[3], lineThick, col)  // 08 - 09
 	}
 }
 
 func DrawRectangleRoundedCorners(
 	rec rl.Rectangle,
 	roundness [4]float32, segements [4]int32,
-	col FnfColor,
+	col rl.Color,
 ) {
 	drawRectangleRoundedCornersImpl(
 		rec, roundness, segements,
@@ -593,7 +591,7 @@ func DrawRectangleRoundedCorners(
 func DrawRectangleRoundedCornersLines(
 	rec rl.Rectangle,
 	roundness [4]float32, segements [4]int32,
-	lineThick float32, col FnfColor,
+	lineThick float32, col rl.Color,
 ) {
 	drawRectangleRoundedCornersImpl(
 		rec, roundness, segements,

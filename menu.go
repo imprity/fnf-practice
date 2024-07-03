@@ -267,14 +267,14 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor FnfColor)
 		CheckBoxBox,
 		rl.Rectangle{0, 0, f32(CheckBoxBox.Width), f32(CheckBoxBox.Height)},
 		flipY,
-		boxColor)
+		ToRlColorPremult(boxColor))
 
 	if checked {
 		DrawSpriteTransfromed(
 			CheckBoxMark, spriteN,
 			rl.Rectangle{0, 0, CheckBoxMark.Width, CheckBoxMark.Height},
 			flipY,
-			markColor)
+			ToRlColorPremult(markColor))
 	}
 
 	FnfEndTextureMode()
@@ -313,13 +313,13 @@ func getUIarrowsTexture(drawLeft bool, fill, stroke FnfColor) rl.Texture2D {
 		UIarrowsSprite, fillSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		fill)
+		ToRlColorPremult(fill))
 
 	DrawSpriteTransfromed(
 		UIarrowsSprite, strokeSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		stroke)
+		ToRlColorPremult(stroke))
 
 	FnfEndTextureMode()
 
@@ -342,7 +342,7 @@ type MenuBackground struct {
 	OffsetX float32
 	OffsetY float32
 
-	Tint FnfColor
+	Tint rl.Color
 
 	BlendMode rl.BlendMode
 }
@@ -829,7 +829,7 @@ func (md *MenuDrawer) Draw() {
 	xDrawOffset := float32(0)
 	yDrawOffset := float32(0)
 
-	fadeC := func(col FnfColor, fade float64) FnfColor{
+	fadeC := func(col FnfColor, fade float64) FnfColor {
 		col.A = uint8(f64(col.A) * fade)
 		return col
 	}
@@ -862,7 +862,7 @@ func (md *MenuDrawer) Draw() {
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				fill, stroke,
+				ToRlColorPremult(fill), ToRlColorPremult(stroke),
 				strokeWidth,
 			)
 		}
@@ -901,7 +901,7 @@ func (md *MenuDrawer) Draw() {
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				fill, stroke,
+				ToRlColorPremult(fill), ToRlColorPremult(stroke),
 				strokeWidth,
 			)
 		}

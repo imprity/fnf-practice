@@ -158,7 +158,7 @@ func loadAssets(isReload bool) {
 
 		return font
 	}
-	_=loadFont
+	_ = loadFont
 
 	// only supports .otf or .ttf
 	// also it can't draw on image
