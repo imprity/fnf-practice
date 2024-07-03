@@ -260,7 +260,7 @@ func main() {
 
 			rl.BeginDrawing()
 			{
-				rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 255}))
+				rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 255}))
 
 				// draw render texture
 				rl.DrawTexturePro(
@@ -269,7 +269,7 @@ func main() {
 					GetScreenRect(),
 					rl.Vector2{},
 					0,
-					ToRlColorPremult(FnfColor{255, 255, 255, 255}),
+					ToRlColor(FnfColor{255, 255, 255, 255}),
 				)
 
 				// draw transition texture
@@ -279,7 +279,7 @@ func main() {
 					GetScreenRect(),
 					rl.Vector2{},
 					0,
-					ToRlColorPremult(FnfColor{255, 255, 255, 255}),
+					ToRlColor(FnfColor{255, 255, 255, 255}),
 				)
 
 				if printDebugMsg {

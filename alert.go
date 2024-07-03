@@ -113,14 +113,14 @@ func DrawAlert() {
 		bgRect.X = SCREEN_WIDTH*0.5 - bgRect.Width*0.5
 		bgRect.Y = offsetY
 
-		rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
+		rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColor(FnfColor{0, 0, 0, 200}))
 
 		textPos := rl.Vector2{bgRect.X + hozMarginScaled, bgRect.Y + vertMarginScaled}
 
 		rl.SetTextLineSpacing(int(fontSizeScaled))
 		rl.DrawTextEx(FontClear,
 			alert.Message, textPos, fontSizeScaled, 0,
-			ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+			ToRlColor(FnfColor{255, 255, 255, 255}))
 
 		offsetY += bgRect.Height + msgInterval
 	}

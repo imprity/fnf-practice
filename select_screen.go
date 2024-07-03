@@ -475,7 +475,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 }
 
 func (ss *SelectScreen) Draw() {
-	DrawPatternBackground(MenuScreenBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	DrawPatternBackground(MenuScreenBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	drawPathText := func() {
 		for id, tex := range ss.PathDecoToPathTex {
@@ -487,12 +487,12 @@ func (ss *SelectScreen) Draw() {
 					Width: SCREEN_WIDTH, Height: bound.Height,
 				}
 
-				rl.DrawRectangleRec(bgRect, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
+				rl.DrawRectangleRec(bgRect, ToRlColor(FnfColor{0, 0, 0, 100}))
 
 				texX := 100
 				texY := bgRect.Y + (bgRect.Height-f32(tex.Height))*0.5
 
-				rl.DrawTexture(tex, i32(texX), i32(texY), ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+				rl.DrawTexture(tex, i32(texX), i32(texY), ToRlColor(FnfColor{255, 255, 255, 255}))
 			}
 		}
 	}
@@ -520,11 +520,11 @@ func (ss *SelectScreen) Draw() {
 			y := float32(20)
 
 			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
-				size, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
+				size, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
 
 			DrawTextSdfOutlined(
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
-				ToRlColorPremult(FnfColor{255, 255, 255, 255}), ToRlColorPremult(FnfColor{0, 0, 0, 255}), 4,
+				ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0, 0, 0, 255}), 4,
 			)
 		}
 	} else {

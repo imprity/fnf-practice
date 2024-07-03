@@ -261,20 +261,20 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor FnfColor)
 
 	FnfBeginTextureMode(tm.CheckBoxRenderTex)
 
-	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
+	rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 
 	DrawTextureTransfromed(
 		CheckBoxBox,
 		rl.Rectangle{0, 0, f32(CheckBoxBox.Width), f32(CheckBoxBox.Height)},
 		flipY,
-		ToRlColorPremult(boxColor))
+		ToRlColor(boxColor))
 
 	if checked {
 		DrawSpriteTransfromed(
 			CheckBoxMark, spriteN,
 			rl.Rectangle{0, 0, CheckBoxMark.Width, CheckBoxMark.Height},
 			flipY,
-			ToRlColorPremult(markColor))
+			ToRlColor(markColor))
 	}
 
 	FnfEndTextureMode()
@@ -307,19 +307,19 @@ func getUIarrowsTexture(drawLeft bool, fill, stroke FnfColor) rl.Texture2D {
 
 	FnfBeginTextureMode(tm.UIarrowRenderTex)
 
-	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
+	rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 
 	DrawSpriteTransfromed(
 		UIarrowsSprite, fillSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		ToRlColorPremult(fill))
+		ToRlColor(fill))
 
 	DrawSpriteTransfromed(
 		UIarrowsSprite, strokeSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		ToRlColorPremult(stroke))
+		ToRlColor(stroke))
 
 	FnfEndTextureMode()
 
@@ -779,10 +779,10 @@ func (md *MenuDrawer) Draw() {
 		rl.DrawLine(
 			0, SCREEN_HEIGHT*0.5,
 			SCREEN_WIDTH, SCREEN_HEIGHT*0.5,
-			ToRlColorPremult(FnfColor{255, 0, 0, 255}))
+			ToRlColor(FnfColor{255, 0, 0, 255}))
 
 		for _, item := range md.items {
-			rl.DrawRectangleRec(item.bound, ToRlColorPremult(FnfColor{255, 0, 0, 100}))
+			rl.DrawRectangleRec(item.bound, ToRlColor(FnfColor{255, 0, 0, 100}))
 		}
 	}
 
@@ -858,11 +858,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, ToRlColorPremult(fill))
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, ToRlColor(fill))
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				ToRlColorPremult(fill), ToRlColorPremult(stroke),
+				ToRlColor(fill), ToRlColor(stroke),
 				strokeWidth,
 			)
 		}
@@ -897,11 +897,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, ToRlColorPremult(fill))
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, ToRlColor(fill))
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				ToRlColorPremult(fill), ToRlColorPremult(stroke),
+				ToRlColor(fill), ToRlColor(stroke),
 				strokeWidth,
 			)
 		}
@@ -931,7 +931,7 @@ func (md *MenuDrawer) Draw() {
 		rect, advance, draw := drawCheck(srcRect.Width, srcRect.Height, height, scale)
 
 		if draw {
-			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, ToRlColorPremult(col))
+			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, ToRlColor(col))
 		}
 
 		return advance
@@ -1103,10 +1103,10 @@ func (md *MenuDrawer) Draw() {
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					if keyStrokeWidth > 0.5 {
-						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, ToRlColorPremult(keyColorStroke))
+						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, ToRlColor(keyColorStroke))
 					}
 
-					rl.DrawRectangleRounded(strikeRect, 1, 7, ToRlColorPremult(keyColor))
+					rl.DrawRectangleRounded(strikeRect, 1, 7, ToRlColor(keyColor))
 					updateItemBound(strikeRect)
 
 					xAdvance += max(desiredWidth, keyNameSize.X)

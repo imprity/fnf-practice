@@ -221,10 +221,10 @@ func DrawPopup() {
 	}
 
 	// draw semi-transparent background
-	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
+	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ToRlColor(FnfColor{0, 0, 0, 100}))
 
 	// draw popup background
-	rl.DrawTexture(PopupBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	rl.DrawTexture(PopupBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	fitTextInBox := func(
 		font rl.Font,
@@ -263,7 +263,7 @@ func DrawPopup() {
 
 		rl.SetTextLineSpacing(int(desiredSize))
 		rl.DrawTextEx(font, text,
-			textPos, desiredSize, 0, ToRlColorPremult(color))
+			textPos, desiredSize, 0, ToRlColor(color))
 
 		textBox := rl.Rectangle{
 			X: textPos.X, Y: textPos.Y,
@@ -303,7 +303,7 @@ func DrawPopup() {
 			underlineRect.Y = RectEnd(pdm.KeyRect).Y - 20
 
 			rl.DrawRectangleRounded(
-				underlineRect, 1.0, 5, ToRlColorPremult(FnfColor{18, 18, 18, 255}),
+				underlineRect, 1.0, 5, ToRlColor(FnfColor{18, 18, 18, 255}),
 			)
 		}
 		// draw the message
@@ -391,7 +391,7 @@ func DrawPopup() {
 					}
 				}
 
-				rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, ToRlColorPremult(col))
+				rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, ToRlColor(col))
 
 				offsetX += size.X + opMargin
 			}

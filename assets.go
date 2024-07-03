@@ -313,14 +313,14 @@ func loadAssets(isReload bool) {
 	PopupBg = loadTexture("assets/popup_bg.png", true, ".png")
 
 	// create black pixel
-	blackPixelImg := rl.GenImageColor(2, 2, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
+	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))
 	imgsToUnload = append(imgsToUnload, blackPixelImg)
 
 	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 	texsToUnload = append(texsToUnload, BlackPixel)
 
 	// create white pixel
-	whitePixelImg := rl.GenImageColor(2, 2, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	whitePixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{255, 255, 255, 255}))
 	imgsToUnload = append(imgsToUnload, whitePixelImg)
 
 	WhitePixel = rl.LoadTextureFromImage(whitePixelImg)

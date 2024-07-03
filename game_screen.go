@@ -1292,7 +1292,7 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 }
 
 func (gs *GameScreen) Draw() {
-	DrawPatternBackground(GameScreenBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	DrawPatternBackground(GameScreenBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	if !gs.IsSongLoaded {
 		return
@@ -1764,7 +1764,7 @@ func (gs *GameScreen) Draw() {
 				alpha = t
 			}
 
-			DrawTextureTransfromed(tex, texRect, mat, ToRlColorPremult(Col01(1, 1, 1, alpha)))
+			DrawTextureTransfromed(tex, texRect, mat, ToRlColor(Col01(1, 1, 1, alpha)))
 		}
 
 		for range dequeue {
@@ -1797,7 +1797,7 @@ func (gs *GameScreen) Draw() {
 	// draw menu
 	// ============================================
 	if gs.DrawMenu {
-		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
+		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ToRlColor(FnfColor{0, 0, 0, 100}))
 		gs.Menu.Draw()
 	}
 }
@@ -1940,7 +1940,7 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c FnfColor) {
 		Width: glowW, Height: glowH,
 	}
 
-	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, ToRlColorPremult(c))
+	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, ToRlColor(c))
 
 	FnfEndBlendMode()
 }
@@ -1996,8 +1996,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0),
 	)
 
-	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, ToRlColorPremult(fill))
-	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, ToRlColorPremult(stroke))
+	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, ToRlColor(fill))
+	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, ToRlColor(stroke))
 }
 
 func (gs *GameScreen) DrawBigBookMark() {
@@ -2033,7 +2033,7 @@ func (gs *GameScreen) DrawBigBookMark() {
 			rl.DrawTexturePro(
 				BookMarkBigTex,
 				srcRect, dstRect,
-				rl.Vector2{}, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}),
+				rl.Vector2{}, 0, ToRlColor(FnfColor{255, 255, 255, 255}),
 			)
 		}
 	}
@@ -2065,8 +2065,8 @@ func (gs *GameScreen) DrawProgressBar() {
 
 	inRect.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
 
-	rl.DrawRectangleRec(outRect, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
-	rl.DrawRectangleRec(inRect, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	rl.DrawRectangleRec(outRect, ToRlColor(FnfColor{0, 0, 0, 100}))
+	rl.DrawRectangleRec(inRect, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	// draw bookmark
 
@@ -2090,7 +2090,7 @@ func (gs *GameScreen) DrawProgressBar() {
 		rl.DrawTexturePro(
 			BookMarkSmallTex,
 			srcRect, dstRect,
-			rl.Vector2{}, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}),
+			rl.Vector2{}, 0, ToRlColor(FnfColor{255, 255, 255, 255}),
 		)
 	}
 }
@@ -2108,7 +2108,7 @@ func (gs *GameScreen) DrawBotPlayIcon() {
 	rl.DrawTextEx(
 		FontBold, "Bot Play",
 		rl.Vector2{textX, textY},
-		fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
+		fontSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
 }
 
 func (gs *GameScreen) DrawPauseIcon() {
@@ -2130,13 +2130,13 @@ func (gs *GameScreen) DrawPauseIcon() {
 	rect.X = centerX - totalW*0.5
 	rect.Y = centerY - pauseH*0.5
 
-	rl.DrawRectangleRounded(rect, 0.35, 10, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
+	rl.DrawRectangleRounded(rect, 0.35, 10, ToRlColor(FnfColor{0, 0, 0, 200}))
 
 	// right pause rect
 	rect.X = centerX + totalW*0.5 - pauseW
 	rect.Y = centerY - pauseH*0.5
 
-	rl.DrawRectangleRounded(rect, 0.35, 10, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
+	rl.DrawRectangleRounded(rect, 0.35, 10, ToRlColor(FnfColor{0, 0, 0, 200}))
 
 	//draw text
 
@@ -2150,7 +2150,7 @@ func (gs *GameScreen) DrawPauseIcon() {
 	rl.DrawTextEx(
 		FontRegular, "paused",
 		rl.Vector2{textX, textY},
-		fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
+		fontSize, 0, ToRlColor(FnfColor{0, 0, 0, 200}))
 }
 
 func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
@@ -2193,7 +2193,7 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 
 		rl.DrawTextEx(
 			FontRegular, text, rl.Vector2{textX, textY},
-			fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, uint8(255 * t)}))
+			fontSize, 0, ToRlColor(FnfColor{0, 0, 0, uint8(255 * t)}))
 
 		numberTextSize := rl.MeasureTextEx(FontRegular, numberText, fontSize, 0)
 
@@ -2203,7 +2203,7 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 		rl.DrawTextEx(
 			FontRegular, numberText,
 			rl.Vector2{numberTextX, numberTextY},
-			fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, uint8(255 * t)}))
+			fontSize, 0, ToRlColor(FnfColor{0, 0, 0, uint8(255 * t)}))
 
 	}
 }
@@ -2234,13 +2234,13 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		SCREEN_HEIGHT*0.5 - labelSize.Y*0.5,
 	}
 
-	rl.DrawTextEx(FontClear, "Miss:", labelPos, textSize, 0, ToRlColorPremult(FnfColor{255, 0, 0, 255}))
+	rl.DrawTextEx(FontClear, "Miss:", labelPos, textSize, 0, ToRlColor(FnfColor{255, 0, 0, 255}))
 	rl.DrawTextEx(
 		FontClear,
 		"Bad:\n"+
 			"Good:\n"+
 			"Sick!:",
-		rl.Vector2{labelPos.X, labelPos.Y + textSize}, textSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}),
+		rl.Vector2{labelPos.X, labelPos.Y + textSize}, textSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}),
 	)
 
 	misses, hits := gs.CountEvents(0)
@@ -2255,9 +2255,9 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		hits[HitRatingBad], hits[HitRatingGood], hits[HitRatingSick],
 	)
 
-	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, ToRlColorPremult(FnfColor{255, 0, 0, 255}))
+	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, ToRlColor(FnfColor{255, 0, 0, 255}))
 	numberPos.Y += textSize
-	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
+	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
 }
 
 func (gs *GameScreen) DrawRewindHighlight() {
@@ -2280,7 +2280,7 @@ func (gs *GameScreen) DrawRewindHighlight() {
 		x := gs.NoteX(gs.rewindPlayer, gs.rewindDir) - width*0.5
 
 		rl.DrawRectangleGradientV(
-			i32(x), 0, i32(width), SCREEN_HEIGHT, ToRlColorPremult(col1), ToRlColorPremult(col2),
+			i32(x), 0, i32(width), SCREEN_HEIGHT, ToRlColor(col1), ToRlColor(col2),
 		)
 	}
 }
@@ -2315,7 +2315,7 @@ func (gs *GameScreen) DrawBpmDebugGrid() {
 				height := halfMaxY - halfMinY
 
 				rl.DrawRectangle(
-					0, i32(halfMinY), SCREEN_WIDTH, i32(height), ToRlColorPremult(col))
+					0, i32(halfMinY), SCREEN_WIDTH, i32(height), ToRlColor(col))
 			}
 		}
 
@@ -2508,7 +2508,7 @@ func (hm *HelpMessage) InitTextImage() {
 		pos := toDraw.Pos
 
 		rl.DrawTextEx(FontClear, toDraw.Text, pos,
-			fontSize, 0, ToRlColorPremult(toDraw.Col))
+			fontSize, 0, ToRlColor(toDraw.Col))
 	}
 
 	FnfEndTextureMode()
@@ -2553,13 +2553,13 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCornersLines(
 		buttonRect,
 		buttonRoundnessArray, buttonSegmentsArray,
-		lineThick, ToRlColorPremult(FnfColor{0, 0, 0, 255}),
+		lineThick, ToRlColor(FnfColor{0, 0, 0, 255}),
 	)
 
 	DrawRectangleRoundedCornersLines(
 		textBoxRect,
 		boxRoundnessArray, boxSegmentsArray,
-		lineThick, ToRlColorPremult(FnfColor{0, 0, 0, 255}),
+		lineThick, ToRlColor(FnfColor{0, 0, 0, 255}),
 	)
 
 	// ==========================
@@ -2570,7 +2570,7 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCorners(
 		textBoxRect,
 		boxRoundnessArray, boxSegmentsArray,
-		ToRlColorPremult(FnfColor{255, 255, 255, 255}),
+		ToRlColor(FnfColor{255, 255, 255, 255}),
 	)
 
 	// draw text
@@ -2591,7 +2591,7 @@ func (hm *HelpMessage) Draw() {
 		hm.TextImage.Texture,
 		srcRect, dstRect,
 		rl.Vector2{}, 0,
-		ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+		ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	// ==========================
 	// draw button
@@ -2601,7 +2601,7 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCorners(
 		buttonRect,
 		buttonRoundnessArray, buttonSegmentsArray,
-		ToRlColorPremult(FnfColor{255, 255, 255, 255}),
+		ToRlColor(FnfColor{255, 255, 255, 255}),
 	)
 
 	// draw button text
@@ -2629,7 +2629,7 @@ func (hm *HelpMessage) Draw() {
 	textY := buttonRect.Y + (buttonRect.Height-buttonTextSize.Y)*0.5
 
 	rl.DrawTextEx(FontBold, buttonText, rl.Vector2{textX, textY},
-		buttonFontSize, 0, ToRlColorPremult(buttonColor))
+		buttonFontSize, 0, ToRlColor(buttonColor))
 }
 
 func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
@@ -2803,7 +2803,7 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 	}
 
 	DrawTextureVertices(
-		SustainTex, topSrcRect, topVertices, ToRlColorPremult(color),
+		SustainTex, topSrcRect, topVertices, ToRlColor(color),
 	)
 
 	// draw the middle part
@@ -2849,7 +2849,7 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 						end1,
 						start1,
 					},
-					ToRlColorPremult(color),
+					ToRlColor(color),
 				)
 			} else {
 				DrawTextureUvVertices(
@@ -2866,7 +2866,7 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 						end1,
 						start1,
 					},
-					ToRlColorPremult(color),
+					ToRlColor(color),
 				)
 			}
 
@@ -2898,11 +2898,11 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) 
 				bottomVertices[3],
 				start1,
 			},
-			ToRlColorPremult(color),
+			ToRlColor(color),
 		)
 	}
 
 	DrawTextureVertices(
-		SustainTex, bottomSrcRect, bottomVertices, ToRlColorPremult(color),
+		SustainTex, bottomSrcRect, bottomVertices, ToRlColor(color),
 	)
 }

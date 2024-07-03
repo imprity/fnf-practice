@@ -91,11 +91,11 @@ func updateTransitionTexture() {
 	if timeT < 0 || timeT > 1 {
 		if manager.ShowTransition {
 			FnfBeginTextureMode(manager.TransitionTexture)
-			DrawPatternBackground(manager.ImgTexture, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+			DrawPatternBackground(manager.ImgTexture, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 			FnfEndTextureMode()
 		} else {
 			FnfBeginTextureMode(manager.TransitionTexture)
-			rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
+			rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 			FnfEndTextureMode()
 		}
 
@@ -136,7 +136,7 @@ func updateTransitionTexture() {
 	index := 0
 
 	FnfBeginTextureMode(manager.MaskTexture)
-	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
+	rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 
 	for yi := 0; yi < diaNy; yi++ {
 		xEnd := diaNx1
@@ -169,7 +169,7 @@ func updateTransitionTexture() {
 			points[2] = rl.Vector2{x + diaW*scale*0.5, y}
 			points[3] = rl.Vector2{x, y + diaH*scale*0.5}
 
-			rl.DrawTriangleStrip(points, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+			rl.DrawTriangleStrip(points, ToRlColor(FnfColor{255, 255, 255, 255}))
 			index++
 		}
 	}
@@ -177,7 +177,7 @@ func updateTransitionTexture() {
 	FnfEndTextureMode()
 
 	FnfBeginTextureMode(manager.TransitionTexture)
-	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
+	rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 	rl.BeginShaderMode(manager.MaskShader)
 
 	rl.SetShaderValueTexture(
@@ -198,7 +198,7 @@ func updateTransitionTexture() {
 		[]float32{f32(manager.ImgTexture.Width), f32(manager.ImgTexture.Height)},
 		rl.ShaderUniformVec2)
 
-	rl.DrawTexture(manager.MaskTexture.Texture, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	rl.DrawTexture(manager.MaskTexture.Texture, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	rl.EndShaderMode()
 	FnfEndTextureMode()

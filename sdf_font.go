@@ -140,10 +140,10 @@ func DrawTextSdfOutlined(
 	// ===============================
 	FnfBeginTextureMode(ts.RenderTexture)
 
-	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
+	rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 	rl.SetBlendFactors(rl.RlOne, rl.RlOne, rl.RlMax)
 	rl.BeginBlendMode(rl.BlendCustom)
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, ToRlColor(FnfColor{255, 255, 255, 255}))
 	FnfEndBlendMode()
 
 	FnfEndTextureMode()

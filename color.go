@@ -45,7 +45,7 @@ func LerpRGBA(c1, c2 FnfColor, t float64) FnfColor {
 	}
 }
 
-func ToRlColorPremult(c FnfColor) rl.Color {
+func ToRlColor(c FnfColor) rl.Color {
 	norm := rl.ColorNormalize(rl.Color(c))
 	return rl.Color{
 		uint8(norm.X * norm.W * 255),
@@ -55,7 +55,7 @@ func ToRlColorPremult(c FnfColor) rl.Color {
 	}
 }
 
-func ToRlColor(c FnfColor) rl.Color {
+func ToRlColorNoPremultiply(c FnfColor) rl.Color {
 	return rl.Color(c)
 }
 

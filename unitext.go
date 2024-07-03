@@ -60,5 +60,5 @@ UNITEXT_FAIL:
 	// but unitext.StringToRunes actually replaces invalid codepoints with hexcode
 	// like for example "Hello <0xff> <0xfe> <0xfd> World"
 	// so it's correct to use runes
-	return rl.ImageTextEx(font, string(runes), fontSize, 0, ToRlColorPremult(textColor))
+	return rl.ImageTextEx(font, string(runes), fontSize, 0, ToRlColor(textColor))
 }
