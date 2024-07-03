@@ -31,7 +31,7 @@ func InitUnitext() {
 
 func RenderUnicodeText(
 	text string,
-	desiredFont unitext.DesiredFont, fontSize float32, textColor rl.Color,
+	desiredFont unitext.DesiredFont, fontSize float32, textColor FnfColor,
 ) *rl.Image {
 
 	var imageImg image.Image
@@ -41,14 +41,14 @@ func RenderUnicodeText(
 		goto UNITEXT_FAIL
 	}
 
-	imageImg, err = unitext.RenderUnicodeText(text, desiredFont, fontSize, PreMultiplyAlpha(textColor))
+	imageImg, err = unitext.RenderUnicodeText(text, desiredFont, fontSize, rl.Color(textColor))
 
 	if err != nil {
 		ErrorLogger.Printf("failed to use unitext : %v\n", err)
 		ErrorLogger.Printf("using dejavu font as backup\n")
 		goto UNITEXT_FAIL
 	} else {
-		return rl.NewImageFromImagePro(imageImg, rl.Color{0, 0, 0, 0}, false)
+		return rl.NewImageFromImagePro(imageImg, rl.Color{0, 0, 0, 0}, true)
 	}
 
 UNITEXT_FAIL:
@@ -60,5 +60,5 @@ UNITEXT_FAIL:
 	// but unitext.StringToRunes actually replaces invalid codepoints with hexcode
 	// like for example "Hello <0xff> <0xfe> <0xfd> World"
 	// so it's correct to use runes
-	return rl.ImageTextEx(font, string(runes), fontSize, 0, textColor)
+	return rl.ImageTextEx(font, string(runes), fontSize, 0, ToRlColorPremult(textColor))
 }

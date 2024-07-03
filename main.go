@@ -81,7 +81,9 @@ func main() {
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
+
 	rl.SetExitKey(rl.KeyNull)
+	rl.SetBlendMode(i32(rl.BlendAlphaPremultiply))
 
 	TheRenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 	defer rl.UnloadRenderTexture(TheRenderTexture)
@@ -258,7 +260,7 @@ func main() {
 
 			rl.BeginDrawing()
 			{
-				rl.ClearBackground(rl.Color{0, 0, 0, 255})
+				rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 255}))
 
 				// draw render texture
 				rl.DrawTexturePro(
@@ -267,7 +269,7 @@ func main() {
 					GetScreenRect(),
 					rl.Vector2{},
 					0,
-					rl.Color{255, 255, 255, 255},
+					ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 				)
 
 				// draw transition texture
@@ -277,7 +279,7 @@ func main() {
 					GetScreenRect(),
 					rl.Vector2{},
 					0,
-					rl.Color{255, 255, 255, 255},
+					ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 				)
 
 				if printDebugMsg {

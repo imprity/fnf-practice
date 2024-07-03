@@ -219,7 +219,7 @@ func NewGameScreen() *GameScreen {
 	{
 		whiteMenuItem := func() *MenuItem {
 			item := NewMenuItem()
-			item.Color = rl.White
+			item.Color = FnfColor{255,255,255,255}
 			item.Fade = 0.63
 			return item
 		}
@@ -1292,7 +1292,7 @@ func CalculateSustainMisses(note FnfNote, events []NoteEvent) []SustainMiss {
 }
 
 func (gs *GameScreen) Draw() {
-	DrawPatternBackground(GameScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
+	DrawPatternBackground(GameScreenBg, 0, 0, FnfColor{255, 255, 255, 255})
 
 	if !gs.IsSongLoaded {
 		return
@@ -1318,26 +1318,26 @@ func (gs *GameScreen) Draw() {
 
 	// NOTE : I guess I could precalculate these and have this as members
 	// But I have a strong feeling that we will need to dynamically change these at runtime in future
-	noteFill := [4]rl.Color{
+	noteFill := [4]FnfColor{
 		{0xBA, 0x6E, 0xCE, 0xFF},
 		{0x53, 0xBE, 0xFF, 0xFF},
 		{0x63, 0xD1, 0x92, 0xFF},
 		{0xFA, 0x4F, 0x55, 0xFF},
 	}
 
-	noteStroke := [4]rl.Color{}
+	noteStroke := [4]FnfColor{}
 	for i, c := range noteFill {
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Z *= 0.1
 		hsv.Y *= 0.3
 
-		noteStroke[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteStroke[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillLight := [4]rl.Color{}
+	noteFillLight := [4]FnfColor{}
 	for i, c := range noteFill {
 
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Y *= 0.3
 		hsv.Z *= 1.9
 
@@ -1345,20 +1345,20 @@ func (gs *GameScreen) Draw() {
 			hsv.Z = 1
 		}
 
-		noteFillLight[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteFillLight[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeLight := [4]rl.Color{}
+	noteStrokeLight := [4]FnfColor{}
 	for i, c := range noteFill {
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Z *= 0.5
 
-		noteStrokeLight[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteStrokeLight[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFlash := [4]rl.Color{}
+	noteFlash := [4]FnfColor{}
 	for i, c := range noteFill {
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Y *= 0.1
 		hsv.Z *= 3
 
@@ -1366,37 +1366,37 @@ func (gs *GameScreen) Draw() {
 			hsv.Z = 1
 		}
 
-		noteFlash[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteFlash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillGrey := [4]rl.Color{}
+	noteFillGrey := [4]FnfColor{}
 	for i, c := range noteFill {
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Y *= 0.3
 		hsv.Z *= 0.7
 
-		noteFillGrey[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteFillGrey[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeGrey := [4]rl.Color{}
+	noteStrokeGrey := [4]FnfColor{}
 	for i, c := range noteFill {
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Y *= 0.2
 		hsv.Z *= 0.3
 
-		noteStrokeGrey[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteStrokeGrey[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillMistake := [4]rl.Color{}
+	noteFillMistake := [4]FnfColor{}
 	for i, c := range noteFill {
-		hsv := rl.ColorToHSV(c)
+		hsv := ColToHSV(c)
 		hsv.Y *= 0.7
 		hsv.Z *= 0.3
 
-		noteFillMistake[i] = rl.ColorFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteFillMistake[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeMistake := [4]rl.Color{
+	noteStrokeMistake := [4]FnfColor{
 		{0, 0, 0, 255},
 		{0, 0, 0, 255},
 		{0, 0, 0, 255},
@@ -1502,9 +1502,9 @@ func (gs *GameScreen) Draw() {
 
 		// draw flash
 		if !gs.Pstates[player].IsHoldingBadKey[dir] && flashT >= 0 {
-			color := rl.Color{}
+			color := FnfColor{}
 
-			color = rl.Color{noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, uint8(flashT * 255)}
+			color = FnfColor{noteFlash[dir].R, noteFlash[dir].G, noteFlash[dir].B, uint8(flashT * 255)}
 
 			DrawNoteArrow(x, y, scale*1.1, dir, color, color)
 		}
@@ -1531,7 +1531,7 @@ func (gs *GameScreen) Draw() {
 			color := Col01(0.5, 0.5, 0.5, 1.0)
 
 			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] && !gs.positionChangedWhilePaused {
-				color = rl.Color{255, 0, 0, 255}
+				color = FnfColor{255, 0, 0, 255}
 			}
 
 			var x, y float32
@@ -1692,7 +1692,7 @@ func (gs *GameScreen) Draw() {
 				DrawNoteArrow(
 					gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
 					GSC.NotesSize, miss.Direction,
-					rl.Color{0, 0, 0, 0}, rl.Color{255, 0, 0, 255},
+					FnfColor{0, 0, 0, 0}, FnfColor{255, 0, 0, 255},
 				)
 			}
 		}
@@ -1705,7 +1705,6 @@ func (gs *GameScreen) Draw() {
 	{
 		const duration = time.Millisecond * 700
 		dequeue := 0
-		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 		for i := range gs.PopupQueue.Length {
 			popup := gs.PopupQueue.At(i)
@@ -1765,17 +1764,8 @@ func (gs *GameScreen) Draw() {
 				alpha = t
 			}
 
-			DrawTextureTransfromed(tex, texRect, mat,
-				rl.Color{
-					uint8(255 * alpha),
-					uint8(255 * alpha),
-					uint8(255 * alpha),
-					uint8(255 * alpha),
-				},
-			)
-
+			DrawTextureTransfromed(tex, texRect, mat, Col01(1,1,1,alpha))
 		}
-		rl.EndBlendMode()
 
 		for range dequeue {
 			gs.PopupQueue.Dequeue()
@@ -1807,7 +1797,7 @@ func (gs *GameScreen) Draw() {
 	// draw menu
 	// ============================================
 	if gs.DrawMenu {
-		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
+		rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
 		gs.Menu.Draw()
 	}
 }
@@ -1842,13 +1832,13 @@ type SustainColor struct {
 	Begin time.Duration
 	End   time.Duration
 
-	Color rl.Color
+	Color FnfColor
 }
 
 func (gs *GameScreen) DrawSustainBar(
 	player int, dir NoteDir,
 	from, to time.Duration,
-	baseColor rl.Color,
+	baseColor FnfColor,
 	otherColors []SustainColor,
 	fromOffset float32, toOffset float32,
 ) {
@@ -1925,7 +1915,7 @@ func (gs *GameScreen) DrawSustainBar(
 	}
 }
 
-func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c rl.Color) {
+func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c FnfColor) {
 	rl.BeginBlendMode(rl.BlendAddColors)
 
 	arrowH := ArrowsStrokeSprite.Height
@@ -1950,12 +1940,12 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c rl.Color) {
 		Width: glowW, Height: glowH,
 	}
 
-	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, PreMultiplyAlpha(c))
+	DrawSpriteTransfromed(ArrowsGlowSprite, int(dir), rect, mat, c)
 
-	rl.EndBlendMode()
+	FnfEndBlendMode()
 }
 
-func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke rl.Color) {
+func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke FnfColor) {
 	texW := ArrowsStrokeSprite.Width
 	texH := ArrowsStrokeSprite.Height
 
@@ -2006,12 +1996,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0),
 	)
 
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-
-	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, PreMultiplyAlpha(fill))
-	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, PreMultiplyAlpha(stroke))
-
-	rl.EndBlendMode()
+	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, fill)
+	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, stroke)
 }
 
 func (gs *GameScreen) DrawBigBookMark() {
@@ -2044,13 +2030,11 @@ func (gs *GameScreen) DrawBigBookMark() {
 		}
 
 		if rl.CheckCollisionRecs(dstRect, screenRect) {
-			rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 			rl.DrawTexturePro(
 				BookMarkBigTex,
 				srcRect, dstRect,
-				rl.Vector2{}, 0, rl.Color{255, 255, 255, 255},
+				rl.Vector2{}, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 			)
-			rl.EndBlendMode()
 		}
 	}
 }
@@ -2081,8 +2065,8 @@ func (gs *GameScreen) DrawProgressBar() {
 
 	inRect.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
 
-	rl.DrawRectangleRec(outRect, rl.Color{0, 0, 0, 100})
-	rl.DrawRectangleRec(inRect, rl.Color{255, 255, 255, 255})
+	rl.DrawRectangleRec(outRect, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
+	rl.DrawRectangleRec(inRect, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	// draw bookmark
 
@@ -2103,13 +2087,11 @@ func (gs *GameScreen) DrawProgressBar() {
 		dstRect.X = bookMarkX - dstRect.Width*0.5
 		dstRect.Y = bookMarkY - dstRect.Height*0.5
 
-		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 		rl.DrawTexturePro(
 			BookMarkSmallTex,
 			srcRect, dstRect,
-			rl.Vector2{}, 0, rl.Color{255, 255, 255, 255},
+			rl.Vector2{}, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 		)
-		rl.EndBlendMode()
 	}
 }
 
@@ -2126,7 +2108,7 @@ func (gs *GameScreen) DrawBotPlayIcon() {
 	rl.DrawTextEx(
 		FontBold, "Bot Play",
 		rl.Vector2{textX, textY},
-		fontSize, 0, rl.Color{0, 0, 0, 255})
+		fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
 }
 
 func (gs *GameScreen) DrawPauseIcon() {
@@ -2148,13 +2130,13 @@ func (gs *GameScreen) DrawPauseIcon() {
 	rect.X = centerX - totalW*0.5
 	rect.Y = centerY - pauseH*0.5
 
-	rl.DrawRectangleRounded(rect, 0.35, 10, rl.Color{0, 0, 0, 200})
+	rl.DrawRectangleRounded(rect, 0.35, 10, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
 
 	// right pause rect
 	rect.X = centerX + totalW*0.5 - pauseW
 	rect.Y = centerY - pauseH*0.5
 
-	rl.DrawRectangleRounded(rect, 0.35, 10, rl.Color{0, 0, 0, 200})
+	rl.DrawRectangleRounded(rect, 0.35, 10, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
 
 	//draw text
 
@@ -2168,7 +2150,7 @@ func (gs *GameScreen) DrawPauseIcon() {
 	rl.DrawTextEx(
 		FontRegular, "paused",
 		rl.Vector2{textX, textY},
-		fontSize, 0, rl.Color{0, 0, 0, 200})
+		fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 200}))
 }
 
 func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
@@ -2211,7 +2193,7 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 
 		rl.DrawTextEx(
 			FontRegular, text, rl.Vector2{textX, textY},
-			fontSize, 0, rl.Color{0, 0, 0, uint8(255 * t)})
+			fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, uint8(255 * t)}))
 
 		numberTextSize := rl.MeasureTextEx(FontRegular, numberText, fontSize, 0)
 
@@ -2221,7 +2203,7 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 		rl.DrawTextEx(
 			FontRegular, numberText,
 			rl.Vector2{numberTextX, numberTextY},
-			fontSize, 0, rl.Color{0, 0, 0, uint8(255 * t)})
+			fontSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, uint8(255 * t)}))
 
 	}
 }
@@ -2252,13 +2234,13 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		SCREEN_HEIGHT*0.5 - labelSize.Y*0.5,
 	}
 
-	rl.DrawTextEx(FontClear, "Miss:", labelPos, textSize, 0, rl.Color{255, 0, 0, 255})
+	rl.DrawTextEx(FontClear, "Miss:", labelPos, textSize, 0, ToRlColorPremult(FnfColor{255, 0, 0, 255}))
 	rl.DrawTextEx(
 		FontClear,
 		"Bad:\n"+
 			"Good:\n"+
 			"Sick!:",
-		rl.Vector2{labelPos.X, labelPos.Y + textSize}, textSize, 0, rl.Color{0, 0, 0, 255},
+		rl.Vector2{labelPos.X, labelPos.Y + textSize}, textSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}),
 	)
 
 	misses, hits := gs.CountEvents(0)
@@ -2273,9 +2255,9 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		hits[HitRatingBad], hits[HitRatingGood], hits[HitRatingSick],
 	)
 
-	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, rl.Color{255, 0, 0, 255})
+	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, ToRlColorPremult(FnfColor{255, 0, 0, 255}))
 	numberPos.Y += textSize
-	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, rl.Color{0, 0, 0, 255})
+	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
 }
 
 func (gs *GameScreen) DrawRewindHighlight() {
@@ -2287,8 +2269,8 @@ func (gs *GameScreen) DrawRewindHighlight() {
 
 		t *= 0.1
 
-		col1 := rl.Color{0, 0, 0, uint8(255 * t)}
-		col2 := rl.Color{}
+		col1 := FnfColor{0, 0, 0, uint8(255 * t)}
+		col2 := FnfColor{}
 
 		if TheOptions.DownScroll {
 			col1, col2 = col2, col1
@@ -2297,11 +2279,9 @@ func (gs *GameScreen) DrawRewindHighlight() {
 		width := GSC.NotesSize
 		x := gs.NoteX(gs.rewindPlayer, gs.rewindDir) - width*0.5
 
-		rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 		rl.DrawRectangleGradientV(
-			i32(x), 0, i32(width), SCREEN_HEIGHT, PreMultiplyAlpha(col1), PreMultiplyAlpha(col2),
+			i32(x), 0, i32(width), SCREEN_HEIGHT, ToRlColorPremult(col1), ToRlColorPremult(col2),
 		)
-		rl.EndBlendMode()
 	}
 }
 
@@ -2330,12 +2310,12 @@ func (gs *GameScreen) DrawBpmDebugGrid() {
 			if (0 <= halfMinY && halfMinY <= SCREEN_HEIGHT) ||
 				(0 <= halfMaxY && halfMaxY <= SCREEN_HEIGHT) {
 
-				col := rl.Color{0, 0, 0, 30}
+				col := FnfColor{0, 0, 0, 30}
 
 				height := halfMaxY - halfMinY
 
 				rl.DrawRectangle(
-					0, i32(halfMinY), SCREEN_WIDTH, i32(height), col)
+					0, i32(halfMinY), SCREEN_WIDTH, i32(height), ToRlColorPremult(col))
 			}
 		}
 
@@ -2392,7 +2372,7 @@ func (hm *HelpMessage) InitTextImage() {
 	type textPosColor struct {
 		Text string
 		Pos  rl.Vector2
-		Col  rl.Color
+		Col  FnfColor
 	}
 
 	var textsToDraw []textPosColor
@@ -2409,7 +2389,7 @@ func (hm *HelpMessage) InitTextImage() {
 			textPosColor{
 				Text: msg,
 				Pos:  rl.Vector2{totalRect.X + totalRect.Width, y},
-				Col:  rl.Color{0, 0, 0, 255},
+				Col:  FnfColor{0, 0, 0, 255},
 			})
 
 		totalRect.Height = max(totalRect.Height, msgSize.Y)
@@ -2424,7 +2404,7 @@ func (hm *HelpMessage) InitTextImage() {
 			textPosColor{
 				Text: keyName,
 				Pos:  rl.Vector2{totalRect.X + totalRect.Width, y},
-				Col:  rl.Color{0xF6, 0x08, 0x08, 0xFF},
+				Col:  FnfColor{0xF6, 0x08, 0x08, 0xFF},
 			})
 
 		totalRect.Height = max(totalRect.Height, keyNameSize.Y)
@@ -2528,7 +2508,7 @@ func (hm *HelpMessage) InitTextImage() {
 		pos := toDraw.Pos
 
 		rl.DrawTextEx(FontClear, toDraw.Text, pos,
-			fontSize, 0, toDraw.Col)
+			fontSize, 0, ToRlColorPremult(toDraw.Col))
 	}
 
 	FnfEndTextureMode()
@@ -2573,13 +2553,13 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCornersLines(
 		buttonRect,
 		buttonRoundnessArray, buttonSegmentsArray,
-		lineThick, rl.Color{0, 0, 0, 255},
+		lineThick, FnfColor{0, 0, 0, 255},
 	)
 
 	DrawRectangleRoundedCornersLines(
 		textBoxRect,
 		boxRoundnessArray, boxSegmentsArray,
-		lineThick, rl.Color{0, 0, 0, 255},
+		lineThick, FnfColor{0, 0, 0, 255},
 	)
 
 	// ==========================
@@ -2590,7 +2570,7 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCorners(
 		textBoxRect,
 		boxRoundnessArray, boxSegmentsArray,
-		rl.Color{255, 255, 255, 255},
+		FnfColor{255, 255, 255, 255},
 	)
 
 	// draw text
@@ -2611,7 +2591,7 @@ func (hm *HelpMessage) Draw() {
 		hm.TextImage.Texture,
 		srcRect, dstRect,
 		rl.Vector2{}, 0,
-		rl.Color{255, 255, 255, 255})
+		ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	// ==========================
 	// draw button
@@ -2621,14 +2601,14 @@ func (hm *HelpMessage) Draw() {
 	DrawRectangleRoundedCorners(
 		buttonRect,
 		buttonRoundnessArray, buttonSegmentsArray,
-		rl.Color{255, 255, 255, 255},
+		FnfColor{255, 255, 255, 255},
 	)
 
 	// draw button text
 	const buttonText = "Help?!"
 	const buttonFontSize = 65
 
-	buttonColor := rl.Color{0, 0, 0, 255}
+	buttonColor := FnfColor{0, 0, 0, 255}
 
 	mouseV := rl.Vector2{
 		X: MouseX(),
@@ -2637,9 +2617,9 @@ func (hm *HelpMessage) Draw() {
 
 	if IsInputEnabled(hm.InputId) && rl.CheckCollisionPointRec(mouseV, buttonRect) {
 		if IsMouseButtonDown(hm.InputId, rl.MouseButtonLeft) {
-			buttonColor = rl.Color{100, 100, 100, 255}
+			buttonColor = FnfColor{100, 100, 100, 255}
 		} else {
-			buttonColor = rl.Color{0xF6, 0x08, 0x08, 0xFF}
+			buttonColor = FnfColor{0xF6, 0x08, 0x08, 0xFF}
 		}
 	}
 
@@ -2649,7 +2629,7 @@ func (hm *HelpMessage) Draw() {
 	textY := buttonRect.Y + (buttonRect.Height-buttonTextSize.Y)*0.5
 
 	rl.DrawTextEx(FontBold, buttonText, rl.Vector2{textX, textY},
-		buttonFontSize, 0, buttonColor)
+		buttonFontSize, 0, ToRlColorPremult(buttonColor))
 }
 
 func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
@@ -2772,7 +2752,7 @@ func (hm *HelpMessage) BeforeScreenTransition() {
 // end of help message related stuffs
 // ====================================
 
-func drawLineWithSustainTex(from, to rl.Vector2, width float32, color rl.Color) {
+func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) {
 	if width < 1 {
 		return
 	}
@@ -2821,8 +2801,6 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color rl.Color) 
 		v.Y += to.Y
 		bottomVertices[i] = v
 	}
-
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 	DrawTextureVertices(
 		SustainTex, topSrcRect, topVertices, color,
@@ -2927,6 +2905,4 @@ func drawLineWithSustainTex(from, to rl.Vector2, width float32, color rl.Color) 
 	DrawTextureVertices(
 		SustainTex, bottomSrcRect, bottomVertices, color,
 	)
-
-	rl.EndBlendMode()
 }

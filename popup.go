@@ -221,19 +221,17 @@ func DrawPopup() {
 	}
 
 	// draw semi-transparent background
-	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, rl.Color{0, 0, 0, 100})
+	rl.DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
 
 	// draw popup background
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
-	rl.DrawTexture(PopupBg, 0, 0, rl.Color{255, 255, 255, 255})
-	rl.EndBlendMode()
+	rl.DrawTexture(PopupBg, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	fitTextInBox := func(
 		font rl.Font,
 		text string,
 		box rl.Rectangle,
 		desiredSize float32,
-		color rl.Color,
+		color FnfColor,
 	) rl.Rectangle {
 		rl.SetTextLineSpacing(int(desiredSize)) // text can be multilined, so we have to set line spacing
 
@@ -265,7 +263,7 @@ func DrawPopup() {
 
 		rl.SetTextLineSpacing(int(desiredSize))
 		rl.DrawTextEx(font, text,
-			textPos, desiredSize, 0, color)
+			textPos, desiredSize, 0, ToRlColorPremult(color))
 
 		textBox := rl.Rectangle{
 			X: textPos.X, Y: textPos.Y,
@@ -291,7 +289,7 @@ func DrawPopup() {
 			keyText,
 			pdm.KeyRect,
 			keyFontSize,
-			rl.Color{0, 0, 0, 255},
+			FnfColor{0, 0, 0, 255},
 		)
 		_ = textBox
 		// draw the bottom line
@@ -305,7 +303,7 @@ func DrawPopup() {
 			underlineRect.Y = RectEnd(pdm.KeyRect).Y - 20
 
 			rl.DrawRectangleRounded(
-				underlineRect, 1.0, 5, rl.Color{18, 18, 18, 255},
+				underlineRect, 1.0, 5, ToRlColorPremult(FnfColor{18, 18, 18, 255}),
 			)
 		}
 		// draw the message
@@ -323,7 +321,7 @@ func DrawPopup() {
 			msgRect.Y = pdm.PopupRect.Y + msgMarginTop
 
 			fitTextInBox(FontBold, current.Message, msgRect,
-				msgSize, rl.Color{0, 0, 0, 255})
+				msgSize, FnfColor{0, 0, 0, 255})
 		}
 
 		// draw the prompt
@@ -341,14 +339,14 @@ func DrawPopup() {
 			promptRect.Y = RectEnd(pdm.PopupRect).Y - promptMarginBottom - promptRect.Height
 
 			fitTextInBox(FontBold, "press any key", promptRect,
-				promptSize, rl.Color{77, 77, 77, 255})
+				promptSize, FnfColor{77, 77, 77, 255})
 		}
 
 	} else {
 		// draw current msg
 		msgFontSize := float32(70)
 
-		fitTextInBox(FontRegular, current.Message, pdm.TextBoxRect, msgFontSize, rl.Color{0, 0, 0, 255})
+		fitTextInBox(FontRegular, current.Message, pdm.TextBoxRect, msgFontSize, FnfColor{0, 0, 0, 255})
 
 		// draw options
 		if len(current.Options) > 0 {
@@ -377,14 +375,14 @@ func DrawPopup() {
 			offsetY := pdm.OptionsRect.Y + (pdm.OptionsRect.Height-opFontSize)*0.5
 
 			for i, op := range current.Options {
-				col := rl.Color{120, 120, 120, 255}
+				col := FnfColor{120, 120, 120, 255}
 				pos := rl.Vector2{X: offsetX, Y: offsetY}
 				scale := float32(1.0)
 
 				size := rl.MeasureTextEx(FontBold, op, opFontSize, 0)
 
 				if i == current.SelectedOption {
-					col = rl.Color{0, 0, 0, 255}
+					col = FnfColor{0, 0, 0, 255}
 					scale = Lerp(1.0, 1.2, pdm.SelectAnimT)
 
 					pos = rl.Vector2{
@@ -393,7 +391,7 @@ func DrawPopup() {
 					}
 				}
 
-				rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, col)
+				rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, ToRlColorPremult(col))
 
 				offsetX += size.X + opMargin
 			}

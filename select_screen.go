@@ -65,7 +65,7 @@ func NewSelectScreen() *SelectScreen {
 	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
 	menuDeco.Type = MenuItemDeco
-	menuDeco.Color = rl.Color{0x4A, 0x7F, 0xD7, 0xFF}
+	menuDeco.Color = FnfColor{0x4A, 0x7F, 0xD7, 0xFF}
 	menuDeco.FadeIfUnselected = false
 	menuDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	menuDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
@@ -139,7 +139,7 @@ func NewSelectScreen() *SelectScreen {
 	songDeco := NewMenuItem()
 	songDeco.Type = MenuItemDeco
 	songDeco.Name = "Songs"
-	songDeco.Color = rl.Color{0xF4, 0x6F, 0xAD, 0xFF}
+	songDeco.Color = FnfColor{0xF4, 0x6F, 0xAD, 0xFF}
 	songDeco.FadeIfUnselected = false
 	songDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	songDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
@@ -267,7 +267,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		pathImg := RenderUnicodeText(
 			collection.BasePath,
-			desiredFont, ss.PathFontSize, rl.Color{255, 255, 255, 255},
+			desiredFont, ss.PathFontSize, FnfColor{255, 255, 255, 255},
 		)
 
 		pathTex := rl.LoadTextureFromImage(pathImg)
@@ -475,7 +475,7 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 }
 
 func (ss *SelectScreen) Draw() {
-	DrawPatternBackground(MenuScreenBg, 0, 0, rl.Color{255, 255, 255, 255})
+	DrawPatternBackground(MenuScreenBg, 0, 0, FnfColor{255, 255, 255, 255})
 
 	drawPathText := func() {
 		for id, tex := range ss.PathDecoToPathTex {
@@ -487,12 +487,12 @@ func (ss *SelectScreen) Draw() {
 					Width: SCREEN_WIDTH, Height: bound.Height,
 				}
 
-				rl.DrawRectangleRec(bgRect, rl.Color{0, 0, 0, 100})
+				rl.DrawRectangleRec(bgRect, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
 
 				texX := 100
 				texY := bgRect.Y + (bgRect.Height-f32(tex.Height))*0.5
 
-				rl.DrawTexture(tex, i32(texX), i32(texY), rl.Color{255, 255, 255, 255})
+				rl.DrawTexture(tex, i32(texX), i32(texY), ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 			}
 		}
 	}
@@ -520,11 +520,11 @@ func (ss *SelectScreen) Draw() {
 			y := float32(20)
 
 			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
-				size, 0, rl.Color{0, 0, 0, 255})
+				size, 0, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
 
 			DrawTextSdfOutlined(
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
-				rl.Color{255, 255, 255, 255}, rl.Color{0, 0, 0, 255}, 4,
+				FnfColor{255, 255, 255, 255}, FnfColor{0, 0, 0, 255}, 4,
 			)
 		}
 	} else {

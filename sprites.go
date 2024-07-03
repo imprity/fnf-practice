@@ -57,36 +57,36 @@ func spriteSubRect(sprite Sprite, spriteN int, subRect rl.Rectangle) rl.Rectangl
 	return RectIntersect(spriteRect, subRect)
 }
 
-func DrawSprite(sprite Sprite, spriteN int, posX int32, posY int32, tint rl.Color) {
+func DrawSprite(sprite Sprite, spriteN int, posX int32, posY int32, tint FnfColor) {
 	rect := SpriteRect(sprite, spriteN)
 
 	rl.DrawTextureRec(
 		sprite.Texture, rect,
 		rl.Vector2{X: f32(posX), Y: f32(posY)},
-		tint,
+		ToRlColorPremult(tint),
 	)
 }
 
 func DrawSpriteRec(
 	sprite Sprite, spriteN int,
-	sourceRec rl.Rectangle, position rl.Vector2, tint rl.Color) {
+	sourceRec rl.Rectangle, position rl.Vector2, tint FnfColor) {
 
 	rect := spriteSubRect(sprite, spriteN, sourceRec)
 
 	rl.DrawTextureRec(
 		sprite.Texture, rect,
 		position,
-		tint,
+		ToRlColorPremult(tint),
 	)
 }
 
-func DrawSpriteV(sprite Sprite, spriteN int, position rl.Vector2, tint rl.Color) {
+func DrawSpriteV(sprite Sprite, spriteN int, position rl.Vector2, tint FnfColor) {
 	rect := SpriteRect(sprite, spriteN)
 
 	rl.DrawTextureRec(
 		sprite.Texture, rect,
 		position,
-		tint,
+		ToRlColorPremult(tint),
 	)
 }
 
@@ -94,7 +94,7 @@ func DrawSpriteTransfromed(
 	sprite Sprite, spriteN int,
 	srcRect rl.Rectangle,
 	mat rl.Matrix,
-	tint rl.Color,
+	tint FnfColor,
 ) {
 	rect := spriteSubRect(sprite, spriteN, srcRect)
 

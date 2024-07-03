@@ -22,14 +22,14 @@ func NewTestMenu() *MenuDrawer {
 	menu.Background = MenuBackground{
 		Texture: GameScreenBg,
 		OffsetX: 0, OffsetY: 0,
-		Tint: rl.White,
+		Tint: FnfColor{255,255,255,255},
 	}
 
 	testDeco := NewMenuItem()
 	testDeco.Name = "TestMenu"
 	testDeco.Type = MenuItemDeco
 	testDeco.FadeIfUnselected = false
-	testDeco.Color = rl.Color{255, 195, 130, 255}
+	testDeco.Color = FnfColor{255, 195, 130, 255}
 	testDeco.SizeRegular = testDeco.SizeRegular * 1.5
 	menu.AddItems(testDeco)
 

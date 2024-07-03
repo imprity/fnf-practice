@@ -5,8 +5,31 @@ import (
 	"math"
 )
 
-func LerpRGB(c1, c2 rl.Color, t float64) rl.Color {
-	return rl.Color{
+type FnfColor rl.Color
+
+func Col(r, g, b, a uint8) FnfColor{
+	return FnfColor{r, g, b, a}
+}
+
+func Col01(r, g, b, a float32) FnfColor {
+	return FnfColor(rl.ColorFromNormalized(rl.Vector4{r, g, b, a}))
+}
+
+
+func Col01Vec4(v rl.Vector4) FnfColor {
+	return FnfColor(rl.ColorFromNormalized(v))
+}
+
+func ColFromHSV(h, s, v float32) FnfColor{
+	return FnfColor(rl.ColorFromHSV(h, s, v))
+}
+
+func ColToHSV(c FnfColor) rl.Vector3{
+	return rl.Vector3(rl.ColorToHSV(rl.Color(c)))
+}
+
+func LerpRGB(c1, c2 FnfColor, t float64) FnfColor {
+	return FnfColor{
 		uint8(Lerp(f64(c1.R), f64(c2.R), t)),
 		uint8(Lerp(f64(c1.G), f64(c2.G), t)),
 		uint8(Lerp(f64(c1.B), f64(c2.B), t)),
@@ -14,8 +37,8 @@ func LerpRGB(c1, c2 rl.Color, t float64) rl.Color {
 	}
 }
 
-func LerpRGBA(c1, c2 rl.Color, t float64) rl.Color {
-	return rl.Color{
+func LerpRGBA(c1, c2 FnfColor, t float64) FnfColor {
+	return FnfColor{
 		uint8(Lerp(f64(c1.R), f64(c2.R), t)),
 		uint8(Lerp(f64(c1.G), f64(c2.G), t)),
 		uint8(Lerp(f64(c1.B), f64(c2.B), t)),
@@ -23,8 +46,8 @@ func LerpRGBA(c1, c2 rl.Color, t float64) rl.Color {
 	}
 }
 
-func PreMultiplyAlpha(c rl.Color) rl.Color {
-	norm := rl.ColorNormalize(c)
+func ToRlColorPremult(c FnfColor) rl.Color {
+	norm := rl.ColorNormalize(rl.Color(c))
 	return rl.Color{
 		uint8(norm.X * norm.W * 255),
 		uint8(norm.Y * norm.W * 255),
@@ -33,13 +56,10 @@ func PreMultiplyAlpha(c rl.Color) rl.Color {
 	}
 }
 
-func Col01(r, g, b, a float32) rl.Color {
-	return rl.ColorFromNormalized(rl.Vector4{r, g, b, a})
-}
 
 // Copy pasted from https://bottosson.github.io/posts/oklab/
-func ToOkLab(c rl.Color) rl.Vector3 {
-	norm := rl.ColorNormalize(c)
+func ColToOkLab(c FnfColor) rl.Vector3 {
+	norm := rl.ColorNormalize(rl.Color(c))
 	l := 0.4122214708*norm.X + 0.5363325363*norm.Y + 0.0514459929*norm.Z
 	m := 0.2119034982*norm.X + 0.6806995451*norm.Y + 0.1073969566*norm.Z
 	s := 0.0883024619*norm.X + 0.2817188376*norm.Y + 0.6299787005*norm.Z
@@ -56,7 +76,7 @@ func ToOkLab(c rl.Color) rl.Vector3 {
 }
 
 // Copy pasted from https://bottosson.github.io/posts/oklab/
-func FromOkLab(lab rl.Vector3) rl.Color {
+func ColFromOkLab(lab rl.Vector3) FnfColor {
 	l_ := lab.X + 0.3963377774*lab.Y + 0.2158037573*lab.Z
 	m_ := lab.X - 0.1055613458*lab.Y - 0.0638541728*lab.Z
 	s_ := lab.X - 0.0894841775*lab.Y - 1.2914855480*lab.Z
@@ -76,5 +96,9 @@ func FromOkLab(lab rl.Vector3) rl.Color {
 	cv.Y = Clamp(cv.Y, 0, 1)
 	cv.Z = Clamp(cv.Z, 0, 1)
 
-	return rl.ColorFromNormalized(cv)
+	return Col01Vec4(cv)
+}
+
+func FnfEndBlendMode(){
+	rl.SetBlendMode(i32(rl.BlendAlphaPremultiply))
 }

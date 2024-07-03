@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type OptionsScreen struct {
@@ -27,7 +25,7 @@ func NewOptionsScreen() *OptionsScreen {
 	optionsDeco := NewMenuItem()
 	optionsDeco.Name = "Options"
 	optionsDeco.Type = MenuItemDeco
-	optionsDeco.Color = rl.Color{0xE3, 0x9C, 0x02, 0xFF}
+	optionsDeco.Color = FnfColor{0xE3, 0x9C, 0x02, 0xFF}
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
@@ -104,7 +102,7 @@ func NewOptionsScreen() *OptionsScreen {
 		deco.Type = MenuItemDeco
 		deco.SizeRegular = MenuItemDefaults.SizeRegular * 1.4
 		deco.SizeSelected = MenuItemDefaults.SizeSelected * 1.4
-		deco.Color = rl.Color{0xFC, 0x9F, 0x7C, 0xFF}
+		deco.Color = FnfColor{0xFC, 0x9F, 0x7C, 0xFF}
 		deco.FadeIfUnselected = false
 		op.Menu.AddItems(deco)
 
@@ -156,7 +154,7 @@ func NewOptionsScreen() *OptionsScreen {
 		deco.Type = MenuItemDeco
 		deco.SizeRegular = MenuItemDefaults.SizeRegular * 1.4
 		deco.SizeSelected = MenuItemDefaults.SizeSelected * 1.4
-		deco.Color = rl.Color{0xFC, 0x9F, 0x7C, 0xFF}
+		deco.Color = FnfColor{0xFC, 0x9F, 0x7C, 0xFF}
 		deco.FadeIfUnselected = false
 		op.Menu.AddItems(deco)
 
@@ -285,7 +283,7 @@ func (op *OptionsScreen) Update(deltaTime time.Duration) {
 }
 
 func (op *OptionsScreen) Draw() {
-	DrawPatternBackground(MenuScreenSimpleBg, 0, 0, rl.Color{255, 255, 255, 255})
+	DrawPatternBackground(MenuScreenSimpleBg, 0, 0, FnfColor{255, 255, 255, 255})
 
 	op.Menu.Draw()
 }

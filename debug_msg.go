@@ -92,10 +92,10 @@ func DrawDebugMsgs() {
 	bgRect.Width += 20
 	bgRect.Height += 20
 
-	rl.DrawRectangleRec(bgRect, rl.Color{0, 0, 0, 100})
+	rl.DrawRectangleRec(bgRect, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
 
 	for _, t := range texts {
-		rl.DrawTextEx(defaultFont, t.Text, t.Pos, fontSize, fontSpacing, rl.Color{255, 255, 255, 255})
+		rl.DrawTextEx(defaultFont, t.Text, t.Pos, fontSize, fontSpacing, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 	}
 }
 

@@ -206,9 +206,9 @@ func (st *SdfTestScreen) Update(deltaTime time.Duration) {
 }
 
 func (st *SdfTestScreen) Draw() {
-	rl.ClearBackground(rl.Color{100, 100, 100, 255})
+	rl.ClearBackground(ToRlColorPremult(FnfColor{100, 100, 100, 255}))
 
-	rl.DrawTexture(st.sdfFont.Font.Texture, 0, 0, rl.Color{255, 255, 255, 255})
+	rl.DrawTexture(st.sdfFont.Font.Texture, 0, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 
 	st.menu.Draw()
 
@@ -221,15 +221,13 @@ func (st *SdfTestScreen) Draw() {
 	// draw sdf font ========
 	FnfBeginTextureMode(st.renderTexture)
 	{
-		rl.ClearBackground(rl.Color{0, 0, 0, 0})
+		rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
 		rl.SetBlendFactors(rl.RlOne, rl.RlOne, rl.RlMax)
 		rl.BeginBlendMode(rl.BlendCustom)
-		rl.DrawTextEx(st.sdfFont.Font, "Hello World!", textPos, st.fontSizeRender, 0, rl.Color{255, 255, 255, 255})
+		rl.DrawTextEx(st.sdfFont.Font, "Hello World!", textPos, st.fontSizeRender, 0, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 		rl.EndBlendMode()
 	}
 	FnfEndTextureMode()
-
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 	rl.BeginShaderMode(st.sdfShader)
 	rl.SetShaderValue(st.sdfShader, st.uValuesLoc, st.uValues[:], rl.ShaderUniformVec4)
@@ -240,21 +238,19 @@ func (st *SdfTestScreen) Draw() {
 		GetScreenRect(),
 		rl.Vector2{},
 		0,
-		rl.Color{255, 255, 255, 255},
+		ToRlColorPremult(FnfColor{255, 255, 255, 255}),
 	)
 
 	rl.EndShaderMode()
-
-	rl.EndBlendMode()
 	// ===============================
 
 	if st.drawRegularTextOverly {
-		rl.DrawTextEx(FontBold, "Hello World!", textPos, st.fontSizeRender, 0, rl.Color{0, 0, 0, 100})
+		rl.DrawTextEx(FontBold, "Hello World!", textPos, st.fontSizeRender, 0, ToRlColorPremult(FnfColor{0, 0, 0, 100}))
 	}
 
-	rl.DrawCircleV(MouseV(), st.pointerCircle*0.5, rl.Color{255, 0, 0, 100})
+	rl.DrawCircleV(MouseV(), st.pointerCircle*0.5, ToRlColorPremult(FnfColor{255, 0, 0, 100}))
 
-	rl.DrawText(fmt.Sprintf("%.2f", st.pointerCircle), 20, SCREEN_HEIGHT-50, 30, rl.Color{255, 0, 0, 255})
+	rl.DrawText(fmt.Sprintf("%.2f", st.pointerCircle), 20, SCREEN_HEIGHT-50, 30, ToRlColorPremult(FnfColor{255, 0, 0, 255}))
 }
 
 func (st *SdfTestScreen) BeforeScreenTransition() {

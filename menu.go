@@ -55,8 +55,8 @@ type MenuItem struct {
 	SizeRegular  float32
 	SizeSelected float32
 
-	Color       rl.Color
-	StrokeColor rl.Color
+	Color       FnfColor
+	StrokeColor FnfColor
 	StrokeWidth float32
 
 	// transparency when it's unselected
@@ -101,16 +101,16 @@ type MenuItem struct {
 	// whether if toggle item will use checkbox or < yes, no >
 	ToggleStyleCheckBox bool
 
-	CheckedBoxColor   rl.Color
-	UncheckedBoxColor rl.Color
+	CheckedBoxColor   FnfColor
+	UncheckedBoxColor FnfColor
 
-	CheckmarkColor rl.Color
+	CheckmarkColor FnfColor
 
-	KeyColorRegular  rl.Color
-	KeyColorSelected rl.Color
+	KeyColorRegular  FnfColor
+	KeyColorSelected FnfColor
 
-	KeyColorStrokeRegular  rl.Color
-	KeyColorStrokeSelected rl.Color
+	KeyColorStrokeRegular  FnfColor
+	KeyColorStrokeSelected FnfColor
 	KeyStrokeWidthRegular  float32
 	KeyStrokeWidthSelected float32
 
@@ -130,7 +130,7 @@ var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
 	SizeSelected: 80,
 
-	Color: rl.Color{0, 0, 0, 255},
+	Color: FnfColor{0, 0, 0, 255},
 
 	Fade:             0.35,
 	FadeIfUnselected: true,
@@ -140,15 +140,15 @@ var MenuItemDefaults = MenuItem{
 	BottomMargin:       30,
 	SelectedLeftMargin: 10,
 
-	CheckedBoxColor:   rl.Color{0x79, 0xE4, 0xAF, 0xFF},
-	UncheckedBoxColor: rl.Color{0xD1, 0xD1, 0xD1, 0xFF},
+	CheckedBoxColor:   FnfColor{0x79, 0xE4, 0xAF, 0xFF},
+	UncheckedBoxColor: FnfColor{0xD1, 0xD1, 0xD1, 0xFF},
 
-	CheckmarkColor: rl.Color{0xFF, 0xFF, 0xFF, 0xFF},
+	CheckmarkColor: FnfColor{0xFF, 0xFF, 0xFF, 0xFF},
 
-	KeyColorRegular:  rl.Color{0x00, 0x00, 0x00, 200},
-	KeyColorSelected: rl.Color{0xFF, 0xFF, 0xFF, 0xFF},
+	KeyColorRegular:  FnfColor{0x00, 0x00, 0x00, 200},
+	KeyColorSelected: FnfColor{0xFF, 0xFF, 0xFF, 0xFF},
 
-	KeyColorStrokeSelected: rl.Color{0, 0, 0, 0xFF},
+	KeyColorStrokeSelected: FnfColor{0, 0, 0, 0xFF},
 
 	KeyStrokeWidthSelected: 10,
 }
@@ -249,7 +249,7 @@ func getCheckBoxTextureWH() (float32, float32) {
 }
 
 // Get check box texture drawn with specified colors.
-func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor rl.Color) rl.Texture2D {
+func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor FnfColor) rl.Texture2D {
 	tm := &TheMenuResources
 
 	flipY := rl.MatrixIdentity()
@@ -260,25 +260,23 @@ func getCheckBoxTexture(checked bool, spriteN int, boxColor, markColor rl.Color)
 	)
 
 	FnfBeginTextureMode(tm.CheckBoxRenderTex)
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
 
 	DrawTextureTransfromed(
 		CheckBoxBox,
 		rl.Rectangle{0, 0, f32(CheckBoxBox.Width), f32(CheckBoxBox.Height)},
 		flipY,
-		PreMultiplyAlpha(boxColor))
+		boxColor)
 
 	if checked {
 		DrawSpriteTransfromed(
 			CheckBoxMark, spriteN,
 			rl.Rectangle{0, 0, CheckBoxMark.Width, CheckBoxMark.Height},
 			flipY,
-			PreMultiplyAlpha(markColor))
+			markColor)
 	}
 
-	rl.EndBlendMode()
 	FnfEndTextureMode()
 
 	return tm.CheckBoxRenderTex.Texture
@@ -289,7 +287,7 @@ func getUIarrowsTextureWH() (float32, float32) {
 	return f32(tm.UIarrowRenderTex.Texture.Width), f32(tm.UIarrowRenderTex.Texture.Height)
 }
 
-func getUIarrowsTexture(drawLeft bool, fill, stroke rl.Color) rl.Texture2D {
+func getUIarrowsTexture(drawLeft bool, fill, stroke FnfColor) rl.Texture2D {
 	tm := &TheMenuResources
 
 	fillSpriteN := UIarrowRightFill
@@ -308,23 +306,21 @@ func getUIarrowsTexture(drawLeft bool, fill, stroke rl.Color) rl.Texture2D {
 	)
 
 	FnfBeginTextureMode(tm.UIarrowRenderTex)
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
-	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
 
 	DrawSpriteTransfromed(
 		UIarrowsSprite, fillSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		PreMultiplyAlpha(fill))
+		fill)
 
 	DrawSpriteTransfromed(
 		UIarrowsSprite, strokeSpriteN,
 		RectWH(UIarrowsSprite.Width, UIarrowsSprite.Height),
 		flipY,
-		PreMultiplyAlpha(stroke))
+		stroke)
 
-	rl.EndBlendMode()
 	FnfEndTextureMode()
 
 	return tm.UIarrowRenderTex.Texture
@@ -346,7 +342,7 @@ type MenuBackground struct {
 	OffsetX float32
 	OffsetY float32
 
-	Tint rl.Color
+	Tint FnfColor
 
 	BlendMode rl.BlendMode
 }
@@ -772,7 +768,7 @@ func (md *MenuDrawer) Draw() {
 		DrawPatternBackground(
 			md.Background.Texture, md.Background.OffsetX, md.Background.OffsetY, md.Background.Tint)
 
-		rl.EndBlendMode()
+		FnfEndBlendMode()
 	}
 
 	if len(md.items) <= 0 {
@@ -783,10 +779,10 @@ func (md *MenuDrawer) Draw() {
 		rl.DrawLine(
 			0, SCREEN_HEIGHT*0.5,
 			SCREEN_WIDTH, SCREEN_HEIGHT*0.5,
-			rl.Color{255, 0, 0, 255})
+			ToRlColorPremult(FnfColor{255, 0, 0, 255}))
 
 		for _, item := range md.items {
-			rl.DrawRectangleRec(item.bound, rl.Color{255, 0, 0, 100})
+			rl.DrawRectangleRec(item.bound, ToRlColorPremult(FnfColor{255, 0, 0, 100}))
 		}
 	}
 
@@ -833,14 +829,14 @@ func (md *MenuDrawer) Draw() {
 	xDrawOffset := float32(0)
 	yDrawOffset := float32(0)
 
-	fadeC := func(col rl.Color, fade float64) rl.Color {
+	fadeC := func(col FnfColor, fade float64) FnfColor{
 		col.A = uint8(f64(col.A) * fade)
 		return col
 	}
 
 	screenRect := GetScreenRect()
 
-	drawText := func(text string, fontSize, scale float32, fill, stroke rl.Color, strokeWidth float32) float32 {
+	drawText := func(text string, fontSize, scale float32, fill, stroke FnfColor, strokeWidth float32) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
 		pos := rl.Vector2{
@@ -862,11 +858,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill)
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, ToRlColorPremult(fill))
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				PreMultiplyAlpha(fill), PreMultiplyAlpha(stroke),
+				fill, stroke,
 				strokeWidth,
 			)
 		}
@@ -875,7 +871,7 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	drawTextCentered := func(
-		text string, fontSize, scale, width float32, fill, stroke rl.Color, strokeWidth float32) float32 {
+		text string, fontSize, scale, width float32, fill, stroke FnfColor, strokeWidth float32) float32 {
 
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)
 
@@ -901,11 +897,11 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if strokeWidth <= 0 {
-			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, fill)
+			rl.DrawTextEx(FontBold, text, pos, fontSize*scale, 0, ToRlColorPremult(fill))
 		} else {
 			DrawTextSdfOutlined(
 				SdfFontBold, text, pos, fontSize*scale, 0,
-				PreMultiplyAlpha(fill), PreMultiplyAlpha(stroke),
+				fill, stroke,
 				strokeWidth,
 			)
 		}
@@ -930,19 +926,19 @@ func (md *MenuDrawer) Draw() {
 	}
 
 	drawImage := func(
-		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col rl.Color) float32 {
+		img rl.Texture2D, srcRect rl.Rectangle, height, scale float32, col FnfColor) float32 {
 
 		rect, advance, draw := drawCheck(srcRect.Width, srcRect.Height, height, scale)
 
 		if draw {
-			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, col)
+			rl.DrawTexturePro(img, srcRect, rect, rl.Vector2{}, 0, ToRlColorPremult(col))
 		}
 
 		return advance
 	}
 
 	drawArrow := func(
-		drawLeft bool, height, scale float32, fill, stroke rl.Color, alpha float64) float32 {
+		drawLeft bool, height, scale float32, fill, stroke FnfColor, alpha float64) float32 {
 
 		w, h := getUIarrowsTextureWH()
 
@@ -953,12 +949,12 @@ func (md *MenuDrawer) Draw() {
 		arrowTex := getUIarrowsTexture(drawLeft, fill, stroke)
 
 		return drawImage(
-			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, rl.Color{255, 255, 255, uint8(alpha * 255)},
+			arrowTex, RectWH(arrowTex.Width, arrowTex.Height), height, scale, FnfColor{255, 255, 255, uint8(alpha * 255)},
 		)
 	}
 
 	drawCheckBox := func(
-		checked bool, spriteN int, height, scale float32, boxColor, markColor rl.Color, alpha float64) float32 {
+		checked bool, spriteN int, height, scale float32, boxColor, markColor FnfColor, alpha float64) float32 {
 
 		w, h := getCheckBoxTextureWH()
 
@@ -1107,10 +1103,10 @@ func (md *MenuDrawer) Draw() {
 					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					if keyStrokeWidth > 0.5 {
-						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, keyColorStroke)
+						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, ToRlColorPremult(keyColorStroke))
 					}
 
-					rl.DrawRectangleRounded(strikeRect, 1, 7, keyColor)
+					rl.DrawRectangleRounded(strikeRect, 1, 7, ToRlColorPremult(keyColor))
 					updateItemBound(strikeRect)
 
 					xAdvance += max(desiredWidth, keyNameSize.X)
@@ -1127,8 +1123,8 @@ func (md *MenuDrawer) Draw() {
 			// =====================================
 			switch item.Type {
 			case MenuItemToggle, MenuItemList, MenuItemNumber:
-				arrowFill := rl.Color{255, 255, 255, 255}
-				arrowStroke := rl.Color{0, 0, 0, 255}
+				arrowFill := FnfColor{255, 255, 255, 255}
+				arrowStroke := FnfColor{0, 0, 0, 255}
 
 				xAdvance += drawArrow(true, size, leftArrowScale, arrowFill, arrowStroke, fade)
 

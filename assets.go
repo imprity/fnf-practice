@@ -158,6 +158,43 @@ func loadAssets(isReload bool) {
 
 		return font
 	}
+	_=loadFont
+
+	// only supports .otf or .ttf
+	// also it can't draw on image
+	loadFontAlphaPremultiply := func(fontData []byte, fontName string, fontSize int32) rl.Font {
+		var font rl.Font
+
+		font.BaseSize = fontSize
+		font.CharsPadding = 4 // default padding set by raylib
+
+		var emptyCodePoints []rune
+		glyphs := rl.LoadFontData(fontData, fontSize, emptyCodePoints, rl.FontDefault)
+
+		font.CharsCount = i32(len(glyphs))
+		rl.SetFontCharGlyphs(&font, glyphs)
+
+		atlasImg, recs := rl.GenImageFontAtlas(glyphs, fontSize, font.CharsPadding, 0)
+		rl.SetFontRecs(&font, recs)
+
+		rl.ImageAlphaPremultiply(atlasImg)
+		atlasTex := rl.LoadTextureFromImage(atlasImg)
+
+		rl.UnloadImage(atlasImg)
+
+		font.Texture = atlasTex
+
+		rl.GenTextureMipmaps(&font.Texture)
+		rl.SetTextureFilter(font.Texture, rl.FilterTrilinear)
+
+		if !rl.IsFontReady(font) {
+			ErrorLogger.Fatalf("failed to load font : %v", fontName)
+		}
+
+		fontsToUnload = append(fontsToUnload, font)
+
+		return font
+	}
 
 	loadSdfFont := func(fontData []byte, fontName string, fontSize int32) SdfFont {
 		// NOTE : for code points we are supplying empty code points
@@ -276,26 +313,26 @@ func loadAssets(isReload bool) {
 	PopupBg = loadTexture("assets/popup_bg.png", true, ".png")
 
 	// create black pixel
-	blackPixelImg := rl.GenImageColor(2, 2, rl.Color{0, 0, 0, 255})
+	blackPixelImg := rl.GenImageColor(2, 2, ToRlColorPremult(FnfColor{0, 0, 0, 255}))
 	imgsToUnload = append(imgsToUnload, blackPixelImg)
 
 	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 	texsToUnload = append(texsToUnload, BlackPixel)
 
 	// create white pixel
-	whitePixelImg := rl.GenImageColor(2, 2, rl.Color{255, 255, 255, 255})
+	whitePixelImg := rl.GenImageColor(2, 2, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
 	imgsToUnload = append(imgsToUnload, whitePixelImg)
 
 	WhitePixel = rl.LoadTextureFromImage(whitePixelImg)
 	texsToUnload = append(texsToUnload, WhitePixel)
 
 	if !isReload {
-		FontRegular = loadFont(fontRegularData, "FontRegular", 128, ".ttf")
-		FontBold = loadFont(fontBoldData, "FontBold", 128, ".ttf")
+		FontRegular = loadFontAlphaPremultiply(fontRegularData, "FontRegular", 128)
+		FontBold = loadFontAlphaPremultiply(fontBoldData, "FontBold", 128)
 		SdfFontBold = loadSdfFont(fontBoldData, "SdfFontBold", 64)
-		KeySelectFont = loadFont(fontBoldData, "KeySelectFont", 240, ".ttf")
+		KeySelectFont = loadFontAlphaPremultiply(fontBoldData, "KeySelectFont", 240)
 
-		FontClear = loadFont(FontClearData, "HelpMsgFont", 30, ".ttf")
+		FontClear = loadFontAlphaPremultiply(FontClearData, "HelpMsgFont", 30)
 	}
 }
 

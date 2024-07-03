@@ -84,28 +84,25 @@ func FreeSdfFontDrawer() {
 	rl.UnloadRenderTexture(ts.RenderTexture)
 }
 
-// Tint expects alpha premultiplied color
 func DrawTextSdf(
 	font SdfFont,
 	text string,
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
-	tint rl.Color,
+	tint FnfColor,
 ) {
 	ts := &TheSdfDrawer
 
 	uniform := make([]float32, 4)
 	uniform[0] = f32(font.SdfOnEdgeValue) / 255
 
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 	rl.BeginShaderMode(ts.FillShader)
 	rl.SetShaderValue(ts.FillShader, ts.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
 
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
+	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, ToRlColorPremult(tint))
 
 	rl.EndShaderMode()
-	rl.EndBlendMode()
 }
 
 // This function ignores text outside of game screen.
@@ -116,7 +113,7 @@ func DrawTextSdfOutlined(
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
-	fill, stroke rl.Color,
+	fill, stroke FnfColor,
 	thick float32,
 ) {
 	if fontSize < 1 {
@@ -143,18 +140,17 @@ func DrawTextSdfOutlined(
 	// ===============================
 	FnfBeginTextureMode(ts.RenderTexture)
 
-	rl.ClearBackground(rl.Color{0, 0, 0, 0})
+	rl.ClearBackground(ToRlColorPremult(FnfColor{0, 0, 0, 0}))
 	rl.SetBlendFactors(rl.RlOne, rl.RlOne, rl.RlMax)
 	rl.BeginBlendMode(rl.BlendCustom)
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, rl.Color{255, 255, 255, 255})
-	rl.EndBlendMode()
+	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, ToRlColorPremult(FnfColor{255, 255, 255, 255}))
+	FnfEndBlendMode()
 
 	FnfEndTextureMode()
 
 	// ===============================
 	// draw to actual screen
 	// ===============================
-	rl.BeginBlendMode(rl.BlendAlphaPremultiply)
 
 	rl.BeginShaderMode(ts.OutlineShader)
 
@@ -202,5 +198,4 @@ func DrawTextSdfOutlined(
 	)
 
 	rl.EndShaderMode()
-	rl.EndBlendMode()
 }
