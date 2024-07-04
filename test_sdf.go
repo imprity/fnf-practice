@@ -57,7 +57,7 @@ func (st *SdfTestScreen) ReloadSdf() {
 	rl.UnloadFont(st.sdfFont.Font)
 
 	st.sdfFont = LoadSdfFontFromMemory(
-		fontBoldData,
+		fontClearData,
 		st.sdfFont.Font.BaseSize,
 		nil,
 		st.sdfFont.SdfPadding,

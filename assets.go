@@ -57,6 +57,7 @@ var (
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun.ttf"
 	fontRegularData []byte
 	FontRegular     rl.Font
+	SdfFontRegular  SdfFont
 
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
 	fontBoldData  []byte
@@ -65,8 +66,9 @@ var (
 	KeySelectFont rl.Font
 
 	//go:embed fonts/Pangolin/Pangolin-Regular.ttf
-	FontClearData []byte
+	fontClearData []byte
 	FontClear     rl.Font
+	SdfFontClear  SdfFont
 )
 
 var PopupBg rl.Texture2D
@@ -196,14 +198,16 @@ func loadAssets(isReload bool) {
 		return font
 	}
 
-	loadSdfFont := func(fontData []byte, fontName string, fontSize int32) SdfFont {
+	loadSdfFontPro := func(fontData []byte, fontName string, fontSize int32,
+		sdfPadding int32, sdfOnEdgeValue uint8, sdfPixelDistScale float32) SdfFont {
 		// NOTE : for code points we are supplying empty code points
 		// this will default to loading only ascii characters
 		// I thougt about adding all the Korean code points but I think that would be too expensive
 		var emptyCodePoints []rune
 		font := LoadSdfFontFromMemory(
 			fontData, fontSize, emptyCodePoints,
-			21, 200, 10, // NOTE : hard coded values for sdf font
+			sdfPadding, sdfOnEdgeValue, sdfPixelDistScale,
+			//21, 200, 10, // NOTE : hard coded values for sdf font
 		)
 
 		if !rl.IsFontReady(font.Font) {
@@ -213,6 +217,10 @@ func loadAssets(isReload bool) {
 		fontsToUnload = append(fontsToUnload, font.Font)
 
 		return font
+	}
+
+	loadSdfFont := func(fontData []byte, fontName string, fontSize int32) SdfFont {
+		return loadSdfFontPro(fontData, fontName, fontSize, 21, 200, 10)
 	}
 
 	// load fnf arrows texture
@@ -328,11 +336,15 @@ func loadAssets(isReload bool) {
 
 	if !isReload {
 		FontRegular = loadFontAlphaPremultiply(fontRegularData, "FontRegular", 128)
+		SdfFontRegular = loadSdfFont(fontRegularData, "SdfFontRegular", 64)
+
 		FontBold = loadFontAlphaPremultiply(fontBoldData, "FontBold", 128)
 		SdfFontBold = loadSdfFont(fontBoldData, "SdfFontBold", 64)
+
 		KeySelectFont = loadFontAlphaPremultiply(fontBoldData, "KeySelectFont", 240)
 
-		FontClear = loadFontAlphaPremultiply(FontClearData, "HelpMsgFont", 30)
+		FontClear = loadFontAlphaPremultiply(fontClearData, "FontClear", 30)
+		SdfFontClear = loadSdfFontPro(fontClearData, "SdfFontClear", 30, 17, 200, 10)
 	}
 }
 

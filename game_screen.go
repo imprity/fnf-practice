@@ -220,7 +220,7 @@ func NewGameScreen() *GameScreen {
 		whiteMenuItem := func() *MenuItem {
 			item := NewMenuItem()
 			item.Color = FnfColor{255, 255, 255, 255}
-			item.Fade = 0.63
+			item.Fade = 0.5
 			return item
 		}
 
@@ -2067,6 +2067,49 @@ func (gs *GameScreen) DrawProgressBar() {
 
 	rl.DrawRectangleRec(outRect, ToRlColor(FnfColor{0, 0, 0, 100}))
 	rl.DrawRectangleRec(inRect, ToRlColor(FnfColor{255, 255, 255, 255}))
+
+	// draw time stamp
+	{
+		const fontSize = 25
+		var font = FontClear
+		var textColor = rl.Color{0, 0, 0, 255}
+		const margin = 3
+
+		var timeY = outRect.Y + outRect.Height + 10
+
+		if TheOptions.DownScroll {
+			timeY = outRect.Y - fontSize - 10
+		}
+
+		rc := RectCenter(outRect)
+
+		songTime := gs.AudioPosition() - GSC.PadStart
+
+		absTime := AbsI(songTime)
+
+		minutes := int64(absTime / time.Minute)
+		seconds := int64((absTime % time.Minute) / time.Second)
+
+		minStr := fmt.Sprintf("%02d", minutes)
+		secStr := fmt.Sprintf("%02d", seconds)
+
+		if songTime < 0 {
+			minStr = "-" + minStr
+		}
+
+		sepSize := rl.MeasureTextEx(font, ":", fontSize, 0)
+		sepRect := rl.Rectangle{
+			X: rc.X - sepSize.X*0.5, Y: timeY, Width: sepSize.X, Height: sepSize.Y,
+		}
+		rl.DrawTextEx(font, ":", rl.Vector2{sepRect.X, sepRect.Y}, fontSize, 0, textColor)
+
+		minSize := rl.MeasureTextEx(font, minStr, fontSize, 0)
+		minPos := rl.Vector2{X: sepRect.X - minSize.X - margin, Y: timeY}
+		rl.DrawTextEx(font, minStr, minPos, fontSize, 0, textColor)
+
+		secPos := rl.Vector2{X: sepRect.X + sepRect.Width + margin, Y: timeY}
+		rl.DrawTextEx(font, secStr, secPos, fontSize, 0, textColor)
+	}
 
 	// draw bookmark
 

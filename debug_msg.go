@@ -94,9 +94,11 @@ func DrawDebugMsgs() {
 
 	rl.DrawRectangleRec(bgRect, ToRlColor(FnfColor{0, 0, 0, 100}))
 
+	rl.BeginBlendMode(rl.BlendAlpha)
 	for _, t := range texts {
-		rl.DrawTextEx(defaultFont, t.Text, t.Pos, fontSize, fontSpacing, ToRlColor(FnfColor{255, 255, 255, 255}))
+		rl.DrawTextEx(defaultFont, t.Text, t.Pos, fontSize, fontSpacing, rl.Color{255, 255, 255, 255})
 	}
+	FnfEndBlendMode()
 }
 
 func ClearDebugMsgs() {
