@@ -1,14 +1,10 @@
 package main
 
 import (
-	"fmt"
-	rl "github.com/gen2brain/raylib-go/raylib"
-	"strconv"
 	"unicode/utf8"
-)
 
-var _ = fmt.Println
-var _ = strconv.Quote
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 type RichTextStyle struct {
 	FontSize float32
@@ -26,7 +22,9 @@ type RichTextElement struct {
 
 	Bound rl.Rectangle
 
-	Style RichTextStyle
+	Style *RichTextStyle
+
+	Metadata int64
 
 	StartsAfterLineBreak bool
 }
@@ -46,11 +44,29 @@ var RichTextLineBreakRuleStrs = [LineBreakRuleSize]string{
 	"never",
 }
 
+type RichTextAlign int
+
+const (
+	TextAlignLeft RichTextAlign = iota
+	TextAlignCenter
+	TextAlignRight
+	TextAlignSize
+)
+
+var RichTextAlignStrs = [TextAlignSize]string{
+	"left",
+	"center",
+	"right",
+}
+
 type RichTextFactory struct {
-	Style       RichTextStyle
+	Metadata int64
+
 	LineSpacing float32
 
 	LineBreakRule RichTextLineBreakRule
+
+	style *RichTextStyle
 
 	width float32
 
@@ -59,11 +75,13 @@ type RichTextFactory struct {
 	elements []RichTextElement
 
 	brokeLine bool
+
+	alignedLineToBottom bool
 }
 
 func NewRichTextFactory(width float32) *RichTextFactory {
 	return &RichTextFactory{
-		Style: RichTextStyle{
+		style: &RichTextStyle{
 			FontSize: 30,
 			Font:     FontRegular,
 			Fill:     Col(0, 0, 0, 255),
@@ -78,11 +96,20 @@ func (rt *RichTextFactory) Width() float32 {
 	return rt.width
 }
 
-func (rt *RichTextFactory) Print(text string) []RichTextElement {
+func (rt *RichTextFactory) Style() RichTextStyle {
+	return *rt.style
+}
+
+func (rt *RichTextFactory) SetStyle(style RichTextStyle) {
+	rt.style = &style
+}
+
+func (rt *RichTextFactory) Print(text string) {
 	if len(text) <= 0 {
-		return []RichTextElement{}
+		return
 	}
-	var newElements []RichTextElement
+
+	rt.alignedLineToBottom = false
 	// check if cursor is out side width
 
 	breakLine := func() {
@@ -95,12 +122,12 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement {
 		breakLine()
 	}
 
-	font := rt.Style.Font
-	if rt.Style.UseSdfFont {
-		font = rt.Style.SdfFont.Font
+	font := rt.style.Font
+	if rt.style.UseSdfFont {
+		font = rt.style.SdfFont.Font
 	}
 
-	scaleFactor := rt.Style.FontSize / f32(font.BaseSize)
+	scaleFactor := rt.style.FontSize / f32(font.BaseSize)
 
 	getTextSize := func(start, end int) float32 {
 		textSize := float32(0)
@@ -130,14 +157,15 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement {
 
 	printSavedToken := func() bool {
 		if textEnd > textStart {
-			newElements = append(newElements, RichTextElement{
+			rt.elements = append(rt.elements, RichTextElement{
 				Text: text[textStart:textEnd],
 				Bound: rl.Rectangle{
 					X: rt.cursor.X, Y: rt.cursor.Y,
-					Width: textSize, Height: rt.Style.FontSize,
+					Width: textSize, Height: rt.style.FontSize,
 				},
-				Style:                rt.Style,
+				Style:                rt.style,
 				StartsAfterLineBreak: rt.brokeLine,
+				Metadata:             rt.Metadata,
 			})
 
 			rt.brokeLine = false
@@ -190,20 +218,105 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement {
 	}
 
 	printSavedToken()
-
-	for _, e := range newElements {
-		rt.elements = append(rt.elements, e)
-	}
-
-	return newElements
 }
 
 func (rt *RichTextFactory) Elements() []RichTextElement {
+	if !rt.alignedLineToBottom {
+		iter := NewRTElineIterator(rt.elements)
+
+		for iter.HasNext() {
+			b, e := iter.Next()
+
+			if e-b > 1 {
+				maxBound := rt.elements[b].Bound
+
+				for i := b + 1; i < e; i++ {
+					maxBound = RectUnion(maxBound, rt.elements[i].Bound)
+				}
+
+				for i := b; i < e; i++ {
+					rt.elements[i].Bound.Y = maxBound.Y + maxBound.Height - rt.elements[i].Bound.Height
+				}
+			}
+		}
+
+		rt.alignedLineToBottom = true
+	}
+
 	return rt.elements
 }
 
 func (rt *RichTextFactory) Cursor() rl.Vector2 {
 	return rt.cursor
+}
+
+func ElementsBound(elements []RichTextElement) rl.Rectangle{
+	if len(elements) <= 0 {
+		return rl.Rectangle{}
+	}
+
+	bound := elements[0].Bound
+
+	for i:=1; i<len(elements); i++{
+		bound = RectUnion(bound, elements[i].Bound)
+	}
+
+	return bound
+}
+
+func AlignElements(elements []RichTextElement, align RichTextAlign){
+	iter := NewRTElineIterator(elements)
+
+	totalBound := ElementsBound(elements)
+
+	for iter.HasNext(){
+		b, e := iter.Next()
+
+		lineBound := ElementsBound(elements[b:e])
+
+		var offsetX float32
+
+		switch align {
+		case TextAlignLeft :
+			offsetX = -lineBound.X
+		case TextAlignRight :
+			offsetX = totalBound.Width - lineBound.Width - lineBound.X
+		case TextAlignCenter :
+			offsetX = totalBound.Width * 0.5 - lineBound.Width * 0.5 - lineBound.X
+		}
+
+		for i:=b; i<e; i++{
+			elements[i].Bound.X += offsetX
+		}
+	}
+}
+
+type RTElineIterator struct {
+	elements []RichTextElement
+	pos      int
+}
+
+func NewRTElineIterator(elements []RichTextElement) *RTElineIterator {
+	return &RTElineIterator{elements: elements}
+}
+
+func (it *RTElineIterator) HasNext() bool {
+	return it.pos < len(it.elements)
+}
+
+func (it *RTElineIterator) Next() (int, int) {
+	prevPos := it.pos
+	it.pos += 1
+
+	for it.pos < len(it.elements) {
+		if it.elements[it.pos].StartsAfterLineBreak {
+			return prevPos, it.pos
+		}
+
+		it.pos += 1
+	}
+
+	return prevPos, it.pos
 }
 
 type iteratorForRT struct {
@@ -255,3 +368,4 @@ func (it *iteratorForRT) Next() (int, int) {
 		return prevPos, it.pos
 	}
 }
+
