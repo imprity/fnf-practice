@@ -8,7 +8,7 @@ import (
 )
 
 var _ = fmt.Println
-var _=strconv.Quote
+var _ = strconv.Quote
 
 type RichTextStyle struct {
 	FontSize float32
@@ -22,27 +22,43 @@ type RichTextStyle struct {
 }
 
 type RichTextElement struct {
-	Text  string
-	Pos   rl.Vector2
+	Text string
+
+	Bound rl.Rectangle
+
 	Style RichTextStyle
+
+	StartsAfterLineBreak bool
 }
 
+type RichTextLineBreakRule int
+
 const (
-	LineBreakChar = iota
+	LineBreakChar RichTextLineBreakRule = iota
 	LineBreakWord
+	LineBreakNever
+	LineBreakRuleSize
 )
+
+var RichTextLineBreakRuleStrs = [LineBreakRuleSize]string{
+	"character",
+	"word",
+	"never",
+}
 
 type RichTextFactory struct {
 	Style       RichTextStyle
 	LineSpacing float32
 
-	LineBreakRule int
+	LineBreakRule RichTextLineBreakRule
 
 	width float32
 
 	cursor rl.Vector2
 
 	elements []RichTextElement
+
+	brokeLine bool
 }
 
 func NewRichTextFactory(width float32) *RichTextFactory {
@@ -62,83 +78,21 @@ func (rt *RichTextFactory) Width() float32 {
 	return rt.width
 }
 
-func (rt *RichTextFactory) Print2(text string) {
-	if len(text) <= 0 {
-		return
-	}
-	// check if cursor is out side width
-
-	if rt.cursor.X > rt.width {
-		rt.cursor.X = 0
-		rt.cursor.Y += rt.LineSpacing
-	}
-
-	font := rt.Style.Font
-	if rt.Style.UseSdfFont {
-		font = rt.Style.SdfFont.Font
-	}
-
-	scaleFactor := rt.Style.FontSize / f32(font.BaseSize)
-
-	start := 0
-	savedCursor := rt.cursor
-
-	commit := func(pos int) {
-		rt.elements = append(rt.elements, RichTextElement{
-			Text:  text[start:pos],
-			Pos:   savedCursor,
-			Style: rt.Style,
-		})
-		savedCursor = rt.cursor
-		start = pos
-	}
-
-	breakLine := func() {
-		rt.cursor.X = 0
-		rt.cursor.Y += rt.LineSpacing
-		savedCursor = rt.cursor
-	}
-
-	for pos, char := range text {
-		if char == '\n' {
-			commit(pos)
-			breakLine()
-			start = pos + 1
-		} else {
-			glyph := rl.GetGlyphInfo(font, char)
-
-			charAdvance := float32(glyph.AdvanceX)
-			if charAdvance == 0 {
-				rec := rl.GetGlyphAtlasRec(font, char)
-				charAdvance = rec.Width
-			}
-			charAdvance *= scaleFactor
-
-			if rt.cursor.X+charAdvance > rt.width {
-				commit(pos)
-				breakLine()
-				start = pos
-			}
-
-			rt.cursor.X += charAdvance
-		}
-	}
-
-	if start < len(text) {
-		commit(len(text))
-	}
-}
-
-func (rt *RichTextFactory) Print(text string) []RichTextElement{
+func (rt *RichTextFactory) Print(text string) []RichTextElement {
 	if len(text) <= 0 {
 		return []RichTextElement{}
 	}
 	var newElements []RichTextElement
 	// check if cursor is out side width
 
-	if rt.cursor.X > rt.width {
+	breakLine := func() {
+		rt.brokeLine = true
 		rt.cursor.X = 0
 		rt.cursor.Y += rt.LineSpacing
+	}
+
+	if rt.LineBreakRule != LineBreakNever && rt.cursor.X > rt.width {
+		breakLine()
 	}
 
 	font := rt.Style.Font
@@ -148,7 +102,7 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement{
 
 	scaleFactor := rt.Style.FontSize / f32(font.BaseSize)
 
-	getTextSize := func(start, end int) float32{
+	getTextSize := func(start, end int) float32 {
 		textSize := float32(0)
 		for _, char := range text[start:end] {
 			glyph := rl.GetGlyphInfo(font, char)
@@ -169,19 +123,24 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement{
 	textEnd := 0
 	textSize := float32(0)
 
-	saveToken := func(tkStart, tkEnd int, tkSize float32){
+	saveToken := func(tkStart, tkEnd int, tkSize float32) {
 		textSize += tkSize
 		textEnd = tkEnd
 	}
 
-	printSavedToken := func() bool{
-		if textEnd > textStart{
+	printSavedToken := func() bool {
+		if textEnd > textStart {
 			newElements = append(newElements, RichTextElement{
-				Text:  text[textStart:textEnd],
-				Pos:   rt.cursor,
-				Style: rt.Style,
+				Text: text[textStart:textEnd],
+				Bound: rl.Rectangle{
+					X: rt.cursor.X, Y: rt.cursor.Y,
+					Width: textSize, Height: rt.Style.FontSize,
+				},
+				Style:                rt.Style,
+				StartsAfterLineBreak: rt.brokeLine,
 			})
 
+			rt.brokeLine = false
 			rt.cursor.X += textSize
 			textStart = textEnd
 			textSize = 0
@@ -191,39 +150,40 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement{
 		return false
 	}
 
-	iter := newIteratorForRT([]byte(text), font, rt.LineBreakRule)
+	iter := newIteratorForRT([]byte(text), rt.LineBreakRule)
 
-	for iter.HasNext(){
+	for iter.HasNext() {
 		tkStart, tkEnd := iter.Next()
 
-		if text[tkStart:tkEnd] == "\n"{
+		if text[tkStart:tkEnd] == "\n" {
 			printSavedToken()
-			rt.cursor.Y += rt.LineSpacing
-			rt.cursor.X = 0
+			breakLine()
 			textStart = tkEnd
 			textEnd = tkEnd
-		}else{
+		} else {
 			tkSize := getTextSize(tkStart, tkEnd)
-			if rt.cursor.X + textSize + tkSize > rt.width{
-				printSavedToken()
-				if rt.cursor.X > 0 {
-					rt.cursor.Y += rt.LineSpacing
-					rt.cursor.X = 0
-				}
 
+			if rt.LineBreakRule == LineBreakNever {
 				saveToken(tkStart, tkEnd, tkSize)
+			} else {
+				if rt.cursor.X+textSize+tkSize > rt.width {
+					printSavedToken()
+					if rt.cursor.X > 0 {
+						breakLine()
+					}
 
-				if rt.cursor.X + textSize > rt.width{
-					printSavedToken()
-					rt.cursor.Y += rt.LineSpacing
-					rt.cursor.X = 0
-				}
-			}else{
-				saveToken(tkStart, tkEnd, tkSize)
-				if rt.cursor.X + textSize > rt.width{
-					printSavedToken()
-					rt.cursor.Y += rt.LineSpacing
-					rt.cursor.X = 0
+					saveToken(tkStart, tkEnd, tkSize)
+
+					if rt.cursor.X+textSize > rt.width {
+						printSavedToken()
+						breakLine()
+					}
+				} else {
+					saveToken(tkStart, tkEnd, tkSize)
+					if rt.cursor.X+textSize > rt.width {
+						printSavedToken()
+						breakLine()
+					}
 				}
 			}
 		}
@@ -231,16 +191,31 @@ func (rt *RichTextFactory) Print(text string) []RichTextElement{
 
 	printSavedToken()
 
+	for _, e := range newElements {
+		rt.elements = append(rt.elements, e)
+	}
+
 	return newElements
+}
+
+func (rt *RichTextFactory) Elements() []RichTextElement {
+	return rt.elements
+}
+
+func (rt *RichTextFactory) Cursor() rl.Vector2 {
+	return rt.cursor
 }
 
 type iteratorForRT struct {
 	text          []byte
-	lineBreakRule int
+	lineBreakRule RichTextLineBreakRule
 	pos           int
 }
 
-func newIteratorForRT(textAsBytes []byte, font rl.Font, lineBreakRule int) *iteratorForRT {
+func newIteratorForRT(
+	textAsBytes []byte,
+	lineBreakRule RichTextLineBreakRule,
+) *iteratorForRT {
 	return &iteratorForRT{
 		text:          textAsBytes,
 		lineBreakRule: lineBreakRule,

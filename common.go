@@ -243,6 +243,13 @@ func RectCenter(rect rl.Rectangle) rl.Vector2 {
 	}
 }
 
+func RectPos(rect rl.Rectangle) rl.Vector2 {
+	return rl.Vector2{
+		X: rect.X,
+		Y: rect.Y,
+	}
+}
+
 func RectEnd(rect rl.Rectangle) rl.Vector2 {
 	return rl.Vector2{
 		X: rect.X + rect.Width,
