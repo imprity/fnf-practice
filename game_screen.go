@@ -2410,149 +2410,91 @@ func (hm *HelpMessage) InitTextImage() {
 	// NOTE : resized font looks very ugly
 	// so we have to use whatever size font is loaded in
 	// if you want to resize the help message, modify it in assets.go
-	fontSize := f32(FontClear.BaseSize)
-
-	type textPosColor struct {
-		Text string
-		Pos  rl.Vector2
-		Col  FnfColor
+	style := RichTextStyle{
+		FontSize: f32(FontClear.BaseSize),
+		Font:     FontClear,
+		Fill:     Col01(0, 0, 0, 1),
 	}
 
-	var textsToDraw []textPosColor
+	styleRed := style
+	styleRed.Fill = FnfColor{0xF6, 0x08, 0x08, 0xFF}
 
-	drawMsgAndKey := func(msg string, key int32, x, y float32) rl.Rectangle {
-		totalRect := rl.Rectangle{X: x, Y: y}
-
-		// Draw message
-		msg = msg + " : "
-
-		msgSize := rl.MeasureTextEx(FontClear, msg, fontSize, 0)
-
-		textsToDraw = append(textsToDraw,
-			textPosColor{
-				Text: msg,
-				Pos:  rl.Vector2{totalRect.X + totalRect.Width, y},
-				Col:  FnfColor{0, 0, 0, 255},
-			})
-
-		totalRect.Height = max(totalRect.Height, msgSize.Y)
-		totalRect.Width += msgSize.X
-
-		// Draw key name
-		keyName := GetKeyName(key)
-
-		keyNameSize := rl.MeasureTextEx(FontClear, keyName, fontSize, 0)
-
-		textsToDraw = append(textsToDraw,
-			textPosColor{
-				Text: keyName,
-				Pos:  rl.Vector2{totalRect.X + totalRect.Width, y},
-				Col:  FnfColor{0xF6, 0x08, 0x08, 0xFF},
-			})
-
-		totalRect.Height = max(totalRect.Height, keyNameSize.Y)
-		totalRect.Width += keyNameSize.X
-
-		return totalRect
+	printKeyBinding := func(f *RichTextFactory, name string, binding FnfBinding) {
+		f.SetStyle(style)
+		f.Print(name + " : ")
+		f.SetStyle(styleRed)
+		f.Print(GetKeyName(TheKM[binding]) + "\n")
 	}
 
-	drawManyMsgAndKeys := func(msgs []string, keys []int32, x, y float32) rl.Rectangle {
-		totalRect := rl.Rectangle{X: x, Y: y}
+	f1 := NewRichTextFactory(100)
+	f1.LineBreakRule = LineBreakNever
 
-		limit := min(len(msgs), len(keys))
+	printKeyBinding(f1, "pause/play", PauseKey)
+	f1.Print("\n")
 
-		for i := 0; i < limit; i++ {
-			msg := msgs[i]
-			key := keys[i]
+	f1.Metadata = 1
+	printKeyBinding(f1, "scroll up", NoteScrollUpKey)
+	printKeyBinding(f1, "scroll down", NoteScrollDownKey)
+	f1.Metadata = 0
+	f1.Print("\n")
 
-			rect := drawMsgAndKey(msg, key, totalRect.X, totalRect.Y+totalRect.Height)
+	printKeyBinding(f1, "note spacing up", ZoomInKey)
+	printKeyBinding(f1, "note spacing down", ZoomOutKey)
+	f1.Print("\n")
 
-			totalRect = RectUnion(totalRect, rect)
+	printKeyBinding(f1, "set bookmark", SetBookMarkKey)
+	printKeyBinding(f1, "jump to bookmark", JumpToBookMarkKey)
+	f1.Print("\n")
+
+	f2 := NewRichTextFactory(100)
+	f2.LineBreakRule = LineBreakNever
+
+	printKeyBinding(f2, "audio speed up", AudioSpeedUpKey)
+	printKeyBinding(f2, "audio speed down", AudioSpeedDownKey)
+
+	elements1 := f1.Elements(TextAlignLeft, 0, 20)
+	elements2 := f2.Elements(TextAlignLeft, 0, 20)
+
+	elements1Bound := ElementsBound(elements1)
+
+	// calculate where to draw elements2
+	// it should be next to scroll up and down
+	var e2x, e2y float32
+
+	{
+		meta1Bound := rl.Rectangle{}
+		foundMeta1 := false
+
+		for _, e := range elements1 {
+			if e.Metadata == 1 {
+				if !foundMeta1 {
+					meta1Bound = e.Bound
+					foundMeta1 = true
+				} else {
+					meta1Bound = RectUnion(meta1Bound, e.Bound)
+				}
+			}
 		}
 
-		return totalRect
+		if foundMeta1 {
+			e2x = meta1Bound.X + meta1Bound.Width + 20
+			e2y = meta1Bound.Y
+		}
 	}
 
-	txtTotalRect := rl.Rectangle{}
+	elements2Bound := ElementsBound(elements2)
+	elements2Bound.X += e2x
+	elements2Bound.Y += e2y
 
-	offsetX := f32(0)
-	offsetY := f32(0)
+	boundTotal := RectUnion(elements1Bound, elements2Bound)
 
-	const marginX = 20
-	const marginY = 20
-
-	// pasue and play
-	{
-		rect := drawMsgAndKey("pause/play", TheKM[PauseKey], offsetX, offsetY)
-		offsetY += rect.Height + marginY
-		txtTotalRect = RectUnion(txtTotalRect, rect)
-	}
-
-	// scroll up and down
-	// audio speed adjustment
-	{
-		x := offsetX
-		y := offsetY
-
-		var rect rl.Rectangle
-
-		totalH := float32(0)
-
-		// scroll up and down
-		rect = drawManyMsgAndKeys(
-			[]string{"scroll up", "scroll down"},
-			[]int32{TheKM[NoteScrollUpKey], TheKM[NoteScrollDownKey]},
-			x, y)
-		txtTotalRect = RectUnion(txtTotalRect, rect)
-
-		x += rect.Width + marginX
-		totalH = max(totalH, rect.Height)
-
-		// audio speed adjustment
-		rect = drawManyMsgAndKeys(
-			[]string{"audio speed up", "audio speed down"},
-			[]int32{TheKM[AudioSpeedUpKey], TheKM[AudioSpeedDownKey]},
-			x, y)
-
-		totalH = max(totalH, rect.Height)
-
-		offsetY += totalH + marginY
-
-		txtTotalRect = RectUnion(txtTotalRect, rect)
-	}
-
-	// note spacing
-	{
-		rect := drawManyMsgAndKeys(
-			[]string{"note spacing up", "note spacing down"},
-			[]int32{TheKM[ZoomInKey], TheKM[ZoomOutKey]},
-			offsetX, offsetY)
-		txtTotalRect = RectUnion(txtTotalRect, rect)
-
-		offsetY += rect.Height + marginY
-	}
-
-	// bookmarking
-	{
-		rect := drawManyMsgAndKeys(
-			[]string{"set bookmark", "jump to bookmark"},
-			[]int32{TheKM[SetBookMarkKey], TheKM[JumpToBookMarkKey]},
-			offsetX, offsetY)
-		txtTotalRect = RectUnion(txtTotalRect, rect)
-
-		offsetY += rect.Height + marginY
-	}
-
-	hm.TextImage = rl.LoadRenderTexture(i32(txtTotalRect.Width), i32(txtTotalRect.Height))
+	hm.TextImage = rl.LoadRenderTexture(
+		i32(boundTotal.Width), i32(boundTotal.Height))
 
 	FnfBeginTextureMode(hm.TextImage)
 
-	for _, toDraw := range textsToDraw {
-		pos := toDraw.Pos
-
-		rl.DrawTextEx(FontClear, toDraw.Text, pos,
-			fontSize, 0, ToRlColor(toDraw.Col))
-	}
+	DrawTextElements(elements1, 0, 0)
+	DrawTextElements(elements2, e2x, e2y)
 
 	FnfEndTextureMode()
 }

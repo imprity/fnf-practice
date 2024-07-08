@@ -25,8 +25,6 @@ type RichTextElement struct {
 	Style *RichTextStyle
 
 	Metadata int64
-
-	StartsAfterLineBreak bool
 }
 
 type RichTextLineBreakRule int
@@ -62,21 +60,15 @@ var RichTextAlignStrs = [TextAlignSize]string{
 type RichTextFactory struct {
 	Metadata int64
 
-	LineSpacing float32
-
 	LineBreakRule RichTextLineBreakRule
 
 	style *RichTextStyle
 
 	width float32
 
-	cursor rl.Vector2
+	cursor float32
 
 	elements []RichTextElement
-
-	brokeLine bool
-
-	alignedLineToBottom bool
 }
 
 func NewRichTextFactory(width float32) *RichTextFactory {
@@ -86,8 +78,6 @@ func NewRichTextFactory(width float32) *RichTextFactory {
 			Font:     FontRegular,
 			Fill:     Col(0, 0, 0, 255),
 		},
-		LineSpacing: 30,
-
 		width: width,
 	}
 }
@@ -109,16 +99,22 @@ func (rt *RichTextFactory) Print(text string) {
 		return
 	}
 
-	rt.alignedLineToBottom = false
 	// check if cursor is out side width
 
 	breakLine := func() {
-		rt.brokeLine = true
-		rt.cursor.X = 0
-		rt.cursor.Y += rt.LineSpacing
+		rt.elements = append(rt.elements, RichTextElement{
+			Text: "\n",
+			Bound: rl.Rectangle{
+				X: rt.cursor, Y: 0,
+				Width: 0, Height: 0,
+			},
+			Style:    rt.style,
+			Metadata: rt.Metadata,
+		})
+		rt.cursor = 0
 	}
 
-	if rt.LineBreakRule != LineBreakNever && rt.cursor.X > rt.width {
+	if rt.LineBreakRule != LineBreakNever && rt.cursor > rt.width {
 		breakLine()
 	}
 
@@ -160,16 +156,14 @@ func (rt *RichTextFactory) Print(text string) {
 			rt.elements = append(rt.elements, RichTextElement{
 				Text: text[textStart:textEnd],
 				Bound: rl.Rectangle{
-					X: rt.cursor.X, Y: rt.cursor.Y,
+					X: rt.cursor, Y: 0,
 					Width: textSize, Height: rt.style.FontSize,
 				},
-				Style:                rt.style,
-				StartsAfterLineBreak: rt.brokeLine,
-				Metadata:             rt.Metadata,
+				Style:    rt.style,
+				Metadata: rt.Metadata,
 			})
 
-			rt.brokeLine = false
-			rt.cursor.X += textSize
+			rt.cursor += textSize
 			textStart = textEnd
 			textSize = 0
 
@@ -194,21 +188,21 @@ func (rt *RichTextFactory) Print(text string) {
 			if rt.LineBreakRule == LineBreakNever {
 				saveToken(tkStart, tkEnd, tkSize)
 			} else {
-				if rt.cursor.X+textSize+tkSize > rt.width {
+				if rt.cursor+textSize+tkSize > rt.width {
 					printSavedToken()
-					if rt.cursor.X > 0 {
+					if rt.cursor > 0 {
 						breakLine()
 					}
 
 					saveToken(tkStart, tkEnd, tkSize)
 
-					if rt.cursor.X+textSize > rt.width {
+					if rt.cursor+textSize > rt.width {
 						printSavedToken()
 						breakLine()
 					}
 				} else {
 					saveToken(tkStart, tkEnd, tkSize)
-					if rt.cursor.X+textSize > rt.width {
+					if rt.cursor+textSize > rt.width {
 						printSavedToken()
 						breakLine()
 					}
@@ -220,56 +214,56 @@ func (rt *RichTextFactory) Print(text string) {
 	printSavedToken()
 }
 
-func (rt *RichTextFactory) Elements() []RichTextElement {
-	if !rt.alignedLineToBottom {
-		iter := NewRTElineIterator(rt.elements)
+func (rt *RichTextFactory) Elements(
+	align RichTextAlign,
+	lineMargin float32,
+	emptyLineHeight float32,
+) []RichTextElement {
+	// align texts in line to their most bottom
+	iter := NewRTElineIterator(rt.elements)
 
-		for iter.HasNext() {
-			b, e := iter.Next()
+	for iter.HasNext() {
+		b, e := iter.Next()
 
-			if e-b > 1 {
-				maxBound := rt.elements[b].Bound
+		if e-b > 1 {
+			maxBound := rt.elements[b].Bound
 
-				for i := b + 1; i < e; i++ {
-					maxBound = RectUnion(maxBound, rt.elements[i].Bound)
-				}
+			for i := b + 1; i < e; i++ {
+				maxBound = RectUnion(maxBound, rt.elements[i].Bound)
+			}
 
-				for i := b; i < e; i++ {
-					rt.elements[i].Bound.Y = maxBound.Y + maxBound.Height - rt.elements[i].Bound.Height
-				}
+			for i := b; i < e; i++ {
+				rt.elements[i].Bound.Y = maxBound.Y + maxBound.Height - rt.elements[i].Bound.Height
 			}
 		}
-
-		rt.alignedLineToBottom = true
 	}
+
+	SetElementsLineSpacing(rt.elements, lineMargin, emptyLineHeight)
+	AlignElements(rt.elements, align)
 
 	return rt.elements
 }
 
-func (rt *RichTextFactory) Cursor() rl.Vector2 {
-	return rt.cursor
-}
-
-func ElementsBound(elements []RichTextElement) rl.Rectangle{
+func ElementsBound(elements []RichTextElement) rl.Rectangle {
 	if len(elements) <= 0 {
 		return rl.Rectangle{}
 	}
 
 	bound := elements[0].Bound
 
-	for i:=1; i<len(elements); i++{
+	for i := 1; i < len(elements); i++ {
 		bound = RectUnion(bound, elements[i].Bound)
 	}
 
 	return bound
 }
 
-func AlignElements(elements []RichTextElement, align RichTextAlign){
+func AlignElements(elements []RichTextElement, align RichTextAlign) {
 	iter := NewRTElineIterator(elements)
 
 	totalBound := ElementsBound(elements)
 
-	for iter.HasNext(){
+	for iter.HasNext() {
 		b, e := iter.Next()
 
 		lineBound := ElementsBound(elements[b:e])
@@ -277,16 +271,77 @@ func AlignElements(elements []RichTextElement, align RichTextAlign){
 		var offsetX float32
 
 		switch align {
-		case TextAlignLeft :
+		case TextAlignLeft:
 			offsetX = -lineBound.X
-		case TextAlignRight :
+		case TextAlignRight:
 			offsetX = totalBound.Width - lineBound.Width - lineBound.X
-		case TextAlignCenter :
-			offsetX = totalBound.Width * 0.5 - lineBound.Width * 0.5 - lineBound.X
+		case TextAlignCenter:
+			offsetX = totalBound.Width*0.5 - lineBound.Width*0.5 - lineBound.X
 		}
 
-		for i:=b; i<e; i++{
+		for i := b; i < e; i++ {
 			elements[i].Bound.X += offsetX
+		}
+	}
+}
+
+func SetElementsLineSpacing(elements []RichTextElement, margin float32, emptyLineHeight float32) {
+	// bring all the elements to the top
+	iter := NewRTElineIterator(elements)
+
+	for iter.HasNext() {
+		b, e := iter.Next()
+
+		bound := ElementsBound(elements[b:e])
+
+		for i := b; i < e; i++ {
+			elements[i].Bound.Y -= bound.Y
+		}
+	}
+
+	// calculate new y offset
+	iter = NewRTElineIterator(elements)
+	offsetY := float32(0)
+
+	for iter.HasNext() {
+		b, e := iter.Next()
+
+		if e-b == 1 && elements[b].Text == "\n" {
+			elements[b].Bound.Y += offsetY
+			offsetY += margin + emptyLineHeight
+		} else {
+			bound := ElementsBound(elements[b:e])
+
+			for i := b; i < e; i++ {
+				elements[i].Bound.Y += offsetY
+			}
+
+			offsetY += margin + bound.Height
+		}
+	}
+}
+
+func DrawTextElements(elements []RichTextElement, x, y float32) {
+	for _, e := range elements {
+		pos := RectPos(e.Bound)
+		pos.X += x
+		pos.Y += y
+		if e.Style.UseSdfFont {
+			if e.Style.StrokeWidth > 0 {
+				DrawTextSdfOutlined(e.Style.SdfFont, e.Text, pos,
+					e.Style.FontSize, 0,
+					ToRlColor(e.Style.Fill), ToRlColor(e.Style.Stroke),
+					e.Style.StrokeWidth,
+				)
+			} else {
+				DrawTextSdf(e.Style.SdfFont, e.Text, pos,
+					e.Style.FontSize, 0, ToRlColor(e.Style.Fill),
+				)
+			}
+		} else {
+			rl.DrawTextEx(e.Style.Font, e.Text, pos,
+				e.Style.FontSize, 0, ToRlColor(e.Style.Fill),
+			)
 		}
 	}
 }
@@ -306,10 +361,10 @@ func (it *RTElineIterator) HasNext() bool {
 
 func (it *RTElineIterator) Next() (int, int) {
 	prevPos := it.pos
-	it.pos += 1
 
 	for it.pos < len(it.elements) {
-		if it.elements[it.pos].StartsAfterLineBreak {
+		if it.elements[it.pos].Text == "\n" {
+			it.pos += 1
 			return prevPos, it.pos
 		}
 
@@ -368,4 +423,3 @@ func (it *iteratorForRT) Next() (int, int) {
 		return prevPos, it.pos
 	}
 }
-
