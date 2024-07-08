@@ -80,8 +80,13 @@ func NewSelectScreen() *SelectScreen {
 	directoryOpen := NewMenuItem()
 	directoryOpen.Name = "Search Directory"
 	directoryOpen.Type = MenuItemTrigger
+
+	directoryOpen.Color = FnfColor{0, 0, 0, 150}
 	directoryOpen.StrokeColor = FnfColor{255, 255, 255, 255}
-	directoryOpen.StrokeWidth = 5
+	directoryOpen.StrokeColorSelected = FnfColor{255, 255, 255, 255}
+	directoryOpen.StrokeWidthSelected = 5
+	directoryOpen.StrokeWidth = 0
+
 	directoryOpen.TriggerCallback = func() {
 		ShowTransition(DirSelectScreen, func() {
 			defer HideTransition()
@@ -151,44 +156,7 @@ func NewSelectScreen() *SelectScreen {
 	ss.Menu.AddItems(songDeco)
 	ss.SongDecoItemId = songDeco.Id
 
-	// =====================
-	// print help message
-	// =====================
-	{
-		f := NewRichTextFactory(430)
-
-		f.LineBreakRule = LineBreakWord
-
-		const fontSize = 35
-
-		style := RichTextStyle{
-			FontSize: fontSize,
-			Font:     FontClear,
-			Fill:     FnfColor{0, 0, 0, 255},
-		}
-		styleBold := RichTextStyle{
-			FontSize:    fontSize,
-			SdfFont:     SdfFontBold,
-			UseSdfFont:  true,
-			Fill:        FnfColor{0, 0, 0, 255},
-			Stroke:      FnfColor{255, 255, 255, 255},
-			StrokeWidth: 5,
-		}
-
-		f.SetStyle(style)
-		f.Print("Press")
-
-		f.SetStyle(styleBold)
-		f.Print(" " + GetKeyName(TheKM[SelectKey]) + " ")
-
-		f.SetStyle(style)
-		f.Print("to add songs.\n\n" +
-			"When you select this item, file explorer will show up.\n\n" +
-			"Select the folder where your Friday Night Funkin is located.",
-		)
-
-		ss.searchDirHelpMsg = f.Elements(TextAlignLeft, 0, fontSize*0.5)
-	}
+	ss.GeneateHelpMsg()
 
 	return ss
 }
@@ -219,6 +187,42 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	ErrorLogger.Fatal("Unreachable")
 
 	return 0
+}
+
+func (ss *SelectScreen) GeneateHelpMsg() {
+	f := NewRichTextFactory(430)
+
+	f.LineBreakRule = LineBreakWord
+
+	const fontSize = 35
+
+	style := RichTextStyle{
+		FontSize: fontSize,
+		Font:     FontClear,
+		Fill:     FnfColor{0, 0, 0, 255},
+	}
+	styleBold := RichTextStyle{
+		FontSize:    fontSize,
+		SdfFont:     SdfFontBold,
+		UseSdfFont:  true,
+		Fill:        FnfColor{0, 0, 0, 255},
+		Stroke:      FnfColor{255, 255, 255, 255},
+		StrokeWidth: 5,
+	}
+
+	f.SetStyle(style)
+	f.Print("Press")
+
+	f.SetStyle(styleBold)
+	f.Print(" " + GetKeyName(TheKM[SelectKey]) + " ")
+
+	f.SetStyle(style)
+	f.Print("to add songs.\n\n" +
+		"When you select this item, file explorer will show up.\n\n" +
+		"Select the folder where your other Friday Night Funkin program located.",
+	)
+
+	ss.searchDirHelpMsg = f.Elements(TextAlignLeft, 0, fontSize*0.5)
 }
 
 func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
@@ -608,6 +612,8 @@ func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.DrawDeleteMenu = false
 
 	ss.Menu.BeforeScreenTransition()
+
+	ss.GeneateHelpMsg()
 
 	ss.DeleteMenu.ClearItems()
 	ss.DeleteMenu.BeforeScreenTransition()

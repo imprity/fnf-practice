@@ -218,9 +218,13 @@ func NewGameScreen() *GameScreen {
 	gs.Menu = NewMenuDrawer()
 	{
 		whiteMenuItem := func() *MenuItem {
+			const fade = 0.5
+			alpha := fade * 255
+
 			item := NewMenuItem()
-			item.Color = FnfColor{255, 255, 255, 255}
-			item.Fade = 0.5
+			item.Color = FnfColor{255, 255, 255, uint8(alpha)}
+			item.ColorSelected = FnfColor{255, 255, 255, 255}
+			item.Fade = fade
 			return item
 		}
 

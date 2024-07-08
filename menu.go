@@ -59,7 +59,12 @@ type MenuItem struct {
 	StrokeColor FnfColor
 	StrokeWidth float32
 
+	ColorSelected       FnfColor
+	StrokeColorSelected FnfColor
+	StrokeWidthSelected float32
+
 	// transparency when it's unselected
+	// doesn't apply to name
 	Fade             float64
 	FadeIfUnselected bool
 
@@ -130,7 +135,8 @@ var MenuItemDefaults = MenuItem{
 	SizeRegular:  70,
 	SizeSelected: 80,
 
-	Color: FnfColor{0, 0, 0, 255},
+	Color:         FnfColor{0, 0, 0, 90},
+	ColorSelected: FnfColor{0, 0, 0, 255},
 
 	Fade:             0.35,
 	FadeIfUnselected: true,
@@ -982,7 +988,10 @@ func (md *MenuDrawer) Draw() {
 		fade := item.Fade
 		size := item.SizeRegular
 
+		nameColorLerp := f64(0)
+
 		if index == md.selectedIndex {
+			nameColorLerp = f64(md.scrollAnimT)
 			fade = Lerp(item.Fade, 1.0, float64(md.scrollAnimT))
 			size = Lerp(item.SizeRegular, item.SizeSelected, md.scrollAnimT)
 			xAdvance += Lerp(0, item.SelectedLeftMargin, md.scrollAnimT)
@@ -997,12 +1006,16 @@ func (md *MenuDrawer) Draw() {
 		leftArrowScale := calcArrowClick(item.LeftArrowClickTimer)
 		rightArrowScale := calcArrowClick(item.RightArrowClickTimer)
 
+		itemFill := LerpRGBA(item.Color, item.ColorSelected, nameColorLerp)
+		itemStroke := LerpRGBA(item.StrokeColor, item.StrokeColorSelected, nameColorLerp)
+		itemStrokeWidth := Lerp(item.StrokeWidth, item.StrokeWidthSelected, f32(nameColorLerp))
+
 		// ==========================
 		// draw name
 		// ==========================
 		{
 			renderedWidth := drawText(
-				item.Name, size, nameScale, fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
+				item.Name, size, nameScale, itemFill, itemStroke, itemStrokeWidth)
 
 			xAdvance += max(renderedWidth, item.NameMinWidth)
 
@@ -1011,7 +1024,7 @@ func (md *MenuDrawer) Draw() {
 			} else {
 				xAdvance += 20
 				xAdvance += drawText(
-					item.NameValueSeperator, size, 1, fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
+					item.NameValueSeperator, size, 1, itemFill, itemStroke, itemStrokeWidth)
 				xAdvance += 40
 			}
 		}
@@ -1150,18 +1163,18 @@ func (md *MenuDrawer) Draw() {
 				case MenuItemToggle:
 					if item.BValue {
 						drawTextCentered("Yes", size, valueScale, valueWidthMax,
-							fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
+							itemFill, itemStroke, itemStrokeWidth)
 					} else {
 						drawTextCentered("No", size, valueScale, valueWidthMax,
-							fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
+							itemFill, itemStroke, itemStrokeWidth)
 					}
 				case MenuItemList:
 					drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax,
-						fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
+						itemFill, itemStroke, itemStrokeWidth)
 				case MenuItemNumber:
 					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
 					drawTextCentered(toDraw, size, valueScale, valueWidthMax,
-						fadeC(item.Color, fade), fadeC(item.StrokeColor, fade), item.StrokeWidth)
+						itemFill, itemStroke, itemStrokeWidth)
 				}
 
 				xAdvance += valueWidthMax
