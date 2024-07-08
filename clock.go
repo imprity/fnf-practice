@@ -24,7 +24,7 @@ func TimeSinceNow(t time.Duration) time.Duration {
 // Usage :
 //
 //	{
-//		timer := MakeProfTimer("some function")
+//		timer := NewProfTimer("some function")
 //		defer timer.Report()
 //		// reports some function took 10ms
 //	}
