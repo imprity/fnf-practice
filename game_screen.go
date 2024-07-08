@@ -1977,8 +1977,8 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 		stroke.Width *= scale
 		stroke.Height *= scale
 
-		fill = RectCenetered(fill, x, y)
-		stroke = RectCenetered(stroke, x, y)
+		fill = RectCentered(fill, x, y)
+		stroke = RectCentered(stroke, x, y)
 
 		union := RectUnion(fill, stroke)
 

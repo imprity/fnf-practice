@@ -1100,7 +1100,7 @@ func (md *MenuDrawer) Draw() {
 					strikeRect := rl.Rectangle{}
 					strikeRect.Width = keyNameSize.X * 0.8 * keyScale
 					strikeRect.Height = size * 0.1 * keyScale
-					strikeRect = RectCenetered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
+					strikeRect = RectCentered(strikeRect, keyNameCenter.X, keyNameCenter.Y)
 
 					if keyStrokeWidth > 0.5 {
 						rl.DrawRectangleRoundedLines(strikeRect, 1, 7, keyStrokeWidth, ToRlColor(keyColorStroke))

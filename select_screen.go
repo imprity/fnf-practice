@@ -41,6 +41,8 @@ type SelectScreen struct {
 
 	PathFontSize float32
 	PathItemSize float32
+
+	searchDirHelpMsg []RichTextElement
 }
 
 func NewSelectScreen() *SelectScreen {
@@ -78,6 +80,8 @@ func NewSelectScreen() *SelectScreen {
 	directoryOpen := NewMenuItem()
 	directoryOpen.Name = "Search Directory"
 	directoryOpen.Type = MenuItemTrigger
+	directoryOpen.StrokeColor = FnfColor{255, 255, 255, 255}
+	directoryOpen.StrokeWidth = 5
 	directoryOpen.TriggerCallback = func() {
 		ShowTransition(DirSelectScreen, func() {
 			defer HideTransition()
@@ -102,6 +106,7 @@ func NewSelectScreen() *SelectScreen {
 		})
 	}
 	ss.Menu.AddItems(directoryOpen)
+	ss.DirectoryOpenItemId = directoryOpen.Id
 
 	// =======================================
 	// end of creating directory open menu
@@ -145,6 +150,45 @@ func NewSelectScreen() *SelectScreen {
 	songDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
 	ss.Menu.AddItems(songDeco)
 	ss.SongDecoItemId = songDeco.Id
+
+	// =====================
+	// print help message
+	// =====================
+	{
+		f := NewRichTextFactory(430)
+
+		f.LineBreakRule = LineBreakWord
+
+		const fontSize = 35
+
+		style := RichTextStyle{
+			FontSize: fontSize,
+			Font:     FontClear,
+			Fill:     FnfColor{0, 0, 0, 255},
+		}
+		styleBold := RichTextStyle{
+			FontSize:    fontSize,
+			SdfFont:     SdfFontBold,
+			UseSdfFont:  true,
+			Fill:        FnfColor{0, 0, 0, 255},
+			Stroke:      FnfColor{255, 255, 255, 255},
+			StrokeWidth: 5,
+		}
+
+		f.SetStyle(style)
+		f.Print("Press")
+
+		f.SetStyle(styleBold)
+		f.Print(" " + GetKeyName(TheKM[SelectKey]) + " ")
+
+		f.SetStyle(style)
+		f.Print("to add songs.\n\n" +
+			"When you select this item, file explorer will show up.\n\n" +
+			"Select the folder where your Friday Night Funkin is located.",
+		)
+
+		ss.searchDirHelpMsg = f.Elements(TextAlignLeft, 0, fontSize*0.5)
+	}
 
 	return ss
 }
@@ -498,6 +542,14 @@ func (ss *SelectScreen) Draw() {
 	}
 
 	if !ss.DrawDeleteMenu {
+		var directoryOpenBgCol = FnfColor{0x73, 0xFF, 0x99, 220}
+
+		// draw bg for directory open item
+		if itemBound, found := ss.Menu.GetItemBound(ss.DirectoryOpenItemId); found {
+			itemBound := RectExpandPro(itemBound, 25, 25, 15, 15)
+			rl.DrawRectangleRounded(itemBound, 1, 10, ToRlColor(directoryOpenBgCol))
+		}
+
 		ss.Menu.Draw()
 
 		drawPathText()
@@ -526,6 +578,24 @@ func (ss *SelectScreen) Draw() {
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
 				ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0, 0, 0, 255}), 4,
 			)
+		}
+
+		// draw help message
+		{
+			helpMsgBound := ElementsBound(ss.searchDirHelpMsg)
+
+			itemBound, _ := ss.Menu.GetItemBound(ss.DirectoryOpenItemId)
+			itemCenter := RectCenter(itemBound)
+			helpMsgBound = RectCentered(helpMsgBound, itemCenter.X, itemCenter.Y)
+
+			helpMsgBound.X = SCREEN_WIDTH - helpMsgBound.Width - 80
+
+			// draw background
+			bgRect := RectExpand(helpMsgBound, 30)
+
+			rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColor(directoryOpenBgCol))
+
+			DrawTextElements(ss.searchDirHelpMsg, helpMsgBound.X, helpMsgBound.Y)
 		}
 	} else {
 		ss.DeleteMenu.Draw()

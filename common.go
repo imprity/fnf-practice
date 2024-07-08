@@ -257,7 +257,7 @@ func RectEnd(rect rl.Rectangle) rl.Vector2 {
 	}
 }
 
-func RectCenetered(rect rl.Rectangle, x, y float32) rl.Rectangle {
+func RectCentered(rect rl.Rectangle, x, y float32) rl.Rectangle {
 	rect.X = x - rect.Width*0.5
 	rect.Y = y - rect.Height*0.5
 
@@ -269,6 +269,15 @@ func RectExpand(rect rl.Rectangle, amount float32) rl.Rectangle {
 	rect.Y -= amount
 	rect.Width += amount * 2
 	rect.Height += amount * 2
+
+	return rect
+}
+
+func RectExpandPro(rect rl.Rectangle, left, right, top, bottom float32) rl.Rectangle {
+	rect.X -= left
+	rect.Y -= top
+	rect.Width += left + right
+	rect.Height += top + bottom
 
 	return rect
 }

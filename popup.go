@@ -86,7 +86,7 @@ func InitPopupDialog() {
 
 	{
 		cv := RectCenter(pdm.PopupRect)
-		pdm.KeyRect = RectCenetered(pdm.KeyRect, cv.X, cv.Y)
+		pdm.KeyRect = RectCentered(pdm.KeyRect, cv.X, cv.Y)
 	}
 
 	pdm.SelectAnimT = 1
@@ -299,7 +299,7 @@ func DrawPopup() {
 			underlineRect.Height = 12
 
 			cv := RectCenter(pdm.KeyRect)
-			underlineRect = RectCenetered(underlineRect, cv.X, cv.Y)
+			underlineRect = RectCentered(underlineRect, cv.X, cv.Y)
 			underlineRect.Y = RectEnd(pdm.KeyRect).Y - 20
 
 			rl.DrawRectangleRounded(
@@ -317,7 +317,7 @@ func DrawPopup() {
 			msgRect.Height = msgSize
 
 			cv := RectCenter(pdm.PopupRect)
-			msgRect = RectCenetered(msgRect, cv.X, cv.Y)
+			msgRect = RectCentered(msgRect, cv.X, cv.Y)
 			msgRect.Y = pdm.PopupRect.Y + msgMarginTop
 
 			fitTextInBox(FontBold, current.Message, msgRect,
@@ -335,7 +335,7 @@ func DrawPopup() {
 			promptRect.Height = promptSize
 
 			cv := RectCenter(pdm.PopupRect)
-			promptRect = RectCenetered(promptRect, cv.X, cv.Y)
+			promptRect = RectCentered(promptRect, cv.X, cv.Y)
 			promptRect.Y = RectEnd(pdm.PopupRect).Y - promptMarginBottom - promptRect.Height
 
 			fitTextInBox(FontBold, "press any key", promptRect,
