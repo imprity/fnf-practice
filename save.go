@@ -248,8 +248,6 @@ func LoadSettings() error {
 		TheOptions = js.Options
 		TheKM = newKeyMap
 
-		FnfLogger.Printf("%v key is %v", KeyHumanName[ToggleDebugGraphics], TheKM[ToggleDebugGraphics])
-
 		return nil
 	} else {
 		return nil
