@@ -4,8 +4,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var _ = rl.KeyA
-
 /*
 func init() {
 	OverrideFirstScreen(func() Screen {

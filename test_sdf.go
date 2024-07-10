@@ -7,8 +7,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var _ = fmt.Printf
-
 /*
 func init() {
 	OverrideFirstScreen(func() Screen {

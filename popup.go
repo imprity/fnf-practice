@@ -1,12 +1,9 @@
 package main
 
 import (
-	"fmt"
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"time"
 )
-
-var _ = fmt.Sprintf
 
 type PopupDialogOptionsCallback = func(selectedOption string, isCanceled bool)
 type PopupDialogKeyCallback = func(prevKey, newKey int32)

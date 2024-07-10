@@ -16,8 +16,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var _ = fmt.Print
-
 const (
 	SCREEN_WIDTH  = 1280
 	SCREEN_HEIGHT = 720
@@ -67,6 +65,10 @@ var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
 var FlagHotReloading = flag.Bool("hot", false, "enable hot reloading")
 
 func main() {
+	RunApplication()
+}
+
+func RunApplication() {
 	flag.Parse()
 
 	if *FlagPProf {
@@ -294,6 +296,7 @@ func main() {
 
 			ClearDebugMsgs()
 
+			// update fps estimate
 			{
 				now := time.Now()
 				delta := now.Sub(estimateTimer)
@@ -315,7 +318,6 @@ func main() {
 				timeAccumulator = 0
 			}
 		}
-
 	}
 }
 
