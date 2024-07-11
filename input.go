@@ -32,6 +32,17 @@ func MouseV() rl.Vector2 {
 	}
 }
 
+func MouseDelta() rl.Vector2 {
+	screenRect := GetScreenRect()
+
+	delta := rl.GetMouseDelta()
+
+	delta.X = delta.X / screenRect.Width * SCREEN_WIDTH
+	delta.Y = delta.Y / screenRect.Height * SCREEN_HEIGHT
+
+	return delta
+}
+
 type InputGroupId int64
 
 var (

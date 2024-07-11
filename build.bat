@@ -10,6 +10,22 @@ if "%1"=="debug" (
 	goto :quit
 )
 
+if "%1"=="font-gen" (
+	go build -o "font-gen.exe" -tags=noaudio -gcflags="-e" font_gen.go
+	goto :quit
+)
+
+if "%1"=="font-gen-debug" (
+	go build -o "font-gen-debug.exe" -tags=noaudio -gcflags="-e -l -N" font_gen.go
+	goto :quit
+)
+
+if "%1"=="all" (
+	go build -o "fnf-practice.exe" -tags=noaudio -gcflags="-e" main.go
+	go build -o "font-gen.exe" -tags=noaudio -gcflags="-e" font_gen.go
+	goto :quit
+)
+
 echo invalid arument "%1"
 
 :quit

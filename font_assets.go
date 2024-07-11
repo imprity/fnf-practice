@@ -6,6 +6,30 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// only supports .otf or .ttf
+// also it can't draw on image
+func LoadFontAlphaPremultiply(fontData []byte, fontSize int32, codePoints []rune) rl.Font {
+	var font rl.Font
+
+	font.BaseSize = fontSize
+	font.CharsPadding = 4 // default padding set by raylib
+
+	glyphs := rl.LoadFontData(fontData, fontSize, codePoints, rl.FontDefault)
+	atlasImg, recs := rl.GenImageFontAtlas(glyphs, fontSize, font.CharsPadding, 0)
+
+	rl.ImageAlphaPremultiply(atlasImg)
+	atlasTex := rl.LoadTextureFromImage(atlasImg)
+
+	rl.SetFontCharGlyphs(&font, glyphs)
+	rl.SetFontRecs(&font, recs)
+
+	font.Texture = atlasTex
+
+	rl.UnloadImage(atlasImg)
+
+	return font
+}
+
 type FontContainer struct {
 	BaseSize     int32
 	CharsPadding int32

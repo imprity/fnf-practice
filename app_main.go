@@ -126,10 +126,18 @@ func RunApplication() {
 	TheSelectScreen = NewSelectScreen()
 	TheOptionsScreen = NewOptionsScreen()
 
+	screensToFree := []Screen{
+		TheGameScreen,
+		TheSelectScreen,
+		TheOptionsScreen,
+	}
+
 	// queue freeing
-	defer TheGameScreen.Free()
-	defer TheSelectScreen.Free()
-	defer TheOptionsScreen.Free()
+	defer func() {
+		for _, screen := range screensToFree {
+			screen.Free()
+		}
+	}()
 
 	// load collections
 	if savedCollections, err := LoadCollections(); err != nil {
@@ -146,6 +154,7 @@ func RunApplication() {
 
 	if nonDefaultFirstScreenConstructor != nil {
 		screen = nonDefaultFirstScreenConstructor()
+		screensToFree = append(screensToFree, screen)
 	}
 
 	GlobalTimerStart()

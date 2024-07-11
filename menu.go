@@ -356,6 +356,8 @@ type MenuBackground struct {
 type MenuDrawer struct {
 	InputId InputGroupId
 
+	IsHidden bool
+
 	Background     MenuBackground
 	DrawBackground bool
 
@@ -411,6 +413,10 @@ func (md *MenuDrawer) keySelected() int {
 
 func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	if len(md.items) <= 0 {
+		return
+	}
+
+	if md.IsHidden {
 		return
 	}
 
@@ -768,6 +774,10 @@ func (md *MenuDrawer) calculateSelectionY(index int) float32 {
 }
 
 func (md *MenuDrawer) Draw() {
+	if md.IsHidden {
+		return
+	}
+
 	if md.DrawBackground {
 		rl.BeginBlendMode(md.Background.BlendMode)
 
@@ -840,7 +850,7 @@ func (md *MenuDrawer) Draw() {
 		return col
 	}
 
-	screenRect := GetScreenRect()
+	screenRect := RectWH(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 	drawText := func(text string, fontSize, scale float32, fill, stroke FnfColor, strokeWidth float32) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)

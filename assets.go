@@ -162,29 +162,9 @@ func loadAssets(isReload bool) {
 	}
 	_ = loadFont
 
-	// only supports .otf or .ttf
-	// also it can't draw on image
 	loadFontAlphaPremultiply := func(fontData []byte, fontName string, fontSize int32) rl.Font {
-		var font rl.Font
-
-		font.BaseSize = fontSize
-		font.CharsPadding = 4 // default padding set by raylib
-
 		var emptyCodePoints []rune
-		glyphs := rl.LoadFontData(fontData, fontSize, emptyCodePoints, rl.FontDefault)
-
-		font.CharsCount = i32(len(glyphs))
-		rl.SetFontCharGlyphs(&font, glyphs)
-
-		atlasImg, recs := rl.GenImageFontAtlas(glyphs, fontSize, font.CharsPadding, 0)
-		rl.SetFontRecs(&font, recs)
-
-		rl.ImageAlphaPremultiply(atlasImg)
-		atlasTex := rl.LoadTextureFromImage(atlasImg)
-
-		rl.UnloadImage(atlasImg)
-
-		font.Texture = atlasTex
+		font := LoadFontAlphaPremultiply(fontData, fontSize, emptyCodePoints)
 
 		rl.GenTextureMipmaps(&font.Texture)
 		rl.SetTextureFilter(font.Texture, rl.FilterTrilinear)

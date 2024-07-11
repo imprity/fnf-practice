@@ -233,7 +233,7 @@ func (st *SdfTestScreen) Draw() {
 	rl.DrawTexturePro(
 		st.renderTexture.Texture,
 		rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-		GetScreenRect(),
+		RectWH(SCREEN_WIDTH, SCREEN_HEIGHT),
 		rl.Vector2{},
 		0,
 		ToRlColor(FnfColor{255, 255, 255, 255}),
