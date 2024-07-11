@@ -81,6 +81,8 @@ func RunApplication() {
 
 	var printDebugMsg bool = false
 
+	defer println("program closed successfully!")
+
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()
 
@@ -99,6 +101,8 @@ func RunApplication() {
 	// load assets
 	LoadAssets()
 	defer UnloadAssets()
+	LoadEmbededFonts()
+	defer UnloadEmbededFonts()
 
 	// init stuffs
 	if err := InitAudio(); err != nil {

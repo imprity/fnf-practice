@@ -2,9 +2,78 @@ package fnf
 
 import (
 	"bytes"
+	"embed"
 	"encoding/gob"
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"io/fs"
 )
+
+//go:embed fonts-compiled
+var EmebededFontAssets embed.FS
+
+var (
+	FontRegular    rl.Font
+	SdfFontRegular SdfFont
+
+	FontBold      rl.Font
+	SdfFontBold   SdfFont
+	KeySelectFont rl.Font
+
+	FontClear    rl.Font
+	SdfFontClear SdfFont
+)
+
+var fontsToUnload []rl.Font
+
+func LoadEmbededFonts() {
+	loadFont := func(path, fontName string) rl.Font {
+		data, err := fs.ReadFile(EmebededFontAssets, path)
+		if err != nil {
+			ErrorLogger.Fatalf("failed to load font \"%v\": %v", fontName, err)
+		}
+		font, err := DeserilaizeFont(data)
+		if err != nil {
+			ErrorLogger.Fatalf("failed to load font \"%v\": %v", fontName, err)
+		}
+
+		fontsToUnload = append(fontsToUnload, font)
+
+		return font
+	}
+
+	loadSdfFont := func(path, fontName string) SdfFont {
+		data, err := fs.ReadFile(EmebededFontAssets, path)
+		if err != nil {
+			ErrorLogger.Fatalf("failed to load sdf font \"%v\": %v", fontName, err)
+		}
+		font, err := DeserilaizeSdfFont(data)
+		if err != nil {
+			ErrorLogger.Fatalf("failed to load sdf font \"%v\": %v", fontName, err)
+		}
+
+		fontsToUnload = append(fontsToUnload, font.Font)
+
+		return font
+	}
+
+	FontRegular = loadFont("fonts-compiled/UhBee-Se_hyun-128", "FontRegular")
+	SdfFontRegular = loadSdfFont("fonts-compiled/UhBee-Se_hyun-SDF-64", "SdfFontRegular")
+
+	FontBold = loadFont("fonts-compiled/UhBee-Se_hyun-Bold-128", "FontBold")
+	SdfFontBold = loadSdfFont("fonts-compiled/UhBee-Se_hyun-SDF-64", "SdfFontBold")
+	KeySelectFont = loadFont("fonts-compiled/UhBee-Se_hyun-Bold-240", "KeySelectFont")
+
+	FontClear = loadFont("fonts-compiled/Pangolin-Regular-30", "FontClear")
+	SdfFontClear = loadSdfFont("fonts-compiled/Pangolin-Regular-SDF-30", "SdfFontClear")
+}
+
+func UnloadEmbededFonts() {
+	for _, font := range fontsToUnload {
+		// NOTE : we actually shouldn't unload anything else because
+		// everything besided textures are allocated by go
+		rl.UnloadTexture(font.Texture)
+	}
+}
 
 // only supports .otf or .ttf
 // also it can't draw on image

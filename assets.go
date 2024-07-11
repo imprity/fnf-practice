@@ -53,33 +53,13 @@ var HitRatingTexs [HitRatingSize]rl.Texture2D
 var BookMarkBigTex rl.Texture2D
 var BookMarkSmallTex rl.Texture2D
 
-var (
-	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun.ttf"
-	fontRegularData []byte
-	FontRegular     rl.Font
-	SdfFontRegular  SdfFont
-
-	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun Bold.ttf"
-	fontBoldData  []byte
-	FontBold      rl.Font
-	SdfFontBold   SdfFont
-	KeySelectFont rl.Font
-
-	//go:embed fonts/Pangolin/Pangolin-Regular.ttf
-	fontClearData []byte
-	FontClear     rl.Font
-	SdfFontClear  SdfFont
-)
-
 var PopupBg rl.Texture2D
 
 var BlackPixel rl.Texture2D
 var WhitePixel rl.Texture2D
 
 var (
-	imgsToUnload  []*rl.Image
-	texsToUnload  []rl.Texture2D
-	fontsToUnload []rl.Font
+	texsToUnload []rl.Texture2D
 )
 
 func LoadAssets() {
@@ -127,8 +107,6 @@ func loadAssets(isReload bool) {
 			rl.ImageAlphaPremultiply(img)
 		}
 
-		imgsToUnload = append(imgsToUnload, img)
-
 		tex := rl.LoadTextureFromImage(img)
 		rl.GenTextureMipmaps(&tex)
 		rl.SetTextureFilter(tex, rl.FilterTrilinear)
@@ -139,68 +117,9 @@ func loadAssets(isReload bool) {
 
 		texsToUnload = append(texsToUnload, tex)
 
+		rl.UnloadImage(img)
+
 		return tex
-	}
-
-	loadFont := func(fontData []byte, fontName string, fontSize int32, fileType string) rl.Font {
-		// NOTE : for code points we are supplying empty code points
-		// this will default to loading only ascii characters
-		// I thougt about adding all the Korean code points but I think that would be too expensive
-		var emptyCodePoints []rune
-		font := rl.LoadFontFromMemory(fileType, fontData, fontSize, emptyCodePoints)
-
-		if !rl.IsFontReady(font) {
-			ErrorLogger.Fatalf("failed to load font : %v", fontName)
-		}
-
-		rl.GenTextureMipmaps(&font.Texture)
-		rl.SetTextureFilter(font.Texture, rl.FilterTrilinear)
-
-		fontsToUnload = append(fontsToUnload, font)
-
-		return font
-	}
-	_ = loadFont
-
-	loadFontAlphaPremultiply := func(fontData []byte, fontName string, fontSize int32) rl.Font {
-		var emptyCodePoints []rune
-		font := LoadFontAlphaPremultiply(fontData, fontSize, emptyCodePoints)
-
-		rl.GenTextureMipmaps(&font.Texture)
-		rl.SetTextureFilter(font.Texture, rl.FilterTrilinear)
-
-		if !rl.IsFontReady(font) {
-			ErrorLogger.Fatalf("failed to load font : %v", fontName)
-		}
-
-		fontsToUnload = append(fontsToUnload, font)
-
-		return font
-	}
-
-	loadSdfFontPro := func(fontData []byte, fontName string, fontSize int32,
-		sdfPadding int32, sdfOnEdgeValue uint8, sdfPixelDistScale float32) SdfFont {
-		// NOTE : for code points we are supplying empty code points
-		// this will default to loading only ascii characters
-		// I thougt about adding all the Korean code points but I think that would be too expensive
-		var emptyCodePoints []rune
-		font := LoadSdfFontFromMemory(
-			fontData, fontSize, emptyCodePoints,
-			sdfPadding, sdfOnEdgeValue, sdfPixelDistScale,
-			//21, 200, 10, // NOTE : hard coded values for sdf font
-		)
-
-		if !rl.IsFontReady(font.Font) {
-			ErrorLogger.Fatalf("failed to load font : %v", fontName)
-		}
-
-		fontsToUnload = append(fontsToUnload, font.Font)
-
-		return font
-	}
-
-	loadSdfFont := func(fontData []byte, fontName string, fontSize int32) SdfFont {
-		return loadSdfFontPro(fontData, fontName, fontSize, 21, 200, 10)
 	}
 
 	// load fnf arrows texture
@@ -302,30 +221,13 @@ func loadAssets(isReload bool) {
 
 	// create black pixel
 	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))
-	imgsToUnload = append(imgsToUnload, blackPixelImg)
-
 	BlackPixel = rl.LoadTextureFromImage(blackPixelImg)
 	texsToUnload = append(texsToUnload, BlackPixel)
 
 	// create white pixel
 	whitePixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{255, 255, 255, 255}))
-	imgsToUnload = append(imgsToUnload, whitePixelImg)
-
 	WhitePixel = rl.LoadTextureFromImage(whitePixelImg)
 	texsToUnload = append(texsToUnload, WhitePixel)
-
-	if !isReload {
-		FontRegular = loadFontAlphaPremultiply(fontRegularData, "FontRegular", 128)
-		SdfFontRegular = loadSdfFont(fontRegularData, "SdfFontRegular", 64)
-
-		FontBold = loadFontAlphaPremultiply(fontBoldData, "FontBold", 128)
-		SdfFontBold = loadSdfFont(fontBoldData, "SdfFontBold", 64)
-
-		KeySelectFont = loadFontAlphaPremultiply(fontBoldData, "KeySelectFont", 240)
-
-		FontClear = loadFontAlphaPremultiply(fontClearData, "FontClear", 30)
-		SdfFontClear = loadSdfFontPro(fontClearData, "SdfFontClear", 30, 17, 200, 10)
-	}
 }
 
 func unloadAssets(isReload bool) {
@@ -336,21 +238,4 @@ func unloadAssets(isReload bool) {
 	}
 
 	texsToUnload = texsToUnload[:0]
-
-	for _, img := range imgsToUnload {
-		if rl.IsImageReady(img) {
-			rl.UnloadImage(img)
-		}
-	}
-
-	imgsToUnload = imgsToUnload[:0]
-
-	if !isReload {
-		for _, font := range fontsToUnload {
-			if rl.IsFontReady(font) {
-				rl.UnloadFont(font)
-			}
-		}
-		fontsToUnload = fontsToUnload[:0]
-	}
 }
