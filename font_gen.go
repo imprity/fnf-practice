@@ -26,7 +26,7 @@ type FontGenScreen struct {
 
 	fontData []byte
 
-	fontGenSize float32
+	fontGenSize int32
 
 	sdfPadding        int32
 	sdfOnEdgeValue    uint8
@@ -133,7 +133,7 @@ func NewFontGenScreen() *FontGenScreen {
 		ftg.NValue = float32(fg.fontGenSize)
 		ftg.NValueFmtString = "%1.f"
 		ftg.NumberCallback = func(v float32) {
-			fg.fontGenSize = v
+			fg.fontGenSize = int32(v)
 			fg.needToReloadFont = true
 		}
 		fg.menu.AddItems(ftg)
@@ -166,8 +166,19 @@ func NewFontGenScreen() *FontGenScreen {
 
 		saveFontImpl := func(saveSdf bool) {
 			fnf.ShowTransition(fnf.BlackPixel, func() {
+				fnf.HideTransition()
 				factory := dialog.File().Title("choose where to save font file")
-				factory.SetStartFile(fg.fontName)
+
+				fontName := strings.Trim(fg.fontName, " ")
+				fontName = strings.ReplaceAll(fg.fontName, " ", "-")
+
+				if saveSdf {
+					fontName += "-SDF"
+				}
+
+				fontName += fmt.Sprintf("-%d", fg.fontGenSize)
+
+				factory.SetStartFile(fontName)
 				factory.SetStartDir(".")
 
 				fontPath, dialogErr := factory.Save()
@@ -197,9 +208,12 @@ func NewFontGenScreen() *FontGenScreen {
 					return
 				}
 
-				os.WriteFile(fontPath, data, 0664)
+				if err = os.WriteFile(fontPath, data, 0664); err != nil {
+					fnf.DisplayAlert("Failed to save serialized font!")
+					fnf.ErrorLogger.Printf("Failed to save serialized font %v", err)
+					return
+				}
 
-				fnf.HideTransition()
 				fnf.DisplayAlert(fmt.Sprintf("saved to %v", filepath.Base(fontPath)))
 			})
 		}
