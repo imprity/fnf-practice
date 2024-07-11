@@ -129,7 +129,7 @@ func DrawTextSdfOutlined(
 	textRect = RectExpand(textRect, thick*1.1)
 
 	// if we have nothing to draw skip
-	if !rl.CheckCollisionRecs(GetScreenRect(), textRect) {
+	if !rl.CheckCollisionRecs(RectWH(SCREEN_WIDTH, SCREEN_HEIGHT), textRect) {
 		return
 	}
 
@@ -166,7 +166,7 @@ func DrawTextSdfOutlined(
 	uniform1[3] = f32(stroke.A) / 255
 	rl.SetShaderValue(ts.OutlineShader, ts.OutlineUniform1Loc, uniform1, rl.ShaderUniformVec4)
 
-	intersect := RectIntersect(textRect, GetScreenRect())
+	intersect := RectIntersect(textRect, RectWH(SCREEN_WIDTH, SCREEN_HEIGHT))
 
 	//	0 -- 3
 	//	|    |

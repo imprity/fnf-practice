@@ -8,7 +8,7 @@ import (
 )
 
 func MouseX() float32 {
-	screenRect := GetScreenRect()
+	screenRect := GetRenderedScreenRect()
 
 	mx := f32(rl.GetMouseX())
 	mx -= screenRect.X
@@ -17,7 +17,7 @@ func MouseX() float32 {
 }
 
 func MouseY() float32 {
-	screenRect := GetScreenRect()
+	screenRect := GetRenderedScreenRect()
 
 	my := f32(rl.GetMouseY())
 	my -= screenRect.Y

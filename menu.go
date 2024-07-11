@@ -840,7 +840,7 @@ func (md *MenuDrawer) Draw() {
 		return col
 	}
 
-	screenRect := GetScreenRect()
+	screenRect := RectWH(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 	drawText := func(text string, fontSize, scale float32, fill, stroke FnfColor, strokeWidth float32) float32 {
 		textSize := rl.MeasureTextEx(FontBold, text, fontSize, 0)

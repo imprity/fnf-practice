@@ -50,7 +50,7 @@ var FnfLogger *log.Logger = log.New(os.Stdout, "FNF__LOG : ", log.Lshortfile)
 
 var TheRenderTexture rl.RenderTexture2D
 
-func GetScreenRect() rl.Rectangle {
+func GetRenderedScreenRect() rl.Rectangle {
 	screenW := float32(rl.GetScreenWidth())
 	screenH := float32(rl.GetScreenHeight())
 
@@ -266,7 +266,7 @@ func main() {
 				rl.DrawTexturePro(
 					TheRenderTexture.Texture,
 					rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-					GetScreenRect(),
+					GetRenderedScreenRect(),
 					rl.Vector2{},
 					0,
 					ToRlColor(FnfColor{255, 255, 255, 255}),
@@ -276,7 +276,7 @@ func main() {
 				rl.DrawTexturePro(
 					TheTransitionManager.TransitionTexture.Texture,
 					rl.Rectangle{0, 0, SCREEN_WIDTH, -SCREEN_HEIGHT},
-					GetScreenRect(),
+					GetRenderedScreenRect(),
 					rl.Vector2{},
 					0,
 					ToRlColor(FnfColor{255, 255, 255, 255}),
