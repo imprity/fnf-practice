@@ -5,13 +5,48 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type SdfFont struct {
+type FnfFont struct {
 	Font rl.Font
 
 	// meta data
+	IsSdfFont bool
+
 	SdfPadding        int32
 	SdfOnEdgeValue    uint8
 	SdfPixelDistScale float32
+}
+
+func (f *FnfFont) BaseSize() int32 {
+	return f.Font.BaseSize
+}
+
+// only supports .otf or .ttf
+// also it can't draw on image
+func LoadFontAlphaPremultiply(fontData []byte, fontSize int32, codePoints []rune) FnfFont {
+	var rlFont rl.Font
+
+	rlFont.BaseSize = fontSize
+	rlFont.CharsPadding = 4 // default padding set by raylib
+
+	glyphs := rl.LoadFontData(fontData, fontSize, codePoints, rl.FontDefault)
+	atlasImg, recs := rl.GenImageFontAtlas(glyphs, fontSize, rlFont.CharsPadding, 0)
+
+	rl.ImageAlphaPremultiply(atlasImg)
+	atlasTex := rl.LoadTextureFromImage(atlasImg)
+
+	rl.SetFontCharGlyphs(&rlFont, glyphs)
+	rl.SetFontRecs(&rlFont, recs)
+
+	rlFont.Texture = atlasTex
+
+	rl.UnloadImage(atlasImg)
+
+	font := FnfFont{
+		Font:      rlFont,
+		IsSdfFont: false,
+	}
+
+	return font
 }
 
 func LoadSdfFontFromMemory(
@@ -21,7 +56,7 @@ func LoadSdfFontFromMemory(
 	sdfPadding int32,
 	sdfOnEdgeValue uint8,
 	sdfPixelDistScale float32,
-) SdfFont {
+) FnfFont {
 	glyphs := rl.LoadFontDataSdf(
 		fontData, fontSize, codePoints, sdfPadding, sdfOnEdgeValue, sdfPixelDistScale)
 
@@ -32,7 +67,9 @@ func LoadSdfFontFromMemory(
 
 	rl.SetTextureFilter(texture, rl.FilterBilinear)
 
-	var font SdfFont
+	var font FnfFont
+
+	font.IsSdfFont = true
 
 	rl.SetFontCharGlyphs(&font.Font, glyphs)
 	rl.SetFontRecs(&font.Font, rects)
@@ -84,31 +121,35 @@ func FreeSdfFontDrawer() {
 	rl.UnloadRenderTexture(ts.RenderTexture)
 }
 
-func DrawTextSdf(
-	font SdfFont,
+func DrawText(
+	font FnfFont,
 	text string,
 	position rl.Vector2,
 	fontSize float32,
 	spacing float32,
 	tint rl.Color,
 ) {
-	ts := &TheSdfDrawer
+	if font.IsSdfFont {
+		ts := &TheSdfDrawer
 
-	uniform := make([]float32, 4)
-	uniform[0] = f32(font.SdfOnEdgeValue) / 255
+		uniform := make([]float32, 4)
+		uniform[0] = f32(font.SdfOnEdgeValue) / 255
 
-	rl.BeginShaderMode(ts.FillShader)
-	rl.SetShaderValue(ts.FillShader, ts.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
+		rl.BeginShaderMode(ts.FillShader)
+		rl.SetShaderValue(ts.FillShader, ts.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
 
-	rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
+		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
 
-	rl.EndShaderMode()
+		rl.EndShaderMode()
+	} else {
+		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
+	}
 }
 
 // This function ignores text outside of game screen.
 // May need to change later if there is a need to draw text at some big offscreen buffer
-func DrawTextSdfOutlined(
-	font SdfFont,
+func DrawTextOutlined(
+	font FnfFont,
 	text string,
 	position rl.Vector2,
 	fontSize float32,
@@ -117,6 +158,11 @@ func DrawTextSdfOutlined(
 	thick float32,
 ) {
 	if fontSize < 1 {
+		return
+	}
+
+	if !font.IsSdfFont {
+		DrawText(font, text, position, fontSize, spacing, fill)
 		return
 	}
 

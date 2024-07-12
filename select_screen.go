@@ -202,8 +202,7 @@ func (ss *SelectScreen) GeneateHelpMsg() {
 	}
 	styleBold := RichTextStyle{
 		FontSize:    fontSize,
-		SdfFont:     SdfFontBold,
-		UseSdfFont:  true,
+		Font:        SdfFontBold,
 		Fill:        FnfColor{0, 0, 0, 255},
 		Stroke:      FnfColor{255, 255, 255, 255},
 		StrokeWidth: 5,
@@ -575,10 +574,7 @@ func (ss *SelectScreen) Draw() {
 			x := SCREEN_WIDTH - (100 + textSize.X)
 			y := float32(20)
 
-			rl.DrawTextEx(FontBold, str, rl.Vector2{x, y},
-				size, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
-
-			DrawTextSdfOutlined(
+			DrawTextOutlined(
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
 				ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0, 0, 0, 255}), 4,
 			)

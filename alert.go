@@ -67,7 +67,7 @@ func DrawAlert() {
 	// NOTE : resized font looks very ugly
 	// so we have to use whatever size font is loaded in
 	// if you want to resize the alerts, modify it in assets.go
-	var fontSize = float32(FontClear.BaseSize)
+	var fontSize = float32(FontClear.BaseSize())
 
 	const vertMargin = 10
 	const hozMargin = 20
@@ -103,7 +103,7 @@ func DrawAlert() {
 		hozMarginScaled := hozMargin * scale
 
 		rl.SetTextLineSpacing(int(fontSizeScaled))
-		textSize := rl.MeasureTextEx(FontClear, alert.Message, fontSizeScaled, 0)
+		textSize := rl.MeasureTextEx(FontClear.Font, alert.Message, fontSizeScaled, 0)
 
 		bgRect := rl.Rectangle{
 			Width:  textSize.X + hozMarginScaled*2,
@@ -118,7 +118,7 @@ func DrawAlert() {
 		textPos := rl.Vector2{bgRect.X + hozMarginScaled, bgRect.Y + vertMarginScaled}
 
 		rl.SetTextLineSpacing(int(fontSizeScaled))
-		rl.DrawTextEx(FontClear,
+		DrawText(FontClear,
 			alert.Message, textPos, fontSizeScaled, 0,
 			ToRlColor(FnfColor{255, 255, 255, 255}))
 

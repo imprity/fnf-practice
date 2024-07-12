@@ -2101,18 +2101,18 @@ func (gs *GameScreen) DrawProgressBar() {
 			minStr = "-" + minStr
 		}
 
-		sepSize := rl.MeasureTextEx(font, ":", fontSize, 0)
+		sepSize := rl.MeasureTextEx(font.Font, ":", fontSize, 0)
 		sepRect := rl.Rectangle{
 			X: rc.X - sepSize.X*0.5, Y: timeY, Width: sepSize.X, Height: sepSize.Y,
 		}
-		rl.DrawTextEx(font, ":", rl.Vector2{sepRect.X, sepRect.Y}, fontSize, 0, textColor)
+		DrawText(font, ":", rl.Vector2{sepRect.X, sepRect.Y}, fontSize, 0, textColor)
 
-		minSize := rl.MeasureTextEx(font, minStr, fontSize, 0)
+		minSize := rl.MeasureTextEx(font.Font, minStr, fontSize, 0)
 		minPos := rl.Vector2{X: sepRect.X - minSize.X - margin, Y: timeY}
-		rl.DrawTextEx(font, minStr, minPos, fontSize, 0, textColor)
+		DrawText(font, minStr, minPos, fontSize, 0, textColor)
 
 		secPos := rl.Vector2{X: sepRect.X + sepRect.Width + margin, Y: timeY}
-		rl.DrawTextEx(font, secStr, secPos, fontSize, 0, textColor)
+		DrawText(font, secStr, secPos, fontSize, 0, textColor)
 	}
 
 	// draw bookmark
@@ -2147,12 +2147,12 @@ func (gs *GameScreen) DrawBotPlayIcon() {
 
 	const fontSize = 65
 
-	textSize := rl.MeasureTextEx(FontBold, "Bot Play", fontSize, 0)
+	textSize := rl.MeasureTextEx(FontBold.Font, "Bot Play", fontSize, 0)
 
 	textX := f32(centerX - textSize.X*0.5)
 	textY := f32(165)
 
-	rl.DrawTextEx(
+	DrawText(
 		FontBold, "Bot Play",
 		rl.Vector2{textX, textY},
 		fontSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
@@ -2189,12 +2189,12 @@ func (gs *GameScreen) DrawPauseIcon() {
 
 	const fontSize = 65
 
-	textSize := rl.MeasureTextEx(FontRegular, "paused", fontSize, 0)
+	textSize := rl.MeasureTextEx(FontRegular.Font, "paused", fontSize, 0)
 
 	textX := f32(centerX - textSize.X*0.5)
 	textY := f32(centerY + pauseH*0.5 + 20)
 
-	rl.DrawTextEx(
+	DrawText(
 		FontRegular, "paused",
 		rl.Vector2{textX, textY},
 		fontSize, 0, ToRlColor(FnfColor{0, 0, 0, 200}))
@@ -2233,21 +2233,21 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 
 		const fontSize = 65
 
-		textSize := rl.MeasureTextEx(FontRegular, text, fontSize, 0)
+		textSize := rl.MeasureTextEx(FontRegular.Font, text, fontSize, 0)
 
 		textX := SCREEN_WIDTH*0.5 - textSize.X*0.5
 		textY := f32(50)
 
-		rl.DrawTextEx(
+		DrawText(
 			FontRegular, text, rl.Vector2{textX, textY},
 			fontSize, 0, ToRlColor(FnfColor{0, 0, 0, uint8(255 * t)}))
 
-		numberTextSize := rl.MeasureTextEx(FontRegular, numberText, fontSize, 0)
+		numberTextSize := rl.MeasureTextEx(FontRegular.Font, numberText, fontSize, 0)
 
 		numberTextX := SCREEN_WIDTH*0.5 - numberTextSize.X*0.5
 		numberTextY := f32(50 + 70)
 
-		rl.DrawTextEx(
+		DrawText(
 			FontRegular, numberText,
 			rl.Vector2{numberTextX, numberTextY},
 			fontSize, 0, ToRlColor(FnfColor{0, 0, 0, uint8(255 * t)}))
@@ -2268,7 +2268,7 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 
 	rl.SetTextLineSpacing(textSize)
 	labelSize := rl.MeasureTextEx(
-		FontClear,
+		FontClear.Font,
 		"Miss:\n"+
 			"Bad:\n"+
 			"Good:\n"+
@@ -2281,8 +2281,8 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		SCREEN_HEIGHT*0.5 - labelSize.Y*0.5,
 	}
 
-	rl.DrawTextEx(FontClear, "Miss:", labelPos, textSize, 0, ToRlColor(FnfColor{255, 0, 0, 255}))
-	rl.DrawTextEx(
+	DrawText(FontClear, "Miss:", labelPos, textSize, 0, ToRlColor(FnfColor{255, 0, 0, 255}))
+	DrawText(
 		FontClear,
 		"Bad:\n"+
 			"Good:\n"+
@@ -2302,9 +2302,9 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		hits[HitRatingBad], hits[HitRatingGood], hits[HitRatingSick],
 	)
 
-	rl.DrawTextEx(FontClear, missCountStr, numberPos, textSize, 0, ToRlColor(FnfColor{255, 0, 0, 255}))
+	DrawText(FontClear, missCountStr, numberPos, textSize, 0, ToRlColor(FnfColor{255, 0, 0, 255}))
 	numberPos.Y += textSize
-	rl.DrawTextEx(FontClear, hitCountStr, numberPos, textSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
+	DrawText(FontClear, hitCountStr, numberPos, textSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}))
 }
 
 func (gs *GameScreen) DrawRewindHighlight() {
@@ -2415,7 +2415,7 @@ func (hm *HelpMessage) InitTextImage() {
 	// so we have to use whatever size font is loaded in
 	// if you want to resize the help message, modify it in assets.go
 	style := RichTextStyle{
-		FontSize: f32(FontClear.BaseSize),
+		FontSize: f32(FontClear.BaseSize()),
 		Font:     FontClear,
 		Fill:     Col01(0, 0, 0, 1),
 	}
@@ -2612,12 +2612,12 @@ func (hm *HelpMessage) Draw() {
 		}
 	}
 
-	buttonTextSize := rl.MeasureTextEx(FontBold, buttonText, buttonFontSize, 0)
+	buttonTextSize := rl.MeasureTextEx(FontBold.Font, buttonText, buttonFontSize, 0)
 
 	textX := buttonRect.X + (buttonRect.Width-buttonTextSize.X)*0.5
 	textY := buttonRect.Y + (buttonRect.Height-buttonTextSize.Y)*0.5
 
-	rl.DrawTextEx(FontBold, buttonText, rl.Vector2{textX, textY},
+	DrawText(FontBold, buttonText, rl.Vector2{textX, textY},
 		buttonFontSize, 0, ToRlColor(buttonColor))
 }
 

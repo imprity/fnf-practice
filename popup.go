@@ -224,7 +224,7 @@ func DrawPopup() {
 	rl.DrawTexture(PopupBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	fitTextInBox := func(
-		font rl.Font,
+		font FnfFont,
 		text string,
 		box rl.Rectangle,
 		desiredSize float32,
@@ -232,7 +232,7 @@ func DrawPopup() {
 	) rl.Rectangle {
 		rl.SetTextLineSpacing(int(desiredSize)) // text can be multilined, so we have to set line spacing
 
-		textSize := rl.MeasureTextEx(font, text, desiredSize, 0)
+		textSize := rl.MeasureTextEx(font.Font, text, desiredSize, 0)
 
 		overFlowX := textSize.X > box.Width
 		overFlowY := textSize.Y > box.Height
@@ -259,7 +259,7 @@ func DrawPopup() {
 		}
 
 		rl.SetTextLineSpacing(int(desiredSize))
-		rl.DrawTextEx(font, text,
+		DrawText(font, text,
 			textPos, desiredSize, 0, ToRlColor(color))
 
 		textBox := rl.Rectangle{
@@ -354,7 +354,7 @@ func DrawPopup() {
 
 			//calculate options width
 			for i, op := range current.Options {
-				opWidth += rl.MeasureTextEx(FontBold, op, opFontSize, 0).X
+				opWidth += rl.MeasureTextEx(FontBold.Font, op, opFontSize, 0).X
 				if i != len(current.Options)-1 {
 					opWidth += opMargin
 				}
@@ -376,7 +376,7 @@ func DrawPopup() {
 				pos := rl.Vector2{X: offsetX, Y: offsetY}
 				scale := float32(1.0)
 
-				size := rl.MeasureTextEx(FontBold, op, opFontSize, 0)
+				size := rl.MeasureTextEx(FontBold.Font, op, opFontSize, 0)
 
 				if i == current.SelectedOption {
 					col = FnfColor{0, 0, 0, 255}
@@ -388,7 +388,7 @@ func DrawPopup() {
 					}
 				}
 
-				rl.DrawTextEx(FontBold, op, pos, opFontSize*scale, 0, ToRlColor(col))
+				DrawText(FontBold, op, pos, opFontSize*scale, 0, ToRlColor(col))
 
 				offsetX += size.X + opMargin
 			}

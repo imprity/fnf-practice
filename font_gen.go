@@ -20,8 +20,8 @@ import (
 type FontGenScreen struct {
 	InputId fnf.InputGroupId
 
-	font         rl.Font
-	sdfFont      fnf.SdfFont
+	font         fnf.FnfFont
+	sdfFont      fnf.FnfFont
 	isFontLoaded bool
 
 	fontData []byte
@@ -292,11 +292,11 @@ func (fg *FontGenScreen) ReloadFont() {
 	)
 
 	newFont := fnf.LoadFontAlphaPremultiply(fg.fontData, int32(fg.fontGenSize), nil)
-	rl.GenTextureMipmaps(&newFont.Texture)
-	rl.SetTextureFilter(newFont.Texture, rl.FilterTrilinear)
+	rl.GenTextureMipmaps(&newFont.Font.Texture)
+	rl.SetTextureFilter(newFont.Font.Texture, rl.FilterTrilinear)
 
-	if rl.IsFontReady(newSdfFont.Font) && rl.IsFontReady(newFont) {
-		rl.UnloadFont(fg.font)
+	if rl.IsFontReady(newSdfFont.Font) && rl.IsFontReady(newFont.Font) {
+		rl.UnloadFont(fg.font.Font)
 		rl.UnloadFont(fg.sdfFont.Font)
 
 		fg.isFontLoaded = true
@@ -352,17 +352,17 @@ func (fg *FontGenScreen) Draw() {
 		var pos rl.Vector2
 		pos.Y = 20
 
-		size := rl.MeasureTextEx(fg.font, str, fg.fontRenderSize, 0)
+		size := rl.MeasureTextEx(fg.font.Font, str, fg.fontRenderSize, 0)
 		pos.X = fnf.SCREEN_WIDTH - size.X - 20
-		rl.DrawTextEx(fg.font, str, pos, fg.fontRenderSize, 0, rl.Black)
+		fnf.DrawText(fg.font, str, pos, fg.fontRenderSize, 0, rl.Black)
 		pos.Y += size.Y + 20
 
 		size = rl.MeasureTextEx(fg.sdfFont.Font, str, fg.fontRenderSize, 0)
 		pos.X = fnf.SCREEN_WIDTH - size.X - 20
-		fnf.DrawTextSdf(fg.sdfFont, str, pos, fg.fontRenderSize, 0, rl.Black)
+		fnf.DrawText(fg.sdfFont, str, pos, fg.fontRenderSize, 0, rl.Black)
 		pos.Y += size.Y + 20
 
-		fnf.DrawTextSdfOutlined(fg.sdfFont, str, pos, fg.fontRenderSize, 0, rl.Black, rl.White, fg.strokeThick)
+		fnf.DrawTextOutlined(fg.sdfFont, str, pos, fg.fontRenderSize, 0, rl.Black, rl.White, fg.strokeThick)
 	}
 
 	fg.menu.Draw()
@@ -383,7 +383,7 @@ func (fg *FontGenScreen) BeforeScreenTransition() {
 func (fg *FontGenScreen) Free() {
 	fg.menu.Free()
 
-	rl.UnloadFont(fg.font)
+	rl.UnloadFont(fg.font.Font)
 	rl.UnloadFont(fg.sdfFont.Font)
 }
 

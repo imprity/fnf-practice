@@ -11,9 +11,7 @@ import (
 type RichTextStyle struct {
 	FontSize float32
 
-	Font       rl.Font
-	SdfFont    SdfFont
-	UseSdfFont bool
+	Font FnfFont
 
 	Fill, Stroke FnfColor
 	StrokeWidth  float32
@@ -120,20 +118,17 @@ func (rt *RichTextFactory) Print(text string) {
 	}
 
 	font := rt.style.Font
-	if rt.style.UseSdfFont {
-		font = rt.style.SdfFont.Font
-	}
 
-	scaleFactor := rt.style.FontSize / f32(font.BaseSize)
+	scaleFactor := rt.style.FontSize / f32(font.BaseSize())
 
 	getTextSize := func(start, end int) float32 {
 		textSize := float32(0)
 		for _, char := range text[start:end] {
-			glyph := rl.GetGlyphInfo(font, char)
+			glyph := rl.GetGlyphInfo(font.Font, char)
 
 			charSize := float32(glyph.AdvanceX)
 			if charSize == 0 {
-				rec := rl.GetGlyphAtlasRec(font, char)
+				rec := rl.GetGlyphAtlasRec(font.Font, char)
 				charSize = rec.Width
 			}
 			charSize *= scaleFactor
@@ -222,21 +217,21 @@ func EscapeRichText(str string) string {
 
 // custom rich text syntax
 //
-// 	<size 50>          FontSize
+//	<size 50>          FontSize
 //
-// 	<fill #aabbccdd>   Fill
-// 	<stroke #aabbcc>   Stroke
+//	<fill #aabbccdd>   Fill
+//	<stroke #aabbcc>   Stroke
 //
-// 	<thick 1.2>        StrokeWidth
+//	<thick 1.2>        StrokeWidth
 //
-// 	<font FontRegular> Font
+//	<font FontRegular> Font
 //
-// 	<meta 1>           Metadata
+//	<meta 1>           Metadata
 //
 // can be combined like this <fill #aabbccdd stroke #ffffff thick 1.3>
 //
-// 	<< escaped <
-// 	>> escaped >
+//	<< escaped <
+//	>> escaped >
 func (rt *RichTextFactory) PrintRichText(text string) {
 	getNext := func(at int) (byte, bool) {
 		if at+1 >= len(text) || at+1 < 0 {
@@ -341,13 +336,8 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 					newStyle.StrokeWidth = float32(f)
 				}
 			case "font":
-				if success, font, sdfFont, useSdf := GetFontFromName(nextWord); success {
-					if useSdf {
-						newStyle.SdfFont = sdfFont
-					} else {
-						newStyle.Font = font
-					}
-					newStyle.UseSdfFont = useSdf
+				if font, success := GetFontFromName(nextWord); success {
+					newStyle.Font = font
 				}
 			case "meta":
 				if meta, err := strconv.ParseInt(nextWord, 10, 64); err == nil {
@@ -495,20 +485,15 @@ func DrawTextElements(elements []RichTextElement, x, y float32) {
 		pos := RectPos(e.Bound)
 		pos.X += x
 		pos.Y += y
-		if e.Style.UseSdfFont {
-			if e.Style.StrokeWidth > 0 {
-				DrawTextSdfOutlined(e.Style.SdfFont, e.Text, pos,
-					e.Style.FontSize, 0,
-					ToRlColor(e.Style.Fill), ToRlColor(e.Style.Stroke),
-					e.Style.StrokeWidth,
-				)
-			} else {
-				DrawTextSdf(e.Style.SdfFont, e.Text, pos,
-					e.Style.FontSize, 0, ToRlColor(e.Style.Fill),
-				)
-			}
+
+		if e.Style.StrokeWidth > 0 {
+			DrawTextOutlined(e.Style.Font, e.Text, pos,
+				e.Style.FontSize, 0,
+				ToRlColor(e.Style.Fill), ToRlColor(e.Style.Stroke),
+				e.Style.StrokeWidth,
+			)
 		} else {
-			rl.DrawTextEx(e.Style.Font, e.Text, pos,
+			DrawText(e.Style.Font, e.Text, pos,
 				e.Style.FontSize, 0, ToRlColor(e.Style.Fill),
 			)
 		}

@@ -1,28 +1,28 @@
 @echo off
 
 if "%1" == "" (
-	go build -o "fnf-practice.exe" -tags=noaudio -gcflags="-e" main.go
+	go build -o "fnf-practice.exe" -tags=noaudio -gcflags=all="-e" main.go
 	goto :quit
 )
 
 if "%1"=="debug" (
-	go build -o "fnf-practice-debug.exe" -tags=noaudio -gcflags="-e -l -N" main.go
+	go build -o "fnf-practice-debug.exe" -tags=noaudio -gcflags=all="-e -l -N" main.go
 	goto :quit
 )
 
 if "%1"=="font-gen" (
-	go build -o "font-gen.exe" -tags=noaudio -gcflags="-e" font_gen.go
+	go build -o "font-gen.exe" -tags=noaudio -gcflags=all="-e" font_gen.go
 	goto :quit
 )
 
 if "%1"=="font-gen-debug" (
-	go build -o "font-gen-debug.exe" -tags=noaudio -gcflags="-e -l -N" font_gen.go
+	go build -o "font-gen-debug.exe" -tags=noaudio -gcflags=all="-e -l -N" font_gen.go
 	goto :quit
 )
 
 if "%1"=="all" (
-	go build -o "fnf-practice.exe" -tags=noaudio -gcflags="-e" main.go || goto :quit
-	go build -o "font-gen.exe" -tags=noaudio -gcflags="-e" font_gen.go
+	go build -o "fnf-practice.exe" -tags=noaudio -gcflags=all="-e" main.go || goto :quit
+	go build -o "font-gen.exe" -tags=noaudio -gcflags=all="-e" font_gen.go
 	goto :quit
 )
 
