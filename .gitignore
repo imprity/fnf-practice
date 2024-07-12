@@ -3,6 +3,8 @@ test_songs/
 trace.out
 fnf-practice
 fnf-practice-debug
+font-gen
+font-gen-debug
 
 fnf-practice-settings.json
 fnf-practice-collections.json
