@@ -1,4 +1,4 @@
-package main
+package fnf
 
 import (
 	"golang.org/x/exp/constraints"

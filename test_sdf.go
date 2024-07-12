@@ -1,4 +1,6 @@
-package main
+//go:build ignore
+
+package fnf
 
 import (
 	"fmt"
@@ -6,8 +8,6 @@ import (
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
-
-var _ = fmt.Printf
 
 /*
 func init() {

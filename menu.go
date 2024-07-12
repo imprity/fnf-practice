@@ -1,4 +1,4 @@
-package main
+package fnf
 
 import (
 	"fmt"
@@ -356,6 +356,8 @@ type MenuBackground struct {
 type MenuDrawer struct {
 	InputId InputGroupId
 
+	IsHidden bool
+
 	Background     MenuBackground
 	DrawBackground bool
 
@@ -411,6 +413,10 @@ func (md *MenuDrawer) keySelected() int {
 
 func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	if len(md.items) <= 0 {
+		return
+	}
+
+	if md.IsHidden {
 		return
 	}
 
@@ -768,6 +774,10 @@ func (md *MenuDrawer) calculateSelectionY(index int) float32 {
 }
 
 func (md *MenuDrawer) Draw() {
+	if md.IsHidden {
+		return
+	}
+
 	if md.DrawBackground {
 		rl.BeginBlendMode(md.Background.BlendMode)
 

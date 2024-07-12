@@ -1,7 +1,8 @@
-package main
+package fnf
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -92,11 +93,11 @@ func NewSelectScreen() *SelectScreen {
 			defer HideTransition()
 
 			directory, err := dialog.Directory().Title("Select Directory To Search").Browse()
-			if err != nil && err != dialog.ErrCancelled {
+			if err != nil && !errors.Is(err, dialog.ErrCancelled) {
 				ErrorLogger.Fatal(err)
 			}
 
-			if err == dialog.ErrCancelled {
+			if errors.Is(err, dialog.ErrCancelled) {
 				return
 			}
 
