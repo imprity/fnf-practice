@@ -1,9 +1,9 @@
 package fnf
 
 import (
-	"unicode/utf8"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -101,8 +101,6 @@ func (rt *RichTextFactory) Print(text string) {
 		return
 	}
 
-	// check if cursor is out side width
-
 	breakLine := func() {
 		rt.elements = append(rt.elements, RichTextElement{
 			Text: "\n",
@@ -116,6 +114,7 @@ func (rt *RichTextFactory) Print(text string) {
 		rt.cursor = 0
 	}
 
+	// check if cursor is out side width
 	if rt.LineBreakRule != LineBreakNever && rt.cursor > rt.width {
 		breakLine()
 	}
@@ -216,23 +215,28 @@ func (rt *RichTextFactory) Print(text string) {
 	printSavedToken()
 }
 
-func EscapeRichText(str string) string{
+func EscapeRichText(str string) string {
 	replacer := strings.NewReplacer("<<", "<", ">>", ">")
 	return replacer.Replace(str)
 }
 
 // custom rich text syntax
 //
-// <size 50> FontSize
-// <fill #aabbccdd> fill
-// <stroke #aabbcc> stroke
-// <thick 1.2> stroke width
-// <font FontRegular> font
+// 	<size 50>          FontSize
+//
+// 	<fill #aabbccdd>   Fill
+// 	<stroke #aabbcc>   Stroke
+//
+// 	<thick 1.2>        StrokeWidth
+//
+// 	<font FontRegular> Font
+//
+// 	<meta 1>           Metadata
 //
 // can be combined like this <fill #aabbccdd stroke #ffffff thick 1.3>
 //
-// << escaped <
-// >> escaped >
+// 	<< escaped <
+// 	>> escaped >
 func (rt *RichTextFactory) PrintRichText(text string) {
 	getNext := func(at int) (byte, bool) {
 		if at+1 >= len(text) || at+1 < 0 {
@@ -308,8 +312,8 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 
 	// parses style text
 	// don't include opening and closing brackets
-	parseStyle := func(styleString string){
-		words := strings.Fields(styleString)
+	parseTag := func(tagString string) {
+		words := strings.Fields(tagString)
 
 		cursor := 0
 
@@ -320,16 +324,16 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 			nextWord := words[cursor+1]
 
 			switch word {
-			case "size" :
+			case "size":
 				if f, err := strconv.ParseFloat(nextWord, 32); err == nil {
 					newStyle.FontSize = float32(f)
 				}
 			case "fill":
-				if fill, success := parseColor(nextWord); success{
+				if fill, success := parseColor(nextWord); success {
 					newStyle.Fill = fill
 				}
 			case "stroke":
-				if stroke, success := parseColor(nextWord); success{
+				if stroke, success := parseColor(nextWord); success {
 					newStyle.Stroke = stroke
 				}
 			case "thick":
@@ -337,13 +341,17 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 					newStyle.StrokeWidth = float32(f)
 				}
 			case "font":
-				if success, font, sdfFont, useSdf := GetFontFromName(nextWord); success{
-					if useSdf{
+				if success, font, sdfFont, useSdf := GetFontFromName(nextWord); success {
+					if useSdf {
 						newStyle.SdfFont = sdfFont
-					}else{
+					} else {
 						newStyle.Font = font
 					}
 					newStyle.UseSdfFont = useSdf
+				}
+			case "meta":
+				if meta, err := strconv.ParseInt(nextWord, 10, 64); err == nil {
+					rt.Metadata = meta
 				}
 			}
 			cursor += 2
@@ -362,7 +370,7 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 
 			if foundClosing {
 				rt.Print(EscapeRichText(text[cursor:open]))
-				parseStyle(EscapeRichText(text[open+1 : closing]))
+				parseTag(EscapeRichText(text[open+1 : closing]))
 				cursor = closing + 1
 			} else {
 				rt.Print(EscapeRichText(text[cursor:]))

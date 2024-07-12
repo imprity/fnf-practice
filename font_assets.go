@@ -27,24 +27,25 @@ func GetFontFromName(fontName string) (
 	success bool, font rl.Font, sdfFont SdfFont, isSdf bool,
 ) {
 	switch fontName {
-	case "FontRegular" :
+	case "FontRegular":
 		return true, FontRegular, SdfFont{}, false
-	case "SdfFontRegular" :
+	case "SdfFontRegular":
 		return true, rl.Font{}, SdfFontRegular, true
 
-	case "FontBold" :
+	case "FontBold":
 		return true, FontBold, SdfFont{}, false
-	case "SdfFontBold" :
+	case "SdfFontBold":
 		return true, rl.Font{}, SdfFontBold, true
 
-	case "KeySelectFont" :
+	case "KeySelectFont":
 		return true, KeySelectFont, SdfFont{}, false
 
-	case "FontClear" :
+	case "FontClear":
 		return true, FontClear, SdfFont{}, false
-	case "SdfFontClear" :
+	case "SdfFontClear":
 		return true, rl.Font{}, SdfFontClear, true
-	default :
+
+	default:
 		return false, FontRegular, SdfFont{}, false
 	}
 }
