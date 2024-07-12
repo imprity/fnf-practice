@@ -23,6 +23,32 @@ var (
 	SdfFontClear SdfFont
 )
 
+func GetFontFromName(fontName string) (
+	success bool, font rl.Font, sdfFont SdfFont, isSdf bool,
+) {
+	switch fontName {
+	case "FontRegular" :
+		return true, FontRegular, SdfFont{}, false
+	case "SdfFontRegular" :
+		return true, rl.Font{}, SdfFontRegular, true
+
+	case "FontBold" :
+		return true, FontBold, SdfFont{}, false
+	case "SdfFontBold" :
+		return true, rl.Font{}, SdfFontBold, true
+
+	case "KeySelectFont" :
+		return true, KeySelectFont, SdfFont{}, false
+
+	case "FontClear" :
+		return true, FontClear, SdfFont{}, false
+	case "SdfFontClear" :
+		return true, rl.Font{}, SdfFontClear, true
+	default :
+		return false, FontRegular, SdfFont{}, false
+	}
+}
+
 var fontsToUnload []rl.Font
 
 func LoadEmbededFonts() {

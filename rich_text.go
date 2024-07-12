@@ -2,6 +2,8 @@ package fnf
 
 import (
 	"unicode/utf8"
+	"strconv"
+	"strings"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -212,6 +214,165 @@ func (rt *RichTextFactory) Print(text string) {
 	}
 
 	printSavedToken()
+}
+
+func EscapeRichText(str string) string{
+	replacer := strings.NewReplacer("<<", "<", ">>", ">")
+	return replacer.Replace(str)
+}
+
+// custom rich text syntax
+//
+// <size 50> FontSize
+// <fill #aabbccdd> fill
+// <stroke #aabbcc> stroke
+// <thick 1.2> stroke width
+// <font FontRegular> font
+//
+// can be combined like this <fill #aabbccdd stroke #ffffff thick 1.3>
+//
+// << escaped <
+// >> escaped >
+func (rt *RichTextFactory) PrintRichText(text string) {
+	getNext := func(at int) (byte, bool) {
+		if at+1 >= len(text) || at+1 < 0 {
+			return 0, false
+		}
+
+		return text[at+1], true
+	}
+
+	findBracket := func(from int, findClosing bool) (int, bool) {
+		var toFind byte = '<'
+		if findClosing {
+			toFind = '>'
+		}
+
+		i := from
+		for i < len(text) {
+			if text[i] == toFind {
+				next, hasNext := getNext(i)
+				if hasNext && next == toFind {
+					i += 2
+				} else {
+					return i, true
+				}
+			}
+
+			i += 1
+		}
+
+		return i, false
+	}
+
+	findOpen := func(from int) (int, bool) {
+		return findBracket(from, false)
+	}
+
+	findClose := func(from int) (int, bool) {
+		return findBracket(from, true)
+	}
+
+	// returns parsed color and if it succeeded
+	parseColor := func(str string) (FnfColor, bool) {
+		if len(str) <= 0 {
+			return FnfColor{}, false
+		}
+		if str[0] != '#' {
+			return FnfColor{}, false
+		}
+
+		n, err := strconv.ParseUint(str[1:], 16, 32)
+
+		if err == nil {
+			color := FnfColor{}
+			if n > 0xFFFFFF {
+				color.A = uint8(n & 0xFF)
+				n = n >> 8
+			} else {
+				color.A = 0xFF
+			}
+			color.B = uint8(n & 0xFF)
+			n = n >> 8
+			color.G = uint8(n & 0xFF)
+			n = n >> 8
+			color.R = uint8(n & 0xFF)
+
+			return color, true
+		} else {
+			return FnfColor{}, false
+		}
+	}
+
+	startingStyle := rt.Style()
+
+	// parses style text
+	// don't include opening and closing brackets
+	parseStyle := func(styleString string){
+		words := strings.Fields(styleString)
+
+		cursor := 0
+
+		newStyle := startingStyle
+
+		for cursor+1 < len(words) {
+			word := words[cursor]
+			nextWord := words[cursor+1]
+
+			switch word {
+			case "size" :
+				if f, err := strconv.ParseFloat(nextWord, 32); err == nil {
+					newStyle.FontSize = float32(f)
+				}
+			case "fill":
+				if fill, success := parseColor(nextWord); success{
+					newStyle.Fill = fill
+				}
+			case "stroke":
+				if stroke, success := parseColor(nextWord); success{
+					newStyle.Stroke = stroke
+				}
+			case "thick":
+				if f, err := strconv.ParseFloat(nextWord, 32); err == nil {
+					newStyle.StrokeWidth = float32(f)
+				}
+			case "font":
+				if success, font, sdfFont, useSdf := GetFontFromName(nextWord); success{
+					if useSdf{
+						newStyle.SdfFont = sdfFont
+					}else{
+						newStyle.Font = font
+					}
+					newStyle.UseSdfFont = useSdf
+				}
+			}
+			cursor += 2
+		}
+
+		rt.SetStyle(newStyle)
+	}
+
+	cursor := 0
+
+	for cursor < len(text) {
+		open, foundOpen := findOpen(cursor)
+
+		if foundOpen {
+			closing, foundClosing := findClose(open)
+
+			if foundClosing {
+				rt.Print(EscapeRichText(text[cursor:open]))
+				parseStyle(EscapeRichText(text[open+1 : closing]))
+				cursor = closing + 1
+			} else {
+				rt.Print(EscapeRichText(text[cursor:]))
+				break
+			}
+		} else {
+			rt.Print(EscapeRichText(text[cursor:]))
+			break
+		}
+	}
 }
 
 func (rt *RichTextFactory) Elements(
