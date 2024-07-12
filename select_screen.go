@@ -38,7 +38,6 @@ type SelectScreen struct {
 
 	// variables about rendering path items
 	PathDecoToPathTex map[MenuItemId]rl.Texture2D
-	PathDecoToPathImg map[MenuItemId]*rl.Image
 
 	PathFontSize float32
 	PathItemSize float32
@@ -60,7 +59,6 @@ func NewSelectScreen() *SelectScreen {
 
 	// init variables about path rendering
 	ss.PathDecoToPathTex = make(map[MenuItemId]rl.Texture2D)
-	ss.PathDecoToPathImg = make(map[MenuItemId]*rl.Image)
 
 	ss.PathFontSize = 20
 	ss.PathItemSize = 40
@@ -321,8 +319,9 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		pathTex := rl.LoadTextureFromImage(pathImg)
 
-		ss.PathDecoToPathImg[dummyDeco.Id] = pathImg
 		ss.PathDecoToPathTex[dummyDeco.Id] = pathTex
+
+		rl.UnloadImage(pathImg)
 
 		return dummyDeco
 	}
@@ -625,9 +624,5 @@ func (ss *SelectScreen) Free() {
 
 	for _, tex := range ss.PathDecoToPathTex {
 		rl.UnloadTexture(tex)
-	}
-
-	for _, img := range ss.PathDecoToPathImg {
-		rl.UnloadImage(img)
 	}
 }

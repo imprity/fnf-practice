@@ -2399,7 +2399,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 }
 
 func (gs *GameScreen) Free() {
-	// pass
+	gs.HelpMessage.Free()
 }
 
 // =================================
@@ -2735,6 +2735,10 @@ func (hm *HelpMessage) BeforeScreenTransition() {
 	}
 
 	hm.DoShow = false
+}
+
+func (hm *HelpMessage) Free() {
+	rl.UnloadRenderTexture(hm.TextImage)
 }
 
 // ====================================
