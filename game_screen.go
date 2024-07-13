@@ -17,7 +17,7 @@ type NotePopup struct {
 	Rating FnfHitRating
 }
 
-type HelpMessage struct {
+type GameHelpMessage struct {
 	TextImage rl.RenderTexture2D
 
 	TextBoxMarginLeft   float32
@@ -38,7 +38,7 @@ type HelpMessage struct {
 	DoShow bool
 }
 
-func (hm *HelpMessage) SetTextBoxMargin() {
+func (hm *GameHelpMessage) SetTextBoxMargin() {
 	hm.TextBoxMarginLeft = 20
 	hm.TextBoxMarginRight = 35
 
@@ -51,8 +51,8 @@ func (hm *HelpMessage) SetTextBoxMargin() {
 	}
 }
 
-func NewHelpMessage(inputId InputGroupId) *HelpMessage {
-	hm := new(HelpMessage)
+func NewGameHelpMessage(inputId InputGroupId) *GameHelpMessage {
+	hm := new(GameHelpMessage)
 
 	hm.SetTextBoxMargin()
 
@@ -144,7 +144,7 @@ type GameScreen struct {
 
 	PopupQueue CircularQueue[NotePopup]
 
-	HelpMessage *HelpMessage
+	HelpMessage *GameHelpMessage
 
 	AudioSpeedSetAt time.Duration
 	ZoomSetAt       time.Duration
@@ -212,7 +212,7 @@ func NewGameScreen() *GameScreen {
 
 	gs.InputId = NewInputGroupId()
 
-	gs.HelpMessage = NewHelpMessage(gs.InputId)
+	gs.HelpMessage = NewGameHelpMessage(gs.InputId)
 
 	// set up menu
 	gs.Menu = NewMenuDrawer()
@@ -2406,7 +2406,7 @@ func (gs *GameScreen) Free() {
 // help message related stuffs
 // =================================
 
-func (hm *HelpMessage) InitTextImage() {
+func (hm *GameHelpMessage) InitTextImage() {
 	if hm.TextImage.ID > 0 {
 		rl.UnloadRenderTexture(hm.TextImage)
 	}
@@ -2497,13 +2497,13 @@ func (hm *HelpMessage) InitTextImage() {
 
 	FnfBeginTextureMode(hm.TextImage)
 
-	DrawTextElements(elements1, 0, 0)
-	DrawTextElements(elements2, e2x, e2y)
+	DrawTextElements(elements1, 0, 0, FnfWhite)
+	DrawTextElements(elements2, e2x, e2y, FnfWhite)
 
 	FnfEndTextureMode()
 }
 
-func (hm *HelpMessage) Draw() {
+func (hm *GameHelpMessage) Draw() {
 	buttonRect := hm.ButtonRect()
 	textBoxRect := hm.TextBoxRect()
 
@@ -2621,7 +2621,7 @@ func (hm *HelpMessage) Draw() {
 		buttonFontSize, 0, ToRlColor(buttonColor))
 }
 
-func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
+func (hm *GameHelpMessage) TextBoxRect() rl.Rectangle {
 	w := hm.TextBoxMarginLeft + f32(hm.TextImage.Texture.Width) + hm.TextBoxMarginRight
 	h := hm.TextBoxMarginTop + f32(hm.TextImage.Texture.Height) + hm.TextBoxMarginBottom
 
@@ -2640,7 +2640,7 @@ func (hm *HelpMessage) TextBoxRect() rl.Rectangle {
 	}
 }
 
-func (hm *HelpMessage) TextRect() rl.Rectangle {
+func (hm *GameHelpMessage) TextRect() rl.Rectangle {
 	w := f32(hm.TextImage.Texture.Width)
 	h := f32(hm.TextImage.Texture.Height)
 
@@ -2652,7 +2652,7 @@ func (hm *HelpMessage) TextRect() rl.Rectangle {
 	return rl.Rectangle{X: x, Y: y, Width: w, Height: h}
 }
 
-func (hm *HelpMessage) ButtonRect() rl.Rectangle {
+func (hm *GameHelpMessage) ButtonRect() rl.Rectangle {
 	boxRect := hm.TextBoxRect()
 
 	rect := rl.Rectangle{}
@@ -2671,14 +2671,14 @@ func (hm *HelpMessage) ButtonRect() rl.Rectangle {
 	return rect
 }
 
-func (hm *HelpMessage) TotalRect() rl.Rectangle {
+func (hm *GameHelpMessage) TotalRect() rl.Rectangle {
 	boxRect := hm.TextBoxRect()
 	buttonRect := hm.ButtonRect()
 
 	return RectUnion(boxRect, buttonRect)
 }
 
-func (hm *HelpMessage) Update(deltaTime time.Duration) {
+func (hm *GameHelpMessage) Update(deltaTime time.Duration) {
 	buttonRect := hm.ButtonRect()
 
 	if IsMouseButtonReleased(hm.InputId, rl.MouseButtonLeft) {
@@ -2713,7 +2713,7 @@ func (hm *HelpMessage) Update(deltaTime time.Duration) {
 	}
 }
 
-func (hm *HelpMessage) BeforeScreenTransition() {
+func (hm *GameHelpMessage) BeforeScreenTransition() {
 	hm.SetTextBoxMargin()
 
 	hm.InitTextImage()
@@ -2737,7 +2737,7 @@ func (hm *HelpMessage) BeforeScreenTransition() {
 	hm.DoShow = false
 }
 
-func (hm *HelpMessage) Free() {
+func (hm *GameHelpMessage) Free() {
 	rl.UnloadRenderTexture(hm.TextImage)
 }
 

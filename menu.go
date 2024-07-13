@@ -1202,6 +1202,30 @@ func (md *MenuDrawer) Draw() {
 	}
 }
 
+// Try to select the item with id.
+// Fails if item doesn't exist, or it's not selectable.
+//
+// Set playScrollAnimation to control whether menu scrolls towards selected item
+// or just jumps with out any animation.
+func (md *MenuDrawer) SelectItem(id MenuItemId, playScrollAnimation bool) bool {
+	for i, item := range md.items {
+		if item.Id == id && item.IsSelectable() {
+			md.selectedIndex = i
+
+			if playScrollAnimation {
+				md.scrollAnimT = 0
+			} else {
+				md.scrollAnimT = 1
+				md.yOffset = md.calculateSelectionY(md.selectedIndex)
+			}
+
+			return true
+		}
+	}
+
+	return false
+}
+
 // Try to select the item at index.
 // If no item at, per say, 0 is unselectable, tries to select next and next and so on.
 // Returns -1, 0 if no item can be selected.

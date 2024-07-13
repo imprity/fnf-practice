@@ -30,15 +30,15 @@ type RichTextElement struct {
 type RichTextLineBreakRule int
 
 const (
-	LineBreakChar RichTextLineBreakRule = iota
-	LineBreakWord
+	LineBreakWord RichTextLineBreakRule = iota
+	LineBreakChar
 	LineBreakNever
 	LineBreakRuleSize
 )
 
 var RichTextLineBreakRuleStrs = [LineBreakRuleSize]string{
-	"character",
 	"word",
+	"character",
 	"never",
 }
 
@@ -480,21 +480,24 @@ func SetElementsLineSpacing(elements []RichTextElement, margin float32, emptyLin
 	}
 }
 
-func DrawTextElements(elements []RichTextElement, x, y float32) {
+func DrawTextElements(elements []RichTextElement, x, y float32, tint FnfColor) {
 	for _, e := range elements {
 		pos := RectPos(e.Bound)
 		pos.X += x
 		pos.Y += y
 
+		fill := ToRlColor(TintColor(e.Style.Fill, tint))
+		stroke := ToRlColor(TintColor(e.Style.Stroke, tint))
+
 		if e.Style.StrokeWidth > 0 {
 			DrawTextOutlined(e.Style.Font, e.Text, pos,
 				e.Style.FontSize, 0,
-				ToRlColor(e.Style.Fill), ToRlColor(e.Style.Stroke),
+				fill, stroke,
 				e.Style.StrokeWidth,
 			)
 		} else {
 			DrawText(e.Style.Font, e.Text, pos,
-				e.Style.FontSize, 0, ToRlColor(e.Style.Fill),
+				e.Style.FontSize, 0, fill,
 			)
 		}
 	}

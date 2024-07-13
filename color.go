@@ -7,6 +7,8 @@ import (
 
 type FnfColor rl.Color
 
+var FnfWhite = FnfColor{255, 255, 255, 255}
+
 func Col(r, g, b, a uint8) FnfColor {
 	return FnfColor{r, g, b, a}
 }
@@ -21,6 +23,10 @@ func Col01Vec4(v rl.Vector4) FnfColor {
 
 func ColFromHSV(h, s, v float32) FnfColor {
 	return FnfColor(rl.ColorFromHSV(h, s, v))
+}
+
+func ColorNormalize(c FnfColor) rl.Vector4 {
+	return rl.Vector4{f32(c.R) / 255, f32(c.G) / 255, f32(c.B) / 255, f32(c.A) / 255}
 }
 
 func ColToHSV(c FnfColor) rl.Vector3 {
@@ -57,6 +63,17 @@ func ToRlColor(c FnfColor) rl.Color {
 
 func ToRlColorNoPremultiply(c FnfColor) rl.Color {
 	return rl.Color(c)
+}
+
+func TintColor(target, tint FnfColor) FnfColor {
+	targetV := ColorNormalize(target)
+	tintV := ColorNormalize(tint)
+	return Col01(
+		targetV.X*tintV.X,
+		targetV.Y*tintV.Y,
+		targetV.Z*tintV.Z,
+		targetV.W*tintV.W,
+	)
 }
 
 // Copy pasted from https://bottosson.github.io/posts/oklab/

@@ -13,6 +13,10 @@ type OptionsScreen struct {
 	setItemValuesToOptions func()
 
 	InputId InputGroupId
+
+	HelpMessages map[MenuItemId][]RichTextElement
+
+	HelpMessageOpacity float32
 }
 
 func NewOptionsScreen() *OptionsScreen {
@@ -21,6 +25,27 @@ func NewOptionsScreen() *OptionsScreen {
 	op.InputId = NewInputGroupId()
 
 	op.Menu = NewMenuDrawer()
+
+	op.HelpMessages = make(map[MenuItemId][]RichTextElement)
+
+	addHelpMessage := func(id MenuItemId, marginTop, marginRight, width float32, richText string) {
+		factory := NewRichTextFactory(width)
+		factory.SetStyle(RichTextStyle{
+			FontSize: 30,
+			Font:     SdfFontClear,
+			Fill:     FnfColor{0, 0, 0, 255},
+		})
+
+		factory.PrintRichText(richText)
+		elements := factory.Elements(TextAlignLeft, 0, 35)
+
+		for i := range elements {
+			elements[i].Bound.X += SCREEN_WIDTH - (width + marginRight)
+			elements[i].Bound.Y += marginTop
+		}
+
+		op.HelpMessages[id] = elements
+	}
 
 	optionsDeco := NewMenuItem()
 	optionsDeco.Name = "Options"
@@ -92,6 +117,11 @@ func NewOptionsScreen() *OptionsScreen {
 	loadAudioDuringGpItem.SizeSelected = 75
 	loadAudioDuringGpItem.SelectedLeftMargin = 5
 	op.Menu.AddItems(loadAudioDuringGpItem)
+
+	addHelpMessage(loadAudioDuringGpItem.Id,
+		50, 50, 460,
+		`Load audio during game paly. May cause some issues and definitely not recommended if you use slow PC.`,
+	)
 
 	var ratingItems [HitRatingSize]MenuItemId
 
@@ -280,12 +310,30 @@ func (op *OptionsScreen) Update(deltaTime time.Duration) {
 			HideTransition()
 		})
 	}
+
+	id := op.Menu.GetSelectedId()
+
+	if _, ok := op.HelpMessages[id]; ok {
+		op.HelpMessageOpacity += f32(deltaTime) / f32(time.Millisecond*150)
+	} else {
+		op.HelpMessageOpacity = 0
+	}
+
+	op.HelpMessageOpacity = Clamp(op.HelpMessageOpacity, 0, 1)
 }
 
 func (op *OptionsScreen) Draw() {
 	DrawPatternBackground(MenuScreenSimpleBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	op.Menu.Draw()
+
+	// draw help messages
+	id := op.Menu.GetSelectedId()
+
+	if elements, ok := op.HelpMessages[id]; ok {
+		DrawTextElements(elements, 0, 0,
+			Col01(1, 1, 1, op.HelpMessageOpacity))
+	}
 }
 
 func (op *OptionsScreen) BeforeScreenTransition() {

@@ -353,6 +353,11 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 	ss.ShouldDeletePathGroup = make(map[FnfPathGroupId]bool)
 
 	deleteConfirm := NewMenuItem()
+
+	deleteConfirm.StrokeColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
+	deleteConfirm.StrokeWidthSelected = 10
+	deleteConfirm.ColorSelected = FnfWhite
+
 	deleteConfirm.Name = "DELETE SONGS"
 	deleteConfirm.Type = MenuItemTrigger
 
@@ -386,6 +391,8 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 
 	ss.DeleteMenu.AddItems(deleteConfirm)
 
+	var firstItemId MenuItemId = -1
+
 	// create delete check box for each song we have
 	for _, collection := range ss.Collections {
 		decoItemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
@@ -407,11 +414,15 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 			}
 
 			ss.DeleteMenu.AddItems(deleteItem)
+
+			if firstItemId < 0 {
+				firstItemId = deleteItem.Id
+			}
 		}
 	}
 
 	// make delete menu select 0
-	ss.DeleteMenu.SelectItemAt(0, false)
+	ss.DeleteMenu.SelectItem(firstItemId, false)
 }
 
 func (ss *SelectScreen) HideDeleteMenu(deleteMarked bool) {
@@ -595,7 +606,7 @@ func (ss *SelectScreen) Draw() {
 
 			rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColor(directoryOpenBgCol))
 
-			DrawTextElements(ss.searchDirHelpMsg, helpMsgBound.X, helpMsgBound.Y)
+			DrawTextElements(ss.searchDirHelpMsg, helpMsgBound.X, helpMsgBound.Y, FnfWhite)
 		}
 	} else {
 		ss.DeleteMenu.Draw()
