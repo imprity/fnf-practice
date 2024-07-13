@@ -112,8 +112,8 @@ func RunApplication() {
 	defer FreePopupDialog()
 	InitMenuResources()
 	defer FreeMenuResources()
-	InitSdfFontDrawer()
-	defer FreeSdfFontDrawer()
+	InitFnfFontDrawer()
+	defer FreeFnfFontDrawer()
 
 	// load settings
 	if err := LoadSettings(); err != nil {

@@ -84,7 +84,7 @@ func LoadSdfFontFromMemory(
 	return font
 }
 
-var TheSdfDrawer struct {
+var TheFnfFontDrawer struct {
 	OutlineShader      rl.Shader
 	OutlineUniform0Loc int32
 	OutlineUniform1Loc int32
@@ -101,24 +101,24 @@ var sdfOutlineShaderFsCode string
 //go:embed shaders/sdf.fs
 var sdfFillShaderFsCode string
 
-func InitSdfFontDrawer() {
-	ts := &TheSdfDrawer
+func InitFnfFontDrawer() {
+	tf := &TheFnfFontDrawer
 
-	ts.OutlineShader = rl.LoadShaderFromMemory("", sdfOutlineShaderFsCode)
-	ts.OutlineUniform0Loc = rl.GetShaderLocation(ts.OutlineShader, "uValues0")
-	ts.OutlineUniform1Loc = rl.GetShaderLocation(ts.OutlineShader, "uValues1")
+	tf.OutlineShader = rl.LoadShaderFromMemory("", sdfOutlineShaderFsCode)
+	tf.OutlineUniform0Loc = rl.GetShaderLocation(tf.OutlineShader, "uValues0")
+	tf.OutlineUniform1Loc = rl.GetShaderLocation(tf.OutlineShader, "uValues1")
 
-	ts.FillShader = rl.LoadShaderFromMemory("", sdfFillShaderFsCode)
-	ts.FillUniform0Loc = rl.GetShaderLocation(ts.FillShader, "uValues0")
+	tf.FillShader = rl.LoadShaderFromMemory("", sdfFillShaderFsCode)
+	tf.FillUniform0Loc = rl.GetShaderLocation(tf.FillShader, "uValues0")
 
-	ts.RenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
+	tf.RenderTexture = rl.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT)
 }
 
-func FreeSdfFontDrawer() {
-	ts := &TheSdfDrawer
-	rl.UnloadShader(ts.OutlineShader)
-	rl.UnloadShader(ts.FillShader)
-	rl.UnloadRenderTexture(ts.RenderTexture)
+func FreeFnfFontDrawer() {
+	tf := &TheFnfFontDrawer
+	rl.UnloadShader(tf.OutlineShader)
+	rl.UnloadShader(tf.FillShader)
+	rl.UnloadRenderTexture(tf.RenderTexture)
 }
 
 func DrawText(
@@ -130,13 +130,13 @@ func DrawText(
 	tint rl.Color,
 ) {
 	if font.IsSdfFont {
-		ts := &TheSdfDrawer
+		tf := &TheFnfFontDrawer
 
 		uniform := make([]float32, 4)
 		uniform[0] = f32(font.SdfOnEdgeValue) / 255
 
-		rl.BeginShaderMode(ts.FillShader)
-		rl.SetShaderValue(ts.FillShader, ts.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
+		rl.BeginShaderMode(tf.FillShader)
+		rl.SetShaderValue(tf.FillShader, tf.FillUniform0Loc, uniform, rl.ShaderUniformVec4)
 
 		rl.DrawTextEx(font.Font, text, position, fontSize, spacing, tint)
 
@@ -179,12 +179,12 @@ func DrawTextOutlined(
 		return
 	}
 
-	ts := &TheSdfDrawer
+	tf := &TheFnfFontDrawer
 
 	// ===============================
 	// draw text to off screen buffer
 	// ===============================
-	FnfBeginTextureMode(ts.RenderTexture)
+	FnfBeginTextureMode(tf.RenderTexture)
 
 	rl.ClearBackground(ToRlColor(FnfColor{0, 0, 0, 0}))
 	rl.SetBlendFactors(rl.RlOne, rl.RlOne, rl.RlMax)
@@ -198,19 +198,19 @@ func DrawTextOutlined(
 	// draw to actual screen
 	// ===============================
 
-	rl.BeginShaderMode(ts.OutlineShader)
+	rl.BeginShaderMode(tf.OutlineShader)
 
 	uniform0 := make([]float32, 4)
 	uniform0[0] = f32(font.SdfOnEdgeValue) / 255
 	uniform0[1] = thick / 255 * font.SdfPixelDistScale * f32(font.Font.BaseSize) / fontSize
-	rl.SetShaderValue(ts.OutlineShader, ts.OutlineUniform0Loc, uniform0, rl.ShaderUniformVec4)
+	rl.SetShaderValue(tf.OutlineShader, tf.OutlineUniform0Loc, uniform0, rl.ShaderUniformVec4)
 
 	uniform1 := make([]float32, 4)
 	uniform1[0] = f32(stroke.R) / 255
 	uniform1[1] = f32(stroke.G) / 255
 	uniform1[2] = f32(stroke.B) / 255
 	uniform1[3] = f32(stroke.A) / 255
-	rl.SetShaderValue(ts.OutlineShader, ts.OutlineUniform1Loc, uniform1, rl.ShaderUniformVec4)
+	rl.SetShaderValue(tf.OutlineShader, tf.OutlineUniform1Loc, uniform1, rl.ShaderUniformVec4)
 
 	intersect := RectIntersect(textRect, RectWH(SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -238,7 +238,7 @@ func DrawTextOutlined(
 	verts[3] = rl.Vector2{(intersect.X + intersect.Width), intersect.Y}
 
 	DrawTextureUvVertices(
-		ts.RenderTexture.Texture,
+		tf.RenderTexture.Texture,
 		uvs, verts,
 		fill,
 	)
