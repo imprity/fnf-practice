@@ -65,6 +65,16 @@ func LoadIdentity() {
 	C.rlLoadIdentity()
 }
 
+// S########################################
+
+// MultMatrixF - Multiply the current matrix by another matrix
+func MultMatrixF(matrix [16]float32) {
+	first := (*C.float)(unsafe.Pointer(&(matrix[0])))
+	C.rlMultMatrixf(first)
+}
+
+// E########################################
+
 // Translatef - Multiply the current matrix by a translation matrix
 func Translatef(x float32, y float32, z float32) {
 	cx := C.float(x)

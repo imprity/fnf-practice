@@ -204,6 +204,33 @@ func NewOptionsScreen() *OptionsScreen {
 			return keyItem
 		}
 
+		displaySorryMsg := func(newKey int32, duplicateOf FnfBinding) {
+			defaultStyle := PopupDefaultRichTextStyle()
+			defaultStyleStr := RichTextStyleToStr(defaultStyle)
+
+			highLightStyle := RichTextStyle{
+				FontSize: defaultStyle.FontSize * 1.1,
+				Font:     SdfFontBold,
+
+				Fill:   FnfColor{255, 255, 255, 255},
+				Stroke: FnfColor{0, 0, 0, 255},
+
+				StrokeWidth: 8,
+			}
+			highLightStyleStr := RichTextStyleToStr(highLightStyle)
+
+			DisplayOptionsPopup(
+				fmt.Sprintf("Sorry!\n%s\"%s\"%s key is already assigned to %s\"%s\"",
+					highLightStyleStr,
+					EscapeRichText(GetKeyName(newKey)),
+					defaultStyleStr,
+					highLightStyleStr,
+					EscapeRichText(KeyHumanName[duplicateOf]),
+				),
+				true, []string{}, nil,
+			)
+		}
+
 		// direction key
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			item := createKeyOp(
@@ -229,9 +256,7 @@ func NewOptionsScreen() *OptionsScreen {
 				}
 
 				if isDuplicate {
-					DisplayOptionsPopup(
-						fmt.Sprintf("Sorry\n\"%v\" key is already assigned to \"%v\"", GetKeyName(newKey), KeyHumanName[duplicateOf]),
-						[]string{}, nil)
+					displaySorryMsg(newKey, duplicateOf)
 				} else {
 					SetNoteKeys(dir, index, newKey)
 					item.KeyValues[index] = newKey
@@ -273,9 +298,7 @@ func NewOptionsScreen() *OptionsScreen {
 				}
 
 				if isDuplicate {
-					DisplayOptionsPopup(
-						fmt.Sprintf("Sorry\n\"%v\" key is already assigned to \"%v\"", GetKeyName(newKey), KeyHumanName[duplicateOf]),
-						[]string{}, nil)
+					displaySorryMsg(newKey, duplicateOf)
 				} else {
 					TheKM[key] = newKey
 					item.KeyValues[index] = newKey

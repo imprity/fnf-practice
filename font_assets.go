@@ -24,16 +24,8 @@ var (
 	SdfFontClear FnfFont
 )
 
-var NameToFont map[string]FnfFont = map[string]FnfFont{
-	"FontRegular":    FontRegular,
-	"SdfFontRegular": SdfFontRegular,
-
-	"FontBold":    FontBold,
-	"SdfFontBold": SdfFontBold,
-
-	"FontClear":    FontClear,
-	"SdfFontClear": SdfFontClear,
-}
+var NameToFont map[string]FnfFont = make(map[string]FnfFont)
+var FontToName map[FnfFont]string = make(map[FnfFont]string)
 
 var (
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun.ttf"
@@ -61,6 +53,11 @@ func GetFontFromName(fontName string) (font FnfFont, ok bool) {
 	if !ok {
 		font = GetBackupFont()
 	}
+	return
+}
+
+func GetNameFromFont(font FnfFont) (fontName string, ok bool) {
+	fontName, ok = FontToName[font]
 	return
 }
 
@@ -92,6 +89,19 @@ func LoadEmbededFonts() {
 
 	FontClear = loadFont("fonts-compiled/Pangolin-Regular-30", "FontClear")
 	SdfFontClear = loadFont("fonts-compiled/Pangolin-Regular-SDF-30", "SdfFontClear")
+
+	NameToFont["FontRegular"] = FontRegular
+	NameToFont["SdfFontRegular"] = SdfFontRegular
+
+	NameToFont["FontBold"] = FontBold
+	NameToFont["SdfFontBold"] = SdfFontBold
+
+	NameToFont["FontClear"] = FontClear
+	NameToFont["SdfFontClear"] = SdfFontClear
+
+	for k, v := range NameToFont {
+		FontToName[v] = k
+	}
 }
 
 func UnloadEmbededFonts() {

@@ -17,7 +17,7 @@ type PopupDialog struct {
 	LingerTime      time.Duration
 	LingerTimeTimer time.Duration
 
-	Message string
+	TextElements []RichTextElement
 
 	// variables about select dialog
 	Options         []string
@@ -51,6 +51,9 @@ var ThePopupDialogManager struct {
 	ClickAnimDuration  time.Duration
 	PopupAnimDuration  time.Duration
 	LingerDuration     time.Duration
+
+	// rich text constant
+	DefaultRichTextStyle RichTextStyle
 }
 
 func InitPopupDialog() {
@@ -65,6 +68,13 @@ func InitPopupDialog() {
 	pdm.ClickAnimDuration = time.Millisecond * 70
 	pdm.PopupAnimDuration = time.Millisecond * 50
 	pdm.LingerDuration = time.Millisecond * 60
+
+	// set rich text constant
+	pdm.DefaultRichTextStyle = RichTextStyle{
+		FontSize: 70,
+		Font:     SdfFontRegular,
+		Fill:     FnfColor{0, 0, 0, 255},
+	}
 
 	// calculate various rects for popup
 	pdm.PopupRect = rl.Rectangle{
@@ -99,13 +109,23 @@ func FreePopupDialog() {
 
 func DisplayOptionsPopup(
 	msg string,
+	isMsgRichText bool,
 	options []string,
 	callback PopupDialogOptionsCallback,
 ) {
 	pdm := &ThePopupDialogManager
 
+	factory := NewRichTextFactory(pdm.TextBoxRect.Width)
+	factory.SetStyle(pdm.DefaultRichTextStyle)
+
+	if isMsgRichText {
+		factory.PrintRichText(msg)
+	} else {
+		factory.Print(msg)
+	}
+
 	dialog := PopupDialog{
-		Message:         msg,
+		TextElements:    factory.Elements(TextAlignCenter, 0, 70),
 		Options:         options,
 		OptionsCallback: callback,
 
@@ -117,6 +137,11 @@ func DisplayOptionsPopup(
 	pdm.PopupDialogQueue.Enqueue(&dialog)
 
 	SetSoloInput(pdm.InputId)
+}
+
+func PopupDefaultRichTextStyle() RichTextStyle {
+	pdm := &ThePopupDialogManager
+	return pdm.DefaultRichTextStyle
 }
 
 func UpdatePopup(deltaTime time.Duration) {
@@ -216,58 +241,17 @@ func DrawPopup() {
 	// draw popup background
 	rl.DrawTexture(PopupBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
-	fitTextInBox := func(
-		font FnfFont,
-		text string,
-		box rl.Rectangle,
-		desiredSize float32,
-		color FnfColor,
-	) rl.Rectangle {
-		rl.SetTextLineSpacing(int(desiredSize)) // text can be multilined, so we have to set line spacing
-
-		textSize := rl.MeasureTextEx(font.Font, text, desiredSize, 0)
-
-		overFlowX := textSize.X > box.Width
-		overFlowY := textSize.Y > box.Height
-
-		scale := float32(1.0)
-
-		if overFlowX && !overFlowY {
-			scale = box.Width / textSize.X
-		} else if !overFlowX && overFlowY {
-			scale = box.Height / textSize.Y
-		} else if overFlowX && overFlowY {
-			scale = min(
-				box.Height/textSize.Y,
-				box.Width/textSize.X)
-		}
-
-		desiredSize *= scale
-		textSize.X *= scale
-		textSize.Y *= scale
-
-		textPos := rl.Vector2{
-			X: box.X + (box.Width-textSize.X)*0.5,
-			Y: box.Y + (box.Height-textSize.Y)*0.5,
-		}
-
-		rl.SetTextLineSpacing(int(desiredSize))
-		DrawText(font, text,
-			textPos, desiredSize, 0, ToRlColor(color))
-
-		textBox := rl.Rectangle{
-			X: textPos.X, Y: textPos.Y,
-			Width: textSize.X, Height: textSize.Y,
-		}
-
-		return textBox
-	}
-
 	current := pdm.PopupDialogQueue.PeekFirst()
 
 	// draw current msg
-	msgFontSize := float32(70)
-	fitTextInBox(FontRegular, current.Message, pdm.TextBoxRect, msgFontSize, FnfColor{0, 0, 0, 255})
+	{
+		// TODO : handle texts that are out of text bound
+		bound := ElementsBound(current.TextElements)
+
+		center := RectCenter(pdm.TextBoxRect)
+		bound = RectCentered(bound, center.X, center.Y)
+		DrawTextElements(current.TextElements, bound.X, bound.Y, FnfColor{255, 255, 255, 255})
+	}
 
 	// draw options
 	if len(current.Options) > 0 {

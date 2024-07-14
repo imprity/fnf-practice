@@ -1,6 +1,7 @@
 package fnf
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -285,7 +286,7 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 
 		if err == nil {
 			color := FnfColor{}
-			if n > 0xFFFFFF {
+			if len(str) > 7 {
 				color.A = uint8(n & 0xFF)
 				n = n >> 8
 			} else {
@@ -371,6 +372,24 @@ func (rt *RichTextFactory) PrintRichText(text string) {
 			break
 		}
 	}
+}
+
+func RichTextStyleToStr(style RichTextStyle) string {
+	colorToStr := func(color FnfColor) string {
+		return fmt.Sprintf("#%02X%02X%02X%02X", color.R, color.G, color.B, color.A)
+	}
+
+	str := fmt.Sprintf(
+		"<size %.4f fill %s stroke %s thick %.4f ",
+		style.FontSize, colorToStr(style.Fill), colorToStr(style.Stroke), style.StrokeWidth)
+
+	if fontName, ok := GetNameFromFont(style.Font); ok {
+		str += fmt.Sprintf("font %s >", EscapeRichText(fontName))
+	} else {
+		str += " >"
+	}
+
+	return str
 }
 
 func (rt *RichTextFactory) Elements(
