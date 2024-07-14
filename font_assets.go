@@ -17,13 +17,23 @@ var (
 	FontRegular    FnfFont
 	SdfFontRegular FnfFont
 
-	FontBold      FnfFont
-	SdfFontBold   FnfFont
-	KeySelectFont FnfFont
+	FontBold    FnfFont
+	SdfFontBold FnfFont
 
 	FontClear    FnfFont
 	SdfFontClear FnfFont
 )
+
+var NameToFont map[string]FnfFont = map[string]FnfFont{
+	"FontRegular":    FontRegular,
+	"SdfFontRegular": SdfFontRegular,
+
+	"FontBold":    FontBold,
+	"SdfFontBold": SdfFontBold,
+
+	"FontClear":    FontClear,
+	"SdfFontClear": SdfFontClear,
+}
 
 var (
 	//go:embed "fonts/UhBeeSe_hyun/UhBee Se_hyun.ttf"
@@ -46,31 +56,12 @@ func GetBackupFont() FnfFont {
 	return backupFont
 }
 
-func GetFontFromName(fontName string) (
-	font FnfFont, success bool,
-) {
-	switch fontName {
-	case "FontRegular":
-		return FontRegular, true
-	case "SdfFontRegular":
-		return SdfFontRegular, true
-
-	case "FontBold":
-		return FontBold, true
-	case "SdfFontBold":
-		return SdfFontBold, true
-
-	case "KeySelectFont":
-		return KeySelectFont, true
-
-	case "FontClear":
-		return FontClear, true
-	case "SdfFontClear":
-		return SdfFontClear, true
-
-	default:
-		return GetBackupFont(), false
+func GetFontFromName(fontName string) (font FnfFont, ok bool) {
+	font, ok = NameToFont[fontName]
+	if !ok {
+		font = GetBackupFont()
 	}
+	return
 }
 
 var fontsToUnload []rl.Font
@@ -98,7 +89,6 @@ func LoadEmbededFonts() {
 
 	FontBold = loadFont("fonts-compiled/UhBee-Se_hyun-Bold-128", "FontBold")
 	SdfFontBold = loadFont("fonts-compiled/UhBee-Se_hyun-SDF-64", "SdfFontBold")
-	KeySelectFont = loadFont("fonts-compiled/UhBee-Se_hyun-Bold-240", "KeySelectFont")
 
 	FontClear = loadFont("fonts-compiled/Pangolin-Regular-30", "FontClear")
 	SdfFontClear = loadFont("fonts-compiled/Pangolin-Regular-SDF-30", "SdfFontClear")

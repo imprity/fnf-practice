@@ -27,14 +27,3 @@ func FnfEndTextureMode() {
 		rl.BeginTextureMode(stackLast)
 	}
 }
-
-/*
-begin(t1)         // t1
-	begin(t2)     // t1 t2
-	end(t2)       // t1
-	begin(t3)     // t1 t3
-		begin(t4) // t1 t3 t4
-		end(t4)   // t1 t3
-	end(t3)       // t1
-end(t1)           // t1
-*/
