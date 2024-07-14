@@ -184,7 +184,9 @@ func RunApplication() {
 	fpsEstimateCounter := 0
 	fpsEstimateValueStr := "?"
 
-	for !rl.WindowShouldClose() {
+	doQuit := false
+
+	for !doQuit {
 		currentTime := time.Now()
 		deltaTime := currentTime.Sub(previousTime)
 
@@ -221,6 +223,11 @@ func RunApplication() {
 			// update routine
 			// ========================
 			rl.PollInputEvents()
+
+			doQuit = rl.WindowShouldClose()
+			if doQuit{
+				break
+			}
 
 			if rl.IsKeyPressed(TheKM[ToggleDebugMsg]) {
 				printDebugMsg = !printDebugMsg
