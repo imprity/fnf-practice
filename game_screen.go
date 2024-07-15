@@ -1597,7 +1597,7 @@ func (gs *GameScreen) Draw() {
 	for _, note := range gs.Song.Notes {
 		noteEvents := gs.NoteEvents[note.Index]
 
-		drawEvent := (note.Player == 0 && !gs.IsBotPlay() && !gs.IsPlayingAudio() && len(noteEvents) > 0)
+		drawEvent := (note.Player == 0 && !gs.IsPlayingAudio() && len(noteEvents) > 0)
 
 		x := gs.NoteX(note.Player, note.Direction)
 		y := gs.TimeToY(note.StartsAt)
