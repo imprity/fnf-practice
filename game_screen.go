@@ -326,7 +326,7 @@ func (gs *GameScreen) LoadSongs(
 	}
 
 	gs.SetAudioPosition(0)
-	gs.ResetStatesThatTracksGamePlayChanges()
+	gs.ResetGameStates()
 
 	return nil
 }
@@ -479,15 +479,7 @@ func (gs *GameScreen) SetBotPlay(bot bool) {
 	gs.botPlay = bot
 }
 
-func (gs *GameScreen) ResetNoteEvents() {
-	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
-
-	for i := range len(gs.NoteEvents) {
-		gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
-	}
-}
-
-func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
+func (gs *GameScreen) resetGameStatesImpl(preservePastState bool) {
 	for player := 0; player <= 1; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			gs.isKeyPressed[player][dir] = false
@@ -496,14 +488,47 @@ func (gs *GameScreen) ResetStatesThatTracksGamePlayChanges() {
 
 	gs.PopupQueue.Clear()
 
-	gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
-
 	gs.Pstates = [2]PlayerState{}
 
 	gs.noteIndexStart = 0
 
-	gs.ResetNoteEvents()
-	gs.Mispresses = gs.Mispresses[:0]
+	if preservePastState {
+		for i, note := range gs.Song.Notes {
+			if note.End() > gs.AudioPosition()-HitWindow()/2 {
+				gs.Song.Notes[i].IsHit = false
+				gs.Song.Notes[i].HoldReleaseAt = 0
+
+				gs.NoteEvents[i] = gs.NoteEvents[i][:0]
+			}
+		}
+
+		var newMispresses []Mispress
+
+		for _, miss := range gs.Mispresses {
+			if miss.Time < gs.AudioPosition() {
+				newMispresses = append(newMispresses, miss)
+			}
+		}
+
+		gs.Mispresses = newMispresses
+	} else {
+		gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
+
+		gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
+		for i := range len(gs.NoteEvents) {
+			gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
+		}
+
+		gs.Mispresses = gs.Mispresses[:0]
+	}
+}
+
+func (gs *GameScreen) ResetGameStates() {
+	gs.resetGameStatesImpl(false)
+}
+
+func (gs *GameScreen) ResetGameStatesAfterCurrentPoint() {
+	gs.resetGameStatesImpl(true)
 }
 
 func (gs *GameScreen) TimeToPixels(t time.Duration) float32 {
@@ -648,7 +673,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
 
-					gs.ResetStatesThatTracksGamePlayChanges()
+					gs.ResetGameStates()
 				}
 			}
 		}
@@ -717,10 +742,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				if gs.OnlyTemporarilyPaused() {
 					gs.ClearTempPause()
 				} else {
-					/*
-						gs.ResetNoteEvents()
-						gs.Mispresses = gs.Mispresses[:0]
-					*/
 					gs.PlayAudio()
 				}
 			}
@@ -856,12 +877,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		if !gs.IsPlayingAudio() {
 			gs.positionChangedWhilePaused = true
 		} else {
-			gs.ResetStatesThatTracksGamePlayChanges()
+			gs.ResetGameStatesAfterCurrentPoint()
 		}
 	}
 
 	if gs.IsPlayingAudio() && gs.positionChangedWhilePaused {
-		gs.ResetStatesThatTracksGamePlayChanges()
+		gs.ResetGameStatesAfterCurrentPoint()
 		gs.positionChangedWhilePaused = false
 	}
 
@@ -2429,7 +2450,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.SetAudioPosition(0)
 
-	gs.ResetStatesThatTracksGamePlayChanges()
+	gs.ResetGameStates()
 
 	gs.positionChangedWhilePaused = false
 }
