@@ -934,6 +934,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	wasKeyPressed := gs.isKeyPressed
 
 	gs.isKeyPressed = GetKeyPressState(
+		wasKeyPressed,
 		gs.InputId,
 		gs.Song.Notes, gs.noteIndexStart,
 		gs.IsPlayingAudio(), prevAudioPos, audioPos,

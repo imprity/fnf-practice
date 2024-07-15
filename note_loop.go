@@ -385,6 +385,7 @@ func UpdateNotesAndStates(
 }
 
 func GetKeyPressState(
+	wasKeyPressed [2][NoteDirSize]bool,
 	inputId InputGroupId,
 	notes []FnfNote,
 	noteIndexStart int,
@@ -396,7 +397,7 @@ func GetKeyPressState(
 ) [2][NoteDirSize]bool {
 
 	keyPressState := GetBotKeyPresseState(
-		notes, noteIndexStart, isPlayingAudio, prevAudioPos, audioPos, isBotPlay, hitWindow)
+		wasKeyPressed, notes, noteIndexStart, isPlayingAudio, prevAudioPos, audioPos, isBotPlay, hitWindow)
 
 	if !isBotPlay {
 		for dir, keys := range NoteKeysArr() {
@@ -418,6 +419,7 @@ func isNoteForBot(note FnfNote, isBotPlay bool) bool {
 }
 
 func GetBotKeyPresseState(
+	wasKeyPressed [2][NoteDirSize]bool,
 	notes []FnfNote,
 	noteIndexStart int,
 	isPlayingAudio bool,
@@ -433,17 +435,27 @@ func GetBotKeyPresseState(
 
 	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
+
 		if isNoteForBot(note, isBotPlay) {
-			if !note.IsHit && !note.IsSustain() {
-				shouldHit := note.StartsAt <= audioPos && note.StartsAt >= prevAudioPos
-				shouldHit = shouldHit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
-				if shouldHit {
+			if note.IsSustain() {
+				if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow) {
 					keyPressed[note.Player][note.Direction] = true
 				}
-			} else if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow) {
-				keyPressed[note.Player][note.Direction] = true
+			} else {
+				if !note.IsHit {
+					shouldHit := note.StartsAt <= (audioPos+tinyWindow/2) && note.IsStartInWindow(audioPos, HitWindow())
+					shouldHit = shouldHit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
+					if shouldHit {
+						if wasKeyPressed[note.Player][note.Direction] {
+							keyPressed[note.Player][note.Direction] = false
+						} else {
+							keyPressed[note.Player][note.Direction] = true
+						}
+					}
+				}
 			}
 		}
+
 		if note.StartsAt > audioPos+tinyWindow {
 			break
 		}
