@@ -301,7 +301,7 @@ func (gs *GameScreen) LoadSongs(
 		gs.Songs[i].OffsetNotesAndBpmChanges(GSC.PadStart)
 	}
 
-	gs.Song = gs.Songs[startingDifficulty].Copy()
+	gs.SetSong(gs.Songs[startingDifficulty])
 
 	if gs.InstPlayer.IsReady() {
 		gs.InstPlayer.Pause()
@@ -326,9 +326,19 @@ func (gs *GameScreen) LoadSongs(
 	}
 
 	gs.SetAudioPosition(0)
-	gs.ResetGameStates()
 
 	return nil
+}
+
+func (gs *GameScreen) SetSong(song FnfSong) {
+	gs.Song = song.Copy()
+
+	gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
+	for i := range len(gs.NoteEvents) {
+		gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
+	}
+
+	gs.ResetGameStates()
 }
 
 func (gs *GameScreen) IsPlayingAudio() bool {
@@ -492,16 +502,16 @@ func (gs *GameScreen) resetGameStatesImpl(preservePastState bool) {
 
 	gs.noteIndexStart = 0
 
-	if preservePastState {
-		for i, note := range gs.Song.Notes {
-			if note.End() > gs.AudioPosition()-HitWindow()/2 {
-				gs.Song.Notes[i].IsHit = false
-				gs.Song.Notes[i].HoldReleaseAt = 0
+	for i, note := range gs.Song.Notes {
+		if !preservePastState || note.End() > gs.AudioPosition()-HitWindow()/2 {
+			gs.Song.Notes[i].IsHit = false
+			gs.Song.Notes[i].HoldReleaseAt = 0
 
-				gs.NoteEvents[i] = gs.NoteEvents[i][:0]
-			}
+			gs.NoteEvents[i] = gs.NoteEvents[i][:0]
 		}
+	}
 
+	if preservePastState {
 		var newMispresses []Mispress
 
 		for _, miss := range gs.Mispresses {
@@ -512,13 +522,6 @@ func (gs *GameScreen) resetGameStatesImpl(preservePastState bool) {
 
 		gs.Mispresses = newMispresses
 	} else {
-		gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
-
-		gs.NoteEvents = make([][]NoteEvent, len(gs.Song.Notes))
-		for i := range len(gs.NoteEvents) {
-			gs.NoteEvents[i] = make([]NoteEvent, 0, 8) // completely arbitrary number
-		}
-
 		gs.Mispresses = gs.Mispresses[:0]
 	}
 }
@@ -670,10 +673,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if dStr == str {
 				if difficulty != gs.SelectedDifficulty {
 					gs.SelectedDifficulty = difficulty
-
-					gs.Song = gs.Songs[gs.SelectedDifficulty].Copy()
-
-					gs.ResetGameStates()
+					gs.SetSong(gs.Songs[gs.SelectedDifficulty])
 				}
 			}
 		}
