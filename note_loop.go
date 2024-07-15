@@ -438,7 +438,13 @@ func GetBotKeyPresseState(
 
 		if isNoteForBot(note, isBotPlay) {
 			if note.IsSustain() {
-				if note.IsAudioPositionInDuration(audioPos, tinyWindow) || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow) {
+				shouldHit := note.IsAudioPositionInDuration(audioPos, tinyWindow)
+				shouldHit = shouldHit || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
+				shouldHit = shouldHit || (!note.IsHit &&
+					note.StartsAt <= (audioPos+tinyWindow/2) &&
+					note.IsAudioPositionInDuration(audioPos, HitWindow()))
+
+				if shouldHit {
 					keyPressed[note.Player][note.Direction] = true
 				}
 			} else {
