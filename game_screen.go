@@ -140,6 +140,9 @@ type GameScreen struct {
 
 	Mispresses []Mispress
 
+	// NoteEvents are stored like thus
+	// each note gets note events slices
+	// which then hase several events
 	NoteEvents [][]NoteEvent
 
 	PopupQueue CircularQueue[NotePopup]
@@ -2067,10 +2070,12 @@ func (gs *GameScreen) DrawProgressBar() {
 	inRect.X = centerX - inRect.Width*0.5
 	inRect.Y = outRect.Y + barStroke
 
-	inRect.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
+	progressBar := inRect
+
+	progressBar.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
 
 	rl.DrawRectangleRec(outRect, ToRlColor(FnfColor{0, 0, 0, 100}))
-	rl.DrawRectangleRec(inRect, ToRlColor(FnfColor{255, 255, 255, 255}))
+	rl.DrawRectangleRec(progressBar, ToRlColor(FnfColor{255, 255, 255, 255}))
 
 	// draw time stamp
 	{
@@ -2113,6 +2118,37 @@ func (gs *GameScreen) DrawProgressBar() {
 
 		secPos := rl.Vector2{X: sepRect.X + sepRect.Width + margin, Y: timeY}
 		DrawText(font, secStr, secPos, fontSize, 0, textColor)
+	}
+
+	// draw miss events
+	const missRectW = 3
+
+	drawRectAt := func(at time.Duration) {
+		rectX := f32(at)/f32(gs.AudioDuration())*inRect.Width + inRect.X
+		rectX -= missRectW * 0.5
+
+		missRect := rl.Rectangle{
+			X: rectX, Y: inRect.Y, Width: missRectW, Height: inRect.Height,
+		}
+
+		rl.DrawRectangleRec(missRect, ToRlColor(FnfColor{0xFF, 0x66, 0x66, 0xFF}))
+	}
+
+	for _, events := range gs.NoteEvents {
+		for _, e := range events {
+			note := gs.Song.Notes[e.Index]
+			if note.Player == 0 {
+				if e.IsMiss() {
+					drawRectAt(e.Time)
+				}
+			}
+		}
+	}
+
+	for _, miss := range gs.Mispresses {
+		if miss.Player == 0 {
+			drawRectAt(miss.Time)
+		}
 	}
 
 	// draw bookmark

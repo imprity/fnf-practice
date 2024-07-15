@@ -225,7 +225,7 @@ func RunApplication() {
 			rl.PollInputEvents()
 
 			doQuit = rl.WindowShouldClose()
-			if doQuit{
+			if doQuit {
 				break
 			}
 
