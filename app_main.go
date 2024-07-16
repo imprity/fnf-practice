@@ -257,6 +257,7 @@ func RunApplication() {
 			//update screen
 			if !TheTransitionManager.ShowTransition {
 				if NextScreen != nil {
+					screen.BeforeScreenEnd()
 					screen = NextScreen
 					screen.BeforeScreenTransition()
 					NextScreen = nil

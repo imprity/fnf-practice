@@ -627,6 +627,10 @@ func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.DeleteMenu.BeforeScreenTransition()
 }
 
+func (ss *SelectScreen) BeforeScreenEnd() {
+	// pass
+}
+
 func (ss *SelectScreen) Free() {
 	// free path imgs and texs
 

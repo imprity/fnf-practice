@@ -368,6 +368,9 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	}
 }
 
+func (op *OptionsScreen) BeforeScreenEnd() {
+}
+
 func (op *OptionsScreen) Free() {
 	// pass
 }

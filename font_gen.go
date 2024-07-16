@@ -380,6 +380,10 @@ func (fg *FontGenScreen) BeforeScreenTransition() {
 	fg.menu.BeforeScreenTransition()
 }
 
+func (fg *FontGenScreen) BeforeScreenEnd() {
+	// pass
+}
+
 func (fg *FontGenScreen) Free() {
 	fg.menu.Free()
 

@@ -443,7 +443,29 @@ func (gs *GameScreen) AudioDuration() time.Duration {
 		return gs.VoicePlayer.AudioDuration()
 	}
 
-	ErrorLogger.Fatal("GameScreen: Trying to get audio duration but both audios are not loaded!")
+	ErrorLogger.Printf("GameScreen: Failed to get audio duration")
+
+	return 0
+}
+
+func (gs *GameScreen) AudioDecodedDuration() time.Duration {
+	if !gs.IsSongLoaded {
+		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
+		return 0
+	}
+
+	if gs.InstPlayer.IsReady() && gs.VoicePlayer.IsReady() {
+		return min(gs.InstPlayer.DecodedDuration(), gs.VoicePlayer.DecodedDuration())
+	} else {
+		if gs.InstPlayer.IsReady() {
+			return gs.InstPlayer.DecodedDuration()
+		} else if gs.VoicePlayer.IsReady() {
+			return gs.VoicePlayer.DecodedDuration()
+		}
+	}
+
+	ErrorLogger.Printf("GameScreen: Failed to get decoded audio duration")
+
 	return 0
 }
 
@@ -2092,12 +2114,22 @@ func (gs *GameScreen) DrawProgressBar() {
 	inRect.X = centerX - inRect.Width*0.5
 	inRect.Y = outRect.Y + barStroke
 
-	progressBar := inRect
-
-	progressBar.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
-
+	// draw background rect
 	rl.DrawRectangleRec(outRect, ToRlColor(FnfColor{0, 0, 0, 100}))
-	rl.DrawRectangleRec(progressBar, ToRlColor(FnfColor{255, 255, 255, 255}))
+
+	// draw decoding progress
+	{
+		decodingProgressBar := outRect
+		decodingProgressBar.Width *= f32(gs.AudioDecodedDuration()) / f32(gs.AudioDuration())
+		rl.DrawRectangleRec(decodingProgressBar, ToRlColor(FnfColor{0, 0, 0, 50}))
+	}
+
+	// draw audio position
+	{
+		audioPosBar := inRect
+		audioPosBar.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
+		rl.DrawRectangleRec(audioPosBar, ToRlColor(FnfColor{255, 255, 255, 255}))
+	}
 
 	// draw time stamp
 	{
@@ -2454,6 +2486,19 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.ResetGameStates()
 
 	gs.positionChangedWhilePaused = false
+}
+
+func (gs *GameScreen) BeforeScreenEnd() {
+	if gs.IsSongLoaded {
+		gs.PauseAudio()
+	}
+
+	if gs.InstPlayer.IsReady() {
+		gs.InstPlayer.QuitBackgroundDecoding()
+	}
+	if gs.VoicePlayer.IsReady() {
+		gs.VoicePlayer.QuitBackgroundDecoding()
+	}
 }
 
 func (gs *GameScreen) Free() {

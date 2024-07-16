@@ -263,8 +263,34 @@ func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
 	if !vp.IsReady() {
 		return 0
 	}
-
 	return vp.stream.AudioDuration()
+}
+
+func (vp *VaryingSpeedPlayer) AudioBytesSize() int64 {
+	if !vp.IsReady() {
+		return 0
+	}
+	return vp.stream.AudioBytesSize()
+}
+
+func (vp *VaryingSpeedPlayer) DecodedBytesSize() int64 {
+	if !vp.IsReady() {
+		return 0
+	}
+	return vp.stream.DecodedBytesSize()
+}
+
+func (vp *VaryingSpeedPlayer) DecodedDuration() time.Duration {
+	if !vp.IsReady() {
+		return 0
+	}
+	return vp.stream.DecodedDuration()
+}
+
+func (vp *VaryingSpeedPlayer) QuitBackgroundDecoding() {
+	if vp.IsReady() {
+		vp.stream.QuitBackgroundDecoding()
+	}
 }
 
 type VaryingSpeedStream struct {
@@ -280,11 +306,11 @@ type VaryingSpeedStream struct {
 	buffer       []byte
 	bytePosition int64
 
-	usingBgDecoding bool
-	bgDecoderQueue  chan byte
-	bgDecoderQuit   bool
-	bgDecoderMu     sync.Mutex
-	decoderProgress int64
+	usingBgDecoding  bool
+	bgDecoderQueue   chan byte
+	bgDecoderQuit    bool
+	bgDecoderMu      sync.Mutex
+	decodedBytesSize int64
 
 	mu sync.Mutex
 }
@@ -381,7 +407,7 @@ func (vs *VaryingSpeedStream) startBgDecoding(rawFile []byte, fileType string) e
 			}
 
 			vs.bgDecoderMu.Lock()
-			vs.decoderProgress = sent
+			vs.decodedBytesSize = sent
 			if vs.bgDecoderQuit {
 				doBreak = true
 			}
@@ -401,7 +427,7 @@ func (vs *VaryingSpeedStream) startBgDecoding(rawFile []byte, fileType string) e
 		}
 
 		vs.bgDecoderMu.Lock()
-		vs.decoderProgress = length
+		vs.decodedBytesSize = length
 		vs.bgDecoderMu.Unlock()
 	}()
 
@@ -413,7 +439,7 @@ func (vs *VaryingSpeedStream) decodeWholeAudio(rawFile []byte, fileType string) 
 		vs.usingBgDecoding = false
 		vs.buffer = buffer
 		vs.length = int64(len(buffer))
-		vs.decoderProgress = int64(len(buffer))
+		vs.decodedBytesSize = int64(len(buffer))
 		return nil
 	} else {
 		return err
@@ -543,10 +569,15 @@ func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	return ByteLengthToTimeDuration(vs.audioBytesSize(), SampleRate)
 }
 
-func (vs *VaryingSpeedStream) DecodingProgress() int64 {
+func (vs *VaryingSpeedStream) DecodedBytesSize() int64 {
 	vs.bgDecoderMu.Lock()
 	defer vs.bgDecoderMu.Unlock()
-	return vs.padStart + vs.decoderProgress + vs.padEnd
+	return vs.padStart + vs.decodedBytesSize + vs.padEnd
+}
+
+func (vs *VaryingSpeedStream) DecodedDuration() time.Duration {
+	duration := vs.DecodedBytesSize()
+	return ByteLengthToTimeDuration(duration, SampleRate)
 }
 
 func (vs *VaryingSpeedStream) QuitBackgroundDecoding() {
@@ -604,7 +635,7 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 		// audio file's total length is not available
 		// we have to just read it until we encounter EOF
 		if totalLen <= 0 || alwaysDecodeSingleThreaded {
-			FnfLogger.Println("decoding audio using single thread")
+			FnfLogger.Println("decoding whole audio using single thread")
 
 			audioBytes, err := io.ReadAll(decoders[0])
 			if err != nil {
@@ -614,7 +645,7 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 			return audioBytes, nil
 		}
 
-		FnfLogger.Println("decoding audio using go routines")
+		FnfLogger.Println("decoding whole audio using go routines")
 	}
 
 	// divide and ceil
