@@ -109,66 +109,17 @@ func NewVaryingSpeedPlayer(padStart, padEnd time.Duration) *VaryingSpeedPlayer {
 }
 
 func (vp *VaryingSpeedPlayer) IsReady() bool {
-	return vp.player != nil
+	return vp.player != nil && vp.stream != nil
 }
-
-/*
-func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
-	if !vp.isReady {
-		// NOTE : this isn't a seperate function because I have a strong feeling that
-		// this is not an exact inverse to ByteLengthToTimeDuration
-		// nor it needs to be
-		timeToBytes := func(t time.Duration) int64 {
-			var b int64
-			b = int64(t) * SampleRate / int64(time.Second) * BytesPerSample
-			b = (b / BytesPerSample) * BytesPerSample
-			b += BytesPerSample
-			return b
-		}
-
-		padStartBytes := timeToBytes(vp.padStart)
-		padEndBytes := timeToBytes(vp.padEnd)
-
-		var err error
-		vp.stream, err = NewVaryingSpeedStream(rawFile, fileType, padStartBytes, padEndBytes)
-		if err != nil {
-			return err
-		}
-
-		player := TheContext.NewPlayer(vp.stream)
-
-		// we need the ability to change the playback speed in real time
-		// so we need to make the buffer size smaller
-		// TODO : is this really the right size?
-		//const buffSizeTime = time.Second / 20
-		const buffSizeTime = time.Second / 5
-		buffSizeBytes := int(buffSizeTime) * SampleRate / int(time.Second) * BytesPerSample
-		player.SetBufferSize(int(buffSizeBytes))
-
-		vp.player = player
-
-		vp.isReady = true
-
-		vp.SetVolume(vp.Volume())
-	} else {
-		vp.player.Pause()
-		if err := vp.stream.ChangeAudio(rawFile, fileType); err != nil {
-			return err
-		}
-		vp.player.Seek(0, io.SeekStart)
-	}
-
-	vp.isPlaying = false
-
-	return nil
-}
-*/
 
 func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeAudioInBackground bool) error {
 	if vp.player != nil {
 		vp.player.Close()
-		vp.stream.QuitBackgroundDecoding()
 		vp.player = nil
+	}
+
+	if vp.stream != nil {
+		vp.stream.QuitBackgroundDecoding()
 		vp.stream = nil
 	}
 
@@ -222,6 +173,10 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeA
 //	position will change
 
 func (vp *VaryingSpeedPlayer) Position() time.Duration {
+	if !vp.IsReady() {
+		return 0
+	}
+
 	streamPos := vp.stream.BytePosition()
 	buffSize := vp.player.BufferedSize()
 
@@ -231,6 +186,10 @@ func (vp *VaryingSpeedPlayer) Position() time.Duration {
 }
 
 func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration) {
+	if !vp.IsReady() {
+		return
+	}
+
 	duration := vp.AudioDuration()
 
 	if offset >= duration {
@@ -244,23 +203,29 @@ func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration) {
 }
 
 func (vp *VaryingSpeedPlayer) IsPlaying() bool {
+	if !vp.IsReady() {
+		return false
+	}
+
 	return vp.player.IsPlaying()
 }
 
 func (vp *VaryingSpeedPlayer) Pause() {
-	if vp.player.IsPlaying() {
+	if vp.IsReady() && vp.player.IsPlaying() {
 		vp.player.Pause()
 	}
 }
 
 func (vp *VaryingSpeedPlayer) Play() {
-	if !vp.player.IsPlaying() {
+	if vp.IsReady() && !vp.player.IsPlaying() {
 		vp.player.Play()
 	}
 }
 
 func (vp *VaryingSpeedPlayer) Rewind() {
-	vp.stream.Seek(0, io.SeekStart)
+	if vp.IsReady() {
+		vp.stream.Seek(0, io.SeekStart)
+	}
 }
 
 func (vp *VaryingSpeedPlayer) SetVolume(volume float64) {
@@ -268,7 +233,7 @@ func (vp *VaryingSpeedPlayer) SetVolume(volume float64) {
 
 	vp.volume = volume
 
-	if vp.player != nil {
+	if vp.IsReady() {
 		vp.player.SetVolume(TheAudioManager.globalVolume * volume)
 	}
 }
@@ -295,6 +260,10 @@ func (vp *VaryingSpeedPlayer) SetSpeed(speed float64) {
 }
 
 func (vp *VaryingSpeedPlayer) AudioDuration() time.Duration {
+	if !vp.IsReady() {
+		return 0
+	}
+
 	return vp.stream.AudioDuration()
 }
 
@@ -346,17 +315,20 @@ func NewVaryingSpeedStream(
 	}
 
 DECODE_BG:
+	FnfLogger.Println("decoding audio in background")
 	if err = vs.startBgDecoding(rawFile, fileType); err == nil {
 		return vs, nil
 	}
 
 	if errors.Is(err, errUndeterminedAudioLength) {
+		FnfLogger.Println("couldn't get known audio length, decoding the whole audio")
 		goto DECODE_EVERYTHING
 	} else {
 		return nil, err
 	}
 
 DECODE_EVERYTHING:
+	FnfLogger.Println("decoding the whole audio")
 	if err = vs.decodeWholeAudio(rawFile, fileType); err != nil {
 		return nil, err
 	}
@@ -571,10 +543,10 @@ func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	return ByteLengthToTimeDuration(vs.audioBytesSize(), SampleRate)
 }
 
-func (vs *VaryingSpeedStream) DecoderProgress() int64 {
+func (vs *VaryingSpeedStream) DecodingProgress() int64 {
 	vs.bgDecoderMu.Lock()
 	defer vs.bgDecoderMu.Unlock()
-	return vs.decoderProgress
+	return vs.padStart + vs.decoderProgress + vs.padEnd
 }
 
 func (vs *VaryingSpeedStream) QuitBackgroundDecoding() {
