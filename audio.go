@@ -86,9 +86,8 @@ func NewAudioDeocoder(rawFile []byte, fileType string) (AudioDecoder, error) {
 }
 
 type VaryingSpeedPlayer struct {
-	isReady bool
-	stream  *VaryingSpeedStream
-	player  *oto.Player
+	stream *VaryingSpeedStream
+	player *oto.Player
 
 	padStart time.Duration
 	padEnd   time.Duration
@@ -110,9 +109,10 @@ func NewVaryingSpeedPlayer(padStart, padEnd time.Duration) *VaryingSpeedPlayer {
 }
 
 func (vp *VaryingSpeedPlayer) IsReady() bool {
-	return vp.isReady
+	return vp.player != nil
 }
 
+/*
 func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 	if !vp.isReady {
 		// NOTE : this isn't a seperate function because I have a strong feeling that
@@ -159,6 +159,54 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string) error {
 	}
 
 	vp.isPlaying = false
+
+	return nil
+}
+*/
+
+func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeAudioInBackground bool) error {
+	if vp.player != nil {
+		vp.player.Close()
+		vp.stream.QuitBackgroundDecoding()
+		vp.player = nil
+		vp.stream = nil
+	}
+
+	// NOTE : this isn't a seperate function because I have a strong feeling that
+	// this is not an exact inverse to ByteLengthToTimeDuration
+	// nor it needs to be
+	timeToBytes := func(t time.Duration) int64 {
+		var b int64
+		b = int64(t) * SampleRate / int64(time.Second) * BytesPerSample
+		b = (b / BytesPerSample) * BytesPerSample
+		b += BytesPerSample
+		return b
+	}
+
+	padStartBytes := timeToBytes(vp.padStart)
+	padEndBytes := timeToBytes(vp.padEnd)
+
+	stream, err := NewVaryingSpeedStream(
+		rawFile, fileType, padStartBytes, padEndBytes, decodeAudioInBackground)
+
+	if err != nil {
+		return err
+	}
+
+	player := TheContext.NewPlayer(stream)
+
+	// we need the ability to change the playback speed in real time
+	// so we need to make the buffer size smaller
+	// TODO : is this really the right size?
+	//const buffSizeTime = time.Second / 20
+	const buffSizeTime = time.Second / 5
+	buffSizeBytes := int(buffSizeTime) * SampleRate / int(time.Second) * BytesPerSample
+	player.SetBufferSize(int(buffSizeBytes))
+
+	vp.player = player
+	vp.stream = stream
+
+	vp.SetVolume(vp.Volume())
 
 	return nil
 }
@@ -220,7 +268,7 @@ func (vp *VaryingSpeedPlayer) SetVolume(volume float64) {
 
 	vp.volume = volume
 
-	if vp.isReady {
+	if vp.player != nil {
 		vp.player.SetVolume(TheAudioManager.globalVolume * volume)
 	}
 }
@@ -263,13 +311,18 @@ type VaryingSpeedStream struct {
 	buffer       []byte
 	bytePosition int64
 
-	decoderQueue    chan byte
 	usingBgDecoding bool
+	bgDecoderQueue  chan byte
+	bgDecoderQuit   bool
+	bgDecoderMu     sync.Mutex
+	decoderProgress int64
 
 	mu sync.Mutex
 }
 
-func NewVaryingSpeedStream(rawFile []byte, fileType string, padStart, padEnd int64) (*VaryingSpeedStream, error) {
+func NewVaryingSpeedStream(
+	rawFile []byte, fileType string, padStart, padEnd int64, decodeAudioInBackground bool,
+) (*VaryingSpeedStream, error) {
 	vs := new(VaryingSpeedStream)
 	vs.speed = 1.0
 
@@ -284,11 +337,115 @@ func NewVaryingSpeedStream(rawFile []byte, fileType string, padStart, padEnd int
 	vs.padStart = padStart
 	vs.padEnd = padEnd
 
-	if err := vs.ChangeAudio(rawFile, fileType); err != nil {
+	var err error
+
+	if decodeAudioInBackground {
+		goto DECODE_BG
+	} else {
+		goto DECODE_EVERYTHING
+	}
+
+DECODE_BG:
+	if err = vs.startBgDecoding(rawFile, fileType); err == nil {
+		return vs, nil
+	}
+
+	if errors.Is(err, errUndeterminedAudioLength) {
+		goto DECODE_EVERYTHING
+	} else {
+		return nil, err
+	}
+
+DECODE_EVERYTHING:
+	if err = vs.decodeWholeAudio(rawFile, fileType); err != nil {
 		return nil, err
 	}
 
 	return vs, nil
+}
+
+var errUndeterminedAudioLength = errors.New("could not determine audio length before decoding")
+
+func (vs *VaryingSpeedStream) startBgDecoding(rawFile []byte, fileType string) error {
+	decoder, decoderErr := NewAudioDeocoder(rawFile, fileType)
+
+	if decoderErr != nil {
+		return decoderErr
+	}
+
+	length := decoder.Length()
+
+	if length <= 0 {
+		return errUndeterminedAudioLength
+	}
+
+	vs.usingBgDecoding = true
+
+	vs.length = length
+	vs.bgDecoderQueue = make(chan byte, length)
+	vs.buffer = make([]byte, 0, length)
+
+	go func() {
+		buffer := make([]byte, 0, BytesPerSample*16)
+		sent := int64(0)
+
+		for {
+			buff := buffer[:cap(buffer)]
+
+			n, err := decoder.Read(buff)
+
+			sent += int64(n)
+
+			buff = buff[:n]
+
+			for _, b := range buff {
+				vs.bgDecoderQueue <- b
+			}
+
+			doBreak := false
+
+			if err != nil {
+				doBreak = true
+			}
+
+			vs.bgDecoderMu.Lock()
+			vs.decoderProgress = sent
+			if vs.bgDecoderQuit {
+				doBreak = true
+			}
+			vs.bgDecoderMu.Unlock()
+
+			if doBreak {
+				break
+			}
+		}
+
+		// fill the rest with zeros
+		// we don't care if we stopped midway cause of an error
+		toSend := length - sent
+
+		for i := int64(0); i < toSend; i++ {
+			vs.bgDecoderQueue <- 0
+		}
+
+		vs.bgDecoderMu.Lock()
+		vs.decoderProgress = length
+		vs.bgDecoderMu.Unlock()
+	}()
+
+	return nil
+}
+
+func (vs *VaryingSpeedStream) decodeWholeAudio(rawFile []byte, fileType string) error {
+	if buffer, err := DecodeWholeAudio(rawFile, fileType); err == nil {
+		vs.usingBgDecoding = false
+		vs.buffer = buffer
+		vs.length = int64(len(buffer))
+		vs.decoderProgress = int64(len(buffer))
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (vs *VaryingSpeedStream) readSrc(at int64) byte {
@@ -308,7 +465,7 @@ func (vs *VaryingSpeedStream) readSrc(at int64) byte {
 
 	if vs.usingBgDecoding {
 		for at >= int64(len(vs.buffer)) {
-			b := <-vs.decoderQueue
+			b := <-vs.bgDecoderQueue
 			vs.buffer = append(vs.buffer, b)
 		}
 	}
@@ -414,102 +571,16 @@ func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	return ByteLengthToTimeDuration(vs.audioBytesSize(), SampleRate)
 }
 
-func (vs *VaryingSpeedStream) ChangeAudio(rawFile []byte, fileType string) error {
-	vs.mu.Lock()
-	defer vs.mu.Unlock()
+func (vs *VaryingSpeedStream) DecoderProgress() int64 {
+	vs.bgDecoderMu.Lock()
+	defer vs.bgDecoderMu.Unlock()
+	return vs.decoderProgress
+}
 
-	startBgDecoding := func(decoder AudioDecoder) chan byte {
-		length := decoder.Length()
-		queue := make(chan byte, length)
-
-		go func() {
-			buffer := make([]byte, 0, BytesPerSample*16)
-			sent := int64(0)
-
-			for {
-				buff := buffer[:cap(buffer)]
-
-				n, err := decoder.Read(buff)
-
-				sent += int64(n)
-
-				buff = buff[:n]
-
-				for _, b := range buff {
-					queue <- b
-				}
-
-				if err != nil {
-					break
-				}
-			}
-
-			// if error happens, we don't care.
-			// we will just fill the rest of the queue with zero
-			toSend := length - sent
-
-			for i := int64(0); i < toSend; i++ {
-				queue <- 0
-			}
-		}()
-
-		return queue
-	}
-
-	decodeWholeAudio := func() error {
-		vs.usingBgDecoding = false
-		vs.buffer = nil
-		vs.decoderQueue = nil
-
-		var buffer []byte
-		var err error
-
-		buffer, err = DecodeWholeAudio(rawFile, fileType)
-		if err != nil {
-			return err
-		}
-
-		vs.buffer = buffer
-		vs.length = int64(len(vs.buffer))
-
-		return nil
-	}
-
-	if TheOptions.LoadAudioDuringGamePlay {
-		var decoder AudioDecoder
-
-		{
-			var err error
-			decoder, err = NewAudioDeocoder(rawFile, fileType)
-			if err != nil {
-				return err
-			}
-		}
-
-		vs.length = decoder.Length()
-
-		if vs.length > 0 {
-			FnfLogger.Println("decoding audio in background")
-			vs.usingBgDecoding = true
-
-			vs.buffer = make([]byte, 0, vs.length)
-			vs.decoderQueue = startBgDecoding(decoder)
-		} else { // when getting the known length is impossible
-			FnfLogger.Println("couldn't get known audio length, decoding the whole audio")
-
-			if err := decodeWholeAudio(); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	} else {
-		FnfLogger.Println("decoding the whole audio")
-		if err := decodeWholeAudio(); err != nil {
-			return err
-		}
-		return nil
-	}
+func (vs *VaryingSpeedStream) QuitBackgroundDecoding() {
+	vs.bgDecoderMu.Lock()
+	defer vs.bgDecoderMu.Unlock()
+	vs.bgDecoderQuit = true
 }
 
 // This is directly copied from ebiten's Time stream struct

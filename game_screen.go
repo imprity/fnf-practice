@@ -311,11 +311,11 @@ func (gs *GameScreen) LoadSongs(
 		gs.VoicePlayer.Pause()
 	}
 
-	if err := gs.InstPlayer.LoadAudio(instBytes, instType); err != nil {
+	if err := gs.InstPlayer.LoadAudio(instBytes, instType, TheOptions.LoadAudioDuringGamePlay); err != nil {
 		return err
 	}
 	if gs.Song.NeedsVoices {
-		if err := gs.VoicePlayer.LoadAudio(voiceBytes, voiceType); err != nil {
+		if err := gs.VoicePlayer.LoadAudio(voiceBytes, voiceType, TheOptions.LoadAudioDuringGamePlay); err != nil {
 			return err
 		}
 	}
