@@ -627,13 +627,19 @@ func (ss *SelectScreen) Draw() {
 
 		drawPathText()
 
-		// draw difficulty text at the top right corner
 		selected := ss.Menu.GetSelectedId()
 		data := ss.Menu.GetUserData(selected)
 
-		if id, ok := data.(FnfPathGroupId); ok {
-			group := ss.IdToGroup[id]
+		var group FnfPathGroup
+		var groupSelected bool = false
 
+		if id, ok := data.(FnfPathGroupId); ok {
+			group = ss.IdToGroup[id]
+			groupSelected = true
+		}
+
+		// draw difficulty text at the top right corner
+		if groupSelected {
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 			str := DifficultyStrs[difficulty]
@@ -666,6 +672,44 @@ func (ss *SelectScreen) Draw() {
 			rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColor(directoryOpenBgCol))
 
 			DrawTextElements(ss.searchDirHelpMsg, helpMsgBound.X, helpMsgBound.Y, FnfWhite)
+		}
+
+		// draw preview feature help message
+		if groupSelected {
+			const fontSize = 35
+			const margin = 15
+
+			factory := NewRichTextFactory(100)
+			factory.LineBreakRule = LineBreakNever
+
+			styleBlack := RichTextStyle{
+				FontSize:    fontSize,
+				Font:        SdfFontClear,
+				Fill:        FnfColor{0, 0, 0, 255},
+				Stroke:      FnfColor{255, 255, 255, 255},
+				StrokeWidth: 7,
+			}
+
+			styleRed := styleBlack
+			styleRed.Fill = FnfColor{0xFF, 0x00, 0x00, 0xFF}
+
+			factory.SetStyle(styleBlack)
+			factory.Print("press ")
+
+			factory.SetStyle(styleRed)
+			factory.Print(GetKeyName(TheKM[PauseKey]))
+
+			factory.SetStyle(styleBlack)
+			factory.Print(" to listen to the song")
+
+			elements := factory.Elements(TextAlignLeft, 0, 0)
+			bound := ElementsBound(elements)
+
+			DrawTextElements(elements,
+				SCREEN_WIDTH-bound.Width-margin,
+				SCREEN_HEIGHT-bound.Height-margin,
+				FnfColor{255, 255, 255, 255},
+			)
 		}
 	} else {
 		ss.DeleteMenu.Draw()
