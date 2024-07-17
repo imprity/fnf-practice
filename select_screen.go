@@ -42,11 +42,17 @@ type SelectScreen struct {
 	PathFontSize float32
 	PathItemSize float32
 
+	InstPlayer  *VaryingSpeedPlayer
+	VoicePlayer *VaryingSpeedPlayer
+
 	searchDirHelpMsg []RichTextElement
 }
 
 func NewSelectScreen() *SelectScreen {
 	ss := new(SelectScreen)
+
+	ss.InstPlayer = NewVaryingSpeedPlayer(0, 0)
+	ss.VoicePlayer = NewVaryingSpeedPlayer(0, 0)
 
 	ss.InputId = NewInputGroupId()
 
@@ -233,6 +239,11 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		menuItem.UserData = group.Id()
 
 		menuItem.TriggerCallback = func() {
+			ss.InstPlayer.Pause()
+			ss.VoicePlayer.Pause()
+			ss.InstPlayer.QuitBackgroundDecoding()
+			ss.VoicePlayer.QuitBackgroundDecoding()
+
 			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
 
 			ShowTransition(SongLoadingScreen, func() {
@@ -504,19 +515,66 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 		ss.Menu.SetItemHidden(ss.SongDecoItemId, len(ss.Collections) <= 0)
 		ss.Menu.SetItemHidden(ss.DeleteSongsItemId, len(ss.Collections) <= 0)
 
-		// =========================
-		// update debug msg
-		// =========================
+		// ====================================
+		// do things with the FnfPathGroup
+		// ====================================
 		if !ss.DrawDeleteMenu {
 			selected := ss.Menu.GetSelectedId()
 			data := ss.Menu.GetUserData(selected)
 			if id, ok := data.(FnfPathGroupId); ok {
 				group := ss.IdToGroup[id]
 
-				key := "Seleted group id"
-				value := fmt.Sprintf("%d", group.Id())
+				if AreKeysPressed(ss.InputId, TheKM[PauseKey]) {
+					ss.InstPlayer.Pause()
+					ss.VoicePlayer.Pause()
 
-				DebugPrint(key, value)
+					var instBytes []byte = nil
+					var voiceBytes []byte = nil
+					var err error
+
+					if group.InstPath != "" {
+						instBytes, err = os.ReadFile(group.InstPath)
+						if err != nil {
+							goto PREVIEW_ERROR
+						}
+					}
+					if group.VoicePath != "" {
+						voiceBytes, err = os.ReadFile(group.VoicePath)
+						if err != nil {
+							goto PREVIEW_ERROR
+						}
+					}
+
+					if group.InstPath != "" {
+						err = ss.InstPlayer.LoadAudio(instBytes, filepath.Ext(group.InstPath), true)
+						if err != nil {
+							goto PREVIEW_ERROR
+						}
+					}
+					if group.VoicePath != "" {
+						err = ss.VoicePlayer.LoadAudio(voiceBytes, filepath.Ext(group.InstPath), true)
+						if err != nil {
+							goto PREVIEW_ERROR
+						}
+					}
+
+					if group.InstPath != "" {
+						ss.InstPlayer.Play()
+					}
+					if group.VoicePath != "" {
+						ss.VoicePlayer.Play()
+					}
+					goto PREVIEW_END
+
+				PREVIEW_ERROR:
+					if err != nil {
+						ErrorLogger.Println(fmt.Sprintf("failed to preview the song %v: %v", group.SongName, err))
+						DisplayAlert(fmt.Sprintf("failed to preview the song %v", group.SongName))
+					}
+				PREVIEW_END:
+				}
+
+				DebugPrint("Seleted group id", fmt.Sprintf("%d", group.Id()))
 			}
 		}
 		for i, c := range ss.Collections {
@@ -628,7 +686,10 @@ func (ss *SelectScreen) BeforeScreenTransition() {
 }
 
 func (ss *SelectScreen) BeforeScreenEnd() {
-	// pass
+	ss.InstPlayer.Pause()
+	ss.VoicePlayer.Pause()
+	ss.InstPlayer.QuitBackgroundDecoding()
+	ss.VoicePlayer.QuitBackgroundDecoding()
 }
 
 func (ss *SelectScreen) Free() {
