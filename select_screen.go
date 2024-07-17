@@ -46,8 +46,14 @@ type SelectScreen struct {
 	VoicePlayer     *VaryingSpeedPlayer
 	PlayInstOnLoad  bool
 	PlayVoiceOnLoad bool
+	PlayingGroupId  FnfPathGroupId
 
 	searchDirHelpMsg []RichTextElement
+
+	// constants
+
+	// how much of an audio should be decoded before playing the preview
+	DecodingPercentBeforePlaying float32
 }
 
 func NewSelectScreen() *SelectScreen {
@@ -57,6 +63,8 @@ func NewSelectScreen() *SelectScreen {
 	ss.VoicePlayer = NewVaryingSpeedPlayer(0, 0)
 
 	ss.InputId = NewInputGroupId()
+
+	ss.DecodingPercentBeforePlaying = 0.1
 
 	ss.PreferredDifficulty = DifficultyNormal
 
@@ -488,6 +496,7 @@ func (ss *SelectScreen) StartPreviewDecoding(group FnfPathGroup) {
 	if group.VoicePath != "" {
 		ss.PlayVoiceOnLoad = true
 	}
+	ss.PlayingGroupId = group.Id()
 
 	return
 
@@ -596,8 +605,8 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
-		instReady := ss.InstPlayer.DecodedBytesSize() > ss.InstPlayer.AudioBytesSize()/10
-		voiceReady := ss.VoicePlayer.DecodedBytesSize() > ss.VoicePlayer.AudioBytesSize()/10
+		instReady := f32(ss.InstPlayer.DecodedBytesSize()) > f32(ss.InstPlayer.AudioBytesSize())*ss.DecodingPercentBeforePlaying
+		voiceReady := f32(ss.VoicePlayer.DecodedBytesSize()) > f32(ss.VoicePlayer.AudioBytesSize())*ss.DecodingPercentBeforePlaying
 
 		if ss.PlayInstOnLoad && ss.PlayVoiceOnLoad {
 			if instReady && voiceReady {
@@ -669,6 +678,69 @@ func (ss *SelectScreen) Draw() {
 		if id, ok := data.(FnfPathGroupId); ok {
 			group = ss.IdToGroup[id]
 			groupSelected = true
+		}
+
+		// draw preview decoding progress
+		if ss.PlayInstOnLoad || ss.PlayVoiceOnLoad {
+			itemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
+				if id, ok := item.UserData.(FnfPathGroupId); ok {
+					return id == ss.PlayingGroupId
+				}
+				return false
+			})
+
+			if bound, ok := ss.Menu.GetItemBound(itemId); ok {
+				const margin = 20
+				if !ss.InstPlayer.IsPlaying() && !ss.VoicePlayer.IsPlaying() { // draw decoding progress
+					var instDecoded, voiceDecoded float32
+
+					if ss.PlayInstOnLoad {
+						instDecoded = f32(ss.InstPlayer.DecodedBytesSize()) / (f32(ss.InstPlayer.AudioBytesSize()) * ss.DecodingPercentBeforePlaying)
+					}
+					if ss.PlayVoiceOnLoad {
+						voiceDecoded = f32(ss.VoicePlayer.DecodedBytesSize()) / (f32(ss.VoicePlayer.AudioBytesSize()) * ss.DecodingPercentBeforePlaying)
+					}
+
+					var decoded float32
+					if ss.PlayInstOnLoad && ss.PlayVoiceOnLoad {
+						decoded = min(instDecoded, voiceDecoded)
+					} else if ss.PlayInstOnLoad {
+						decoded = instDecoded
+					} else {
+						decoded = voiceDecoded
+					}
+
+					const ringRaidius = 30
+					const ringRaidiusInner = 12
+
+					ringCenter := rl.Vector2{
+						X: bound.X + bound.Width + ringRaidius + margin,
+						Y: bound.Y + bound.Height*0.5,
+					}
+
+					rl.DrawRing(ringCenter,
+						ringRaidiusInner, ringRaidius,
+						0-90, 360*decoded-90,
+						50, ToRlColor(FnfColor{0, 0, 0, 200}))
+				} else { // draw play icon
+					const iconHeight = 78
+					scale := iconHeight / f32(DancingNoteSprite.Height)
+
+					mat := rl.MatrixScale(scale, scale, 1)
+					mat = rl.MatrixMultiply(mat, rl.MatrixTranslate(
+						bound.X+bound.Width+margin,
+						bound.Y+bound.Height-iconHeight,
+						0,
+					))
+
+					DrawSpriteTransfromed(
+						DancingNoteSprite,
+						int(GlobalTimerNow()/time.Second)%DancingNoteSprite.Count,
+						RectWH(DancingNoteSprite.Width, DancingNoteSprite.Height),
+						mat, ToRlColor(FnfColor{0, 0, 0, 230}),
+					)
+				}
+			}
 		}
 
 		// draw difficulty text at the top right corner

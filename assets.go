@@ -43,6 +43,8 @@ var (
 	MenuScreenSimpleBg rl.Texture2D
 )
 
+var DancingNoteSprite Sprite
+
 var (
 	SongLoadingScreen rl.Texture2D
 	DirSelectScreen   rl.Texture2D
@@ -196,6 +198,17 @@ func loadAssets(isReload bool) {
 		}
 
 		CheckBoxMark.Texture = loadTexture("assets/checkbox-sprites.png", true, ".png")
+	}
+	// load dancing sprite
+	{
+		jsonBytes := loadData("assets/dancing-note.json")
+		buffer := bytes.NewBuffer(jsonBytes)
+		var err error
+		DancingNoteSprite, err = ParseSpriteJsonMetadata(buffer)
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
+		DancingNoteSprite.Texture = loadTexture("assets/dancing-note.png", true, ".png")
 	}
 
 	BookMarkBigTex = loadTexture("assets/bookmark_big.png", true, ".png")
