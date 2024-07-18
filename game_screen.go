@@ -173,7 +173,7 @@ type GameScreen struct {
 	isKeyPressed   [2][NoteDirSize]bool
 	noteIndexStart int
 
-	tempPauseUntil          time.Duration
+	tempPauseFrameCounter   int
 	wasPlayingWhenTempPause bool
 
 	audioPosition      time.Duration
@@ -211,7 +211,7 @@ func NewGameScreen() *GameScreen {
 		Data: make([]AnimatedRewind, 8),
 	}
 
-	gs.tempPauseUntil = -Years150
+	gs.tempPauseFrameCounter = -10
 
 	gs.InputId = NewInputGroupId()
 
@@ -391,20 +391,21 @@ func (gs *GameScreen) TempPause(howLong time.Duration) {
 
 	gs.PauseAudio()
 
-	until := GlobalTimerNow() + howLong
-	if until > gs.tempPauseUntil {
-		gs.tempPauseUntil = until
-	}
+	counter :=  int((howLong * time.Duration(TheOptions.TargetFPS)) / time.Second)
+
+	counter = max(counter, 2)
+
+	gs.tempPauseFrameCounter = max(gs.tempPauseFrameCounter, counter)
 }
 
 func (gs *GameScreen) OnlyTemporarilyPaused() bool {
-	return gs.tempPauseUntil > GlobalTimerNow() &&
+	return gs.tempPauseFrameCounter > 0 &&
 		gs.wasPlayingWhenTempPause && !gs.IsPlayingAudio()
 }
 
 func (gs *GameScreen) ClearTempPause() {
 	gs.wasPlayingWhenTempPause = false
-	gs.tempPauseUntil = -Years150
+	gs.tempPauseFrameCounter = -10
 }
 
 func (gs *GameScreen) ClearRewind() {
@@ -634,6 +635,17 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			tf = "true"
 		}
 		DebugPrint("Log Note Event", tf)
+	}
+
+	// =============================================
+	// temporary pause and unpause
+	// =============================================
+	gs.tempPauseFrameCounter -= 1
+	if gs.tempPauseFrameCounter <= 0 {
+		if gs.wasPlayingWhenTempPause {
+			gs.PlayAudio()
+			gs.wasPlayingWhenTempPause = false
+		}
 	}
 
 	// =============================================
@@ -906,17 +918,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	if gs.IsPlayingAudio() && gs.positionChangedWhilePaused {
 		gs.ResetGameStatesAfterCurrentPoint()
 		gs.positionChangedWhilePaused = false
-	}
-
-	// =============================================
-	// temporary pause and unpause
-	// =============================================
-
-	if gs.tempPauseUntil < GlobalTimerNow() {
-		if gs.wasPlayingWhenTempPause {
-			gs.PlayAudio()
-			gs.wasPlayingWhenTempPause = false
-		}
 	}
 
 	// =============================================
