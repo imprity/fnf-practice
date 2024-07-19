@@ -391,7 +391,7 @@ func (gs *GameScreen) TempPause(howLong time.Duration) {
 
 	gs.PauseAudio()
 
-	counter :=  int((howLong * time.Duration(TheOptions.TargetFPS)) / time.Second)
+	counter := int((howLong * time.Duration(TheOptions.TargetFPS)) / time.Second)
 
 	counter = max(counter, 2)
 
@@ -844,32 +844,24 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 			pos := gs.AudioPosition()
 
-			var keyT time.Duration
+			var keyT time.Duration = -gs.PixelsToTime(3.8 * f32(deltaTime) / f32(time.Millisecond))
 			if TheOptions.DownScroll {
-				keyT = gs.PixelsToTime(50)
-			} else {
-				keyT = -gs.PixelsToTime(50)
+				keyT = -keyT
 			}
 
-			// NOTE : If we ever implement note up scroll
-			// this keybindings have to reversed
-			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, TheKM[NoteScrollUpKey]) {
+			if AreKeysDown(gs.InputId, TheKM[NoteScrollUpKey]) {
 				changedFromScroll = true
 				pos -= keyT
-				gs.ClearRewind()
 			}
 
-			if HandleKeyRepeat(gs.InputId, time.Millisecond*50, time.Millisecond*10, TheKM[NoteScrollDownKey]) {
+			if AreKeysDown(gs.InputId, TheKM[NoteScrollDownKey]) {
 				changedFromScroll = true
 				pos += keyT
-				gs.ClearRewind()
 			}
 
-			var wheelT time.Duration
+			var wheelT time.Duration = gs.PixelsToTime(6 * f32(deltaTime) / f32(time.Millisecond))
 			if TheOptions.DownScroll {
-				wheelT = -gs.PixelsToTime(40)
-			} else {
-				wheelT = gs.PixelsToTime(40)
+				wheelT = -wheelT
 			}
 
 			wheelmove := rl.GetMouseWheelMove()
@@ -882,6 +874,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			pos = Clamp(pos, 0, gs.AudioDuration())
 
 			if changedFromScroll {
+				gs.ClearRewind()
 				gs.TempPause(time.Millisecond * 60)
 				positionArbitraryChange = true
 				gs.SetAudioPosition(pos)
