@@ -234,7 +234,7 @@ func (ss *SelectScreen) GeneateHelpMsg() {
 	f.SetStyle(style)
 	f.Print("to add songs.\n\n" +
 		"When you select this item, file explorer will show up.\n\n" +
-		"Select the folder where your other Friday Night Funkin program located.",
+		"Select the folder where your other Friday Night Funkin program is located.",
 	)
 
 	ss.searchDirHelpMsg = f.Elements(TextAlignLeft, 0, fontSize*0.5)
