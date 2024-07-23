@@ -27,12 +27,18 @@ Navigate to the directory where your other Friday Night Funking mod is located. 
 - [FUNKIN' IS MAGIC](https://gamebanana.com/mods/380384)
 
 # Limitations
+### Doesn't support official [Friday Night Funkin](https://ninja-muffin24.itch.io/funkin), sadly.
+They now use the new(and in my opinion, more sensible) charting format.
+
 ### It doesn't support 'weird' notes like notes that hurt players when hit.
 And it probably never will because from my understanding, different mods have their own way of implementing custom notes and I don't want to implement them one by one.
 
 (Probably, maybe I will if I really like that mod.)
 
-### Note hit system is probably quite different.
+### Can only support four note directions.
+So something like [this](https://www.youtube.com/watch?v=OC4IEph5l2A) won't be supported.
+
+### Note hit system is probably a bit different.
 It's not exactly a 1 to 1 replication of other mods.
 
 # Building from source
