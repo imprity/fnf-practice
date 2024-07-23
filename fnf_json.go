@@ -8,8 +8,36 @@ import (
 	"time"
 )
 
+type RawSectionNotes [][]float64
+
+func (rs *RawSectionNotes) UnmarshalJSON(bs []byte) error {
+	var jsonArr1 []interface{}
+
+	if err := json.Unmarshal(bs, &jsonArr1); err != nil {
+		return err
+	}
+
+	for _, jsonArr2 := range jsonArr1 {
+		var arrayOfFloats []float64
+
+		if jsonArr3, isJsonArr := jsonArr2.([]interface{}); isJsonArr {
+			for _, jsonFloat := range jsonArr3 {
+				if floatV, isFloat := jsonFloat.(float64); isFloat {
+					arrayOfFloats = append(arrayOfFloats, floatV)
+				}
+			}
+		}
+
+		if len(arrayOfFloats) > 0 {
+			*rs = append(*rs, arrayOfFloats)
+		}
+	}
+
+	return nil
+}
+
 type RawFnfSection struct {
-	SectionNotes [][3]float64
+	SectionNotes RawSectionNotes
 
 	MustHitSection bool
 
@@ -83,6 +111,10 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error) {
 
 		// parse notes
 		for _, sectionNote := range rawSection.SectionNotes {
+			if len(sectionNote) < 3 {
+				continue
+			}
+
 			parsedNote := FnfNote{}
 
 			parsedNote.StartsAt = time.Duration(sectionNote[0] * float64(time.Millisecond))
@@ -110,13 +142,9 @@ func ParseJsonToFnfSong(jsonReader io.Reader) (FnfSong, error) {
 				}
 			}
 
-			// TODO : Maybe we should do some kind of error reporting like
-			//        compilers do...
-			if parsedNote.Direction >= NoteDirSize {
-				return parsedSong, fmt.Errorf("ParseJsonToFnfSong : note direction out of bounds")
+			if 0 <= parsedNote.Direction && parsedNote.Direction < NoteDirSize {
+				parsedSong.Notes = append(parsedSong.Notes, parsedNote)
 			}
-
-			parsedSong.Notes = append(parsedSong.Notes, parsedNote)
 		}
 	}
 
