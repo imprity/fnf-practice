@@ -21,6 +21,9 @@ const (
 	SCREEN_HEIGHT = 720
 )
 
+//go:embed git_tag.txt
+var GIT_TAG_VERSION string
+
 var (
 	TheSelectScreen  *SelectScreen
 	TheOptionsScreen *OptionsScreen
@@ -73,11 +76,11 @@ func RunApplication() {
 		}()
 	}
 
-	rl.SetConfigFlags(rl.FlagWindowResizable)
-
 	var printDebugMsg bool = false
 
 	defer println("program closed successfully!")
+
+	rl.SetConfigFlags(rl.FlagWindowResizable)
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()

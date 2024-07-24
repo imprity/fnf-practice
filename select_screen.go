@@ -172,7 +172,7 @@ func NewSelectScreen() *SelectScreen {
 	ss.Menu.AddItems(songDeco)
 	ss.SongDecoItemId = songDeco.Id
 
-	ss.GeneateHelpMsg()
+	ss.GenerateHelpMsg()
 
 	return ss
 }
@@ -205,7 +205,7 @@ func GetAvaliableDifficulty(preferred FnfDifficulty, group FnfPathGroup) FnfDiff
 	return 0
 }
 
-func (ss *SelectScreen) GeneateHelpMsg() {
+func (ss *SelectScreen) GenerateHelpMsg() {
 	f := NewRichTextFactory(430)
 
 	f.LineBreakRule = LineBreakWord
@@ -781,7 +781,7 @@ func (ss *SelectScreen) Draw() {
 		}
 
 		// draw preview feature help message
-		if groupSelected {
+		{
 			const fontSize = 35
 			const margin = 15
 
@@ -799,14 +799,22 @@ func (ss *SelectScreen) Draw() {
 			styleRed := styleBlack
 			styleRed.Fill = FnfColor{0xFF, 0x00, 0x00, 0xFF}
 
-			factory.SetStyle(styleBlack)
-			factory.Print("press ")
+			if groupSelected {
+				factory.SetStyle(styleBlack)
+				factory.Print("press ")
 
-			factory.SetStyle(styleRed)
-			factory.Print(GetKeyName(TheKM[PauseKey]))
+				factory.SetStyle(styleRed)
+				factory.Print(GetKeyName(TheKM[PauseKey]))
 
-			factory.SetStyle(styleBlack)
-			factory.Print(" to listen to the song")
+				factory.SetStyle(styleBlack)
+				factory.Print(" to listen to the song")
+			} else {
+				factory.SetStyle(styleBlack)
+				factory.Print("version ")
+
+				factory.SetStyle(styleRed)
+				factory.Print(GIT_TAG_VERSION)
+			}
 
 			elements := factory.Elements(TextAlignLeft, 0, 0)
 			bound := ElementsBound(elements)
@@ -829,7 +837,7 @@ func (ss *SelectScreen) BeforeScreenTransition() {
 
 	ss.Menu.BeforeScreenTransition()
 
-	ss.GeneateHelpMsg()
+	ss.GenerateHelpMsg()
 
 	ss.DeleteMenu.ClearItems()
 	ss.DeleteMenu.BeforeScreenTransition()

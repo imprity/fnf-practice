@@ -3,6 +3,10 @@
 SETLOCAL
 SETLOCAL ENABLEDELAYEDEXPANSION
 
+git describe --tags --always --abbrev=0 > nul
+if !errorlevel! neq 0 exit /b !errorlevel!
+git describe --tags --always --abbrev=0 > git_tag.txt
+
 if "%1" == "clean" (
 	del fnf-practice.exe
 	del fnf-practice-debug.exe
