@@ -1,26 +1,49 @@
 #!/bin/bash
 set -e
 
+build_func () {
+	echo "building"
+	echo "to_build : $1"
+	echo "build_source : $2"
+
+	go build -o "$1" -tags=noaudio -gcflags=all="-e" "$2"
+}
+
+build_debug_func () {
+	echo "building debug"
+	echo "to_build : $1"
+	echo "build_source : $2"
+
+	go build -o "$1" -tags=noaudio -gcflags=all="-e -l -N" "$2"
+}
+
+git describe --tags --always --abbrev=0 > /dev/null
+git describe --tags --always --abbrev=0 > git_tag.txt
+
 if [ "$1" == "" ]; then
 
-	go build -o "fnf-practice" -tags=noaudio -gcflags=all="-e" main.go
+    build_func fnf-practice main.go
+
+elif [ "$1" == "clean" ]; then
+
+    rm -f fnf-practice fnf-practice-debug font-gen font-gen-debug
 
 elif [ "$1" == "debug" ]; then
 
-	go build -o "fnf-practice-debug" -tags=noaudio -gcflags=all="-e -l -N" main.go
+    build_debug_func fnf-practice-debug main.go
 
 elif [ "$1" == "font-gen" ]; then
 
-	go build -o "font-gen" -tags=noaudio -gcflags=all="-e" font_gen.go
+    build_func font-gen font_gen.go
 
 elif [ "$1" == "font-gen-debug" ]; then
 
-	go build -o "font-gen-debug" -tags=noaudio -gcflags=all="-e -l -N" font_gen.go
+    build_debug_func font-gen-debug font_gen.go
 
 elif [ "$1" == "all" ]; then
 
-	go build -o "fnf-practice" -tags=noaudio -gcflags=all="-e" main.go
-	go build -o "font-gen" -tags=noaudio -gcflags=all="-e" font_gen.go
+    build_func fnf-practice main.go
+    build_func font-gen font_gen.go
 
 else
 
