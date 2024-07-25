@@ -10,6 +10,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strings"
 
 	"time"
 
@@ -23,6 +24,14 @@ const (
 
 //go:embed git_tag.txt
 var GIT_TAG_VERSION string
+
+func init() {
+	// normalize
+	GIT_TAG_VERSION = strings.ReplaceAll(GIT_TAG_VERSION, "\r\n", "\n")
+	// remove new lines
+	GIT_TAG_VERSION = strings.ReplaceAll(GIT_TAG_VERSION, "\n", " ")
+	GIT_TAG_VERSION = strings.TrimSpace(GIT_TAG_VERSION)
+}
 
 var (
 	TheSelectScreen  *SelectScreen
