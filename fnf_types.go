@@ -2,7 +2,6 @@ package fnf
 
 import (
 	"time"
-	//rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type NoteDir int
@@ -24,8 +23,12 @@ var NoteDirStrs = [NoteDirSize]string{
 	"right",
 }
 
+type FnfPlayerNo int
+
+const FnfPlayerSize FnfPlayerNo = 2
+
 type FnfNote struct {
-	Player    int
+	Player    FnfPlayerNo
 	Direction NoteDir
 
 	StartsAt time.Duration
@@ -93,7 +96,7 @@ const PlayerAny = -1
 const IsHitAny = -1
 
 type NoteFilter struct {
-	Player    int
+	Player    FnfPlayerNo
 	IsHit     int
 	Direction NoteDir
 }

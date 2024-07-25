@@ -65,7 +65,7 @@ func NewGameHelpMessage(inputId InputGroupId) *GameHelpMessage {
 }
 
 type Mispress struct {
-	Player    int
+	Player    FnfPlayerNo
 	Direction NoteDir
 
 	Time time.Duration
@@ -136,7 +136,7 @@ type GameScreen struct {
 	InstPlayer  *VaryingSpeedPlayer
 	VoicePlayer *VaryingSpeedPlayer
 
-	Pstates [2]PlayerState
+	Pstates [FnfPlayerSize]PlayerState
 
 	Mispresses []Mispress
 
@@ -170,7 +170,7 @@ type GameScreen struct {
 	RewindOnMistakeMenuItemId MenuItemId
 
 	// private members
-	isKeyPressed   [2][NoteDirSize]bool
+	isKeyPressed   [FnfPlayerSize][NoteDirSize]bool
 	noteIndexStart int
 
 	tempPauseFrameCounter   int
@@ -190,7 +190,7 @@ type GameScreen struct {
 	rewindStarted    bool
 	rewindStartPos   time.Duration //audio position
 	rewindHightLight float64
-	rewindPlayer     int
+	rewindPlayer     FnfPlayerNo
 	rewindDir        NoteDir
 }
 
@@ -513,7 +513,7 @@ func (gs *GameScreen) SetBotPlay(bot bool) {
 }
 
 func (gs *GameScreen) resetGameStatesImpl(preservePastState bool) {
-	for player := 0; player <= 1; player++ {
+	for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			gs.isKeyPressed[player][dir] = false
 		}
@@ -521,7 +521,7 @@ func (gs *GameScreen) resetGameStatesImpl(preservePastState bool) {
 
 	gs.PopupQueue.Clear()
 
-	gs.Pstates = [2]PlayerState{}
+	gs.Pstates = [FnfPlayerSize]PlayerState{}
 
 	gs.noteIndexStart = 0
 
@@ -588,7 +588,7 @@ func (gs *GameScreen) PixelsToTime(p float32) time.Duration {
 }
 
 // returns misses and hit counts per rating
-func (gs *GameScreen) CountEvents(player int) (int, [HitRatingSize]int) {
+func (gs *GameScreen) CountEvents(player FnfPlayerNo) (int, [HitRatingSize]int) {
 	misses := 0
 
 	hits := [HitRatingSize]int{}
@@ -1018,7 +1018,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 		queuedRewind := false
 
-		queueRewinds := func(player int, direction NoteDir, rewinds ...AnimatedRewind) {
+		queueRewinds := func(player FnfPlayerNo, direction NoteDir, rewinds ...AnimatedRewind) {
 			if queuedRewind {
 				return
 			}
@@ -1040,7 +1040,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// handle mispresses
 		// ===================
 		if !TheOptions.GhostTapping {
-			for player := 0; player <= 1; player++ {
+			for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 				for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 					mispressed := (gs.Pstates[player].IsHoldingBadKey[dir] &&
 						gs.Pstates[player].IsKeyJustPressed[dir])
@@ -1365,14 +1365,14 @@ func (gs *GameScreen) Draw() {
 
 	// NOTE : I guess I could precalculate these and have this as members
 	// But I have a strong feeling that we will need to dynamically change these at runtime in future
-	noteFill := [4]FnfColor{
+	noteFill := [NoteDirSize]FnfColor{
 		{0xBA, 0x6E, 0xCE, 0xFF},
 		{0x53, 0xBE, 0xFF, 0xFF},
 		{0x63, 0xD1, 0x92, 0xFF},
 		{0xFA, 0x4F, 0x55, 0xFF},
 	}
 
-	noteStroke := [4]FnfColor{}
+	noteStroke := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
 		hsv.Z *= 0.1
@@ -1381,7 +1381,7 @@ func (gs *GameScreen) Draw() {
 		noteStroke[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillLight := [4]FnfColor{}
+	noteFillLight := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 
 		hsv := ColToHSV(c)
@@ -1395,7 +1395,7 @@ func (gs *GameScreen) Draw() {
 		noteFillLight[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeLight := [4]FnfColor{}
+	noteStrokeLight := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
 		hsv.Z *= 0.5
@@ -1403,7 +1403,7 @@ func (gs *GameScreen) Draw() {
 		noteStrokeLight[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFlash := [4]FnfColor{}
+	noteFlash := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
 		hsv.Y *= 0.1
@@ -1416,7 +1416,7 @@ func (gs *GameScreen) Draw() {
 		noteFlash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillGrey := [4]FnfColor{}
+	noteFillGrey := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
 		hsv.Y *= 0.3
@@ -1425,7 +1425,7 @@ func (gs *GameScreen) Draw() {
 		noteFillGrey[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeGrey := [4]FnfColor{}
+	noteStrokeGrey := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
 		hsv.Y *= 0.2
@@ -1434,7 +1434,7 @@ func (gs *GameScreen) Draw() {
 		noteStrokeGrey[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFillMistake := [4]FnfColor{}
+	noteFillMistake := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
 		hsv.Y *= 0.7
@@ -1443,7 +1443,7 @@ func (gs *GameScreen) Draw() {
 		noteFillMistake[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteStrokeMistake := [4]FnfColor{
+	noteStrokeMistake := [NoteDirSize]FnfColor{
 		{0, 0, 0, 255},
 		{0, 0, 0, 255},
 		{0, 0, 0, 255},
@@ -1454,12 +1454,12 @@ func (gs *GameScreen) Draw() {
 	// calculate input status transform
 	// ============================================
 
-	statusScaleOffset := [2][NoteDirSize]float32{}
-	statusOffsetX := [2][NoteDirSize]float32{}
-	statusOffsetY := [2][NoteDirSize]float32{}
+	statusScaleOffset := [FnfPlayerSize][NoteDirSize]float32{}
+	statusOffsetX := [FnfPlayerSize][NoteDirSize]float32{}
+	statusOffsetY := [FnfPlayerSize][NoteDirSize]float32{}
 
 	// fill the scales with 1
-	for player := 0; player <= 1; player++ {
+	for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 			statusScaleOffset[player][dir] = 1
 		}
@@ -1467,7 +1467,7 @@ func (gs *GameScreen) Draw() {
 
 	// it we hit note, offset note
 	if !gs.positionChangedWhilePaused {
-		for p := 0; p <= 1; p++ {
+		for p := FnfPlayerNo(0); p < FnfPlayerSize; p++ {
 			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 				if gs.Pstates[p].IsHoldingBadKey[dir] {
 					statusScaleOffset[p][dir] += 0.1
@@ -1510,7 +1510,7 @@ func (gs *GameScreen) Draw() {
 	// NOTE : we have to define it as a function because
 	// we want to draw it below note if it's just a regular note
 	// but we want to draw on top of holding note
-	drawHitOverlay := func(player int, dir NoteDir) {
+	drawHitOverlay := func(player FnfPlayerNo, dir NoteDir) {
 		var x, y float32
 
 		x = gs.NoteX(player, dir) + statusOffsetX[player][dir]
@@ -1574,7 +1574,7 @@ func (gs *GameScreen) Draw() {
 	// draw input status
 	// ============================================
 	for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-		for player := 0; player <= 1; player++ {
+		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 			color := Col01(0.5, 0.5, 0.5, 1.0)
 
 			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] && !gs.positionChangedWhilePaused {
@@ -1604,7 +1604,7 @@ func (gs *GameScreen) Draw() {
 	// draw regular note hit
 	// ============================================
 	if !gs.positionChangedWhilePaused {
-		for player := 0; player <= 1; player++ {
+		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 				if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir] {
 					drawHitOverlay(player, dir)
@@ -1725,7 +1725,7 @@ func (gs *GameScreen) Draw() {
 	// draw sustain note hit
 	// ============================================
 	if !gs.positionChangedWhilePaused {
-		for player := 0; player <= 1; player++ {
+		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
 				if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir] {
 					drawHitOverlay(player, dir)
@@ -1853,7 +1853,7 @@ func (gs *GameScreen) Draw() {
 	}
 }
 
-func (gs *GameScreen) NoteX(player int, dir NoteDir) float32 {
+func (gs *GameScreen) NoteX(player FnfPlayerNo, dir NoteDir) float32 {
 	player1NoteStartLeft := GSC.NotesMarginLeft
 	player0NoteStartRight := SCREEN_WIDTH - GSC.NotesMarginRight
 
@@ -1887,7 +1887,7 @@ type SustainColor struct {
 }
 
 func (gs *GameScreen) DrawSustainBar(
-	player int, dir NoteDir,
+	player FnfPlayerNo, dir NoteDir,
 	from, to time.Duration,
 	baseColor FnfColor,
 	otherColors []SustainColor,
