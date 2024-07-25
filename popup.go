@@ -262,7 +262,7 @@ func DrawPopup() {
 
 		//calculate options width
 		for i, op := range current.Options {
-			opWidth += rl.MeasureTextEx(FontBold.Font, op, opFontSize, 0).X
+			opWidth += MeasureText(FontBold, op, opFontSize, 0).X
 			if i != len(current.Options)-1 {
 				opWidth += opMargin
 			}
@@ -284,7 +284,7 @@ func DrawPopup() {
 			pos := rl.Vector2{X: offsetX, Y: offsetY}
 			scale := float32(1.0)
 
-			size := rl.MeasureTextEx(FontBold.Font, op, opFontSize, 0)
+			size := MeasureText(FontBold, op, opFontSize, 0)
 
 			if i == current.SelectedOption {
 				col = FnfColor{0, 0, 0, 255}

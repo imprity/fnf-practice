@@ -751,7 +751,7 @@ func (ss *SelectScreen) Draw() {
 			str := DifficultyStrs[difficulty]
 			size := float32(65)
 
-			textSize := rl.MeasureTextEx(SdfFontBold.Font, DifficultyStrs[difficulty], size, 0)
+			textSize := MeasureText(SdfFontBold, DifficultyStrs[difficulty], size, 0)
 
 			x := SCREEN_WIDTH - (100 + textSize.X)
 			y := float32(20)

@@ -166,7 +166,7 @@ func DrawTextOutlined(
 		return
 	}
 
-	textSize := rl.MeasureTextEx(font.Font, text, fontSize, spacing)
+	textSize := MeasureText(font, text, fontSize, spacing)
 	textRect := rl.Rectangle{
 		X: position.X, Y: position.Y, Width: textSize.X, Height: textSize.Y,
 	}
@@ -244,4 +244,8 @@ func DrawTextOutlined(
 	)
 
 	rl.EndShaderMode()
+}
+
+func MeasureText(font FnfFont, text string, fontSize float32, spacing float32) rl.Vector2 {
+	return rl.MeasureTextEx(font.Font, text, fontSize, spacing)
 }

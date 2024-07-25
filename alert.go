@@ -103,7 +103,7 @@ func DrawAlert() {
 		hozMarginScaled := hozMargin * scale
 
 		rl.SetTextLineSpacing(int(fontSizeScaled))
-		textSize := rl.MeasureTextEx(FontClear.Font, alert.Message, fontSizeScaled, 0)
+		textSize := MeasureText(FontClear, alert.Message, fontSizeScaled, 0)
 
 		bgRect := rl.Rectangle{
 			Width:  textSize.X + hozMarginScaled*2,

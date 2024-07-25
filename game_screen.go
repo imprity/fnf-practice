@@ -2160,13 +2160,13 @@ func (gs *GameScreen) DrawProgressBar() {
 			minStr = "-" + minStr
 		}
 
-		sepSize := rl.MeasureTextEx(font.Font, ":", fontSize, 0)
+		sepSize := MeasureText(font, ":", fontSize, 0)
 		sepRect := rl.Rectangle{
 			X: rc.X - sepSize.X*0.5, Y: timeY, Width: sepSize.X, Height: sepSize.Y,
 		}
 		DrawText(font, ":", rl.Vector2{sepRect.X, sepRect.Y}, fontSize, 0, textColor)
 
-		minSize := rl.MeasureTextEx(font.Font, minStr, fontSize, 0)
+		minSize := MeasureText(font, minStr, fontSize, 0)
 		minPos := rl.Vector2{X: sepRect.X - minSize.X - margin, Y: timeY}
 		DrawText(font, minStr, minPos, fontSize, 0, textColor)
 
@@ -2237,7 +2237,7 @@ func (gs *GameScreen) DrawBotPlayIcon() {
 
 	const fontSize = 65
 
-	textSize := rl.MeasureTextEx(FontBold.Font, "Bot Play", fontSize, 0)
+	textSize := MeasureText(FontBold, "Bot Play", fontSize, 0)
 
 	textX := f32(centerX - textSize.X*0.5)
 	textY := f32(165)
@@ -2279,7 +2279,7 @@ func (gs *GameScreen) DrawPauseIcon() {
 
 	const fontSize = 65
 
-	textSize := rl.MeasureTextEx(FontRegular.Font, "paused", fontSize, 0)
+	textSize := MeasureText(FontRegular, "paused", fontSize, 0)
 
 	textX := f32(centerX - textSize.X*0.5)
 	textY := f32(centerY + pauseH*0.5 + 20)
@@ -2323,7 +2323,7 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 
 		const fontSize = 65
 
-		textSize := rl.MeasureTextEx(FontRegular.Font, text, fontSize, 0)
+		textSize := MeasureText(FontRegular, text, fontSize, 0)
 
 		textX := SCREEN_WIDTH*0.5 - textSize.X*0.5
 		textY := f32(50)
@@ -2332,7 +2332,7 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 			FontRegular, text, rl.Vector2{textX, textY},
 			fontSize, 0, ToRlColor(FnfColor{0, 0, 0, uint8(255 * t)}))
 
-		numberTextSize := rl.MeasureTextEx(FontRegular.Font, numberText, fontSize, 0)
+		numberTextSize := MeasureText(FontRegular, numberText, fontSize, 0)
 
 		numberTextX := SCREEN_WIDTH*0.5 - numberTextSize.X*0.5
 		numberTextY := f32(50 + 70)
@@ -2357,8 +2357,8 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 	const textSize = 24
 
 	rl.SetTextLineSpacing(textSize)
-	labelSize := rl.MeasureTextEx(
-		FontClear.Font,
+	labelSize := MeasureText(
+		FontClear,
 		"Miss:\n"+
 			"Bad:\n"+
 			"Good:\n"+
@@ -2715,7 +2715,7 @@ func (hm *GameHelpMessage) Draw() {
 		}
 	}
 
-	buttonTextSize := rl.MeasureTextEx(FontBold.Font, buttonText, buttonFontSize, 0)
+	buttonTextSize := MeasureText(FontBold, buttonText, buttonFontSize, 0)
 
 	textX := buttonRect.X + (buttonRect.Width-buttonTextSize.X)*0.5
 	textY := buttonRect.Y + (buttonRect.Height-buttonTextSize.Y)*0.5

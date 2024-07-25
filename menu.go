@@ -853,7 +853,7 @@ func (md *MenuDrawer) Draw() {
 	screenRect := RectWH(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 	drawText := func(text string, fontSize, scale float32, fill, stroke FnfColor, strokeWidth float32) float32 {
-		textSize := rl.MeasureTextEx(FontBold.Font, text, fontSize, 0)
+		textSize := MeasureText(FontBold, text, fontSize, 0)
 
 		pos := rl.Vector2{
 			X: xAdvance + textSize.X*0.5*(1-scale),
@@ -889,7 +889,7 @@ func (md *MenuDrawer) Draw() {
 	drawTextCentered := func(
 		text string, fontSize, scale, width float32, fill, stroke FnfColor, strokeWidth float32) float32 {
 
-		textSize := rl.MeasureTextEx(FontBold.Font, text, fontSize, 0)
+		textSize := MeasureText(FontBold, text, fontSize, 0)
 
 		width = max(textSize.X, width)
 
@@ -1109,7 +1109,7 @@ func (md *MenuDrawer) Draw() {
 					// ==========================
 					// draw key strike through
 					// ==========================
-					keyNameSize := rl.MeasureTextEx(FontBold.Font, keyName, size, 0)
+					keyNameSize := MeasureText(FontBold, keyName, size, 0)
 
 					keyNameRect := rl.Rectangle{
 						Width:  max(desiredWidth, keyNameSize.X),
@@ -1157,16 +1157,16 @@ func (md *MenuDrawer) Draw() {
 
 				switch item.Type {
 				case MenuItemToggle:
-					valueWidthMax = rl.MeasureTextEx(FontBold.Font, "yes", size, 0).X
+					valueWidthMax = MeasureText(FontBold, "yes", size, 0).X
 				case MenuItemList:
 					for _, entry := range item.List {
-						valueWidthMax = max(rl.MeasureTextEx(FontBold.Font, entry, size, 0).X, valueWidthMax)
+						valueWidthMax = max(MeasureText(FontBold, entry, size, 0).X, valueWidthMax)
 					}
 				case MenuItemNumber:
 					minText := fmt.Sprintf(item.NValueFmtString, item.NValueMin)
 					maxText := fmt.Sprintf(item.NValueFmtString, item.NValueMax)
-					valueWidthMax = max(rl.MeasureTextEx(FontBold.Font, minText, size, 0).X, valueWidthMax)
-					valueWidthMax = max(rl.MeasureTextEx(FontBold.Font, maxText, size, 0).X, valueWidthMax)
+					valueWidthMax = max(MeasureText(FontBold, minText, size, 0).X, valueWidthMax)
+					valueWidthMax = max(MeasureText(FontBold, maxText, size, 0).X, valueWidthMax)
 				}
 
 				switch item.Type {
