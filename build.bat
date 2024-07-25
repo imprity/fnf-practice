@@ -106,15 +106,18 @@ goto :quit
 	if exist release (
 		echo Failed to delete release folder!
 		exit /b 1
-	)	
+	)
 
-	set "release_folder=.\release\fnf-practice-win64-v%git_ver_str%"
+	set "release_folder=fnf-practice-win64-v%git_ver_str%"
 
-	xcopy /Y .\fnf-practice.exe "%release_folder%\"
+	xcopy /Y .\fnf-practice.exe ".\release\%release_folder%\"
+
+	mkdir .\release\zip
+
 	powershell Compress-Archive -Force^
-		"%release_folder%"^
-		"%release_folder%.zip"
-		
+		".\release\%release_folder%"^
+		".\release\zip\%release_folder%.zip"
+
 	exit /b !errorlevel!
 
 :quit
