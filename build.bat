@@ -6,12 +6,16 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 git describe --tags --always --abbrev=0 > nul
 
 if !errorlevel! neq 0 (
+	echo could not get git tag!
 	echo unknown > git_tag.txt
 )
 
 if !errorlevel! equ 0 (
 	git describe --tags --always --abbrev=0 > git_tag.txt
 )
+
+set /P git_ver_str=<git_tag.txt
+echo git_ver_str %git_ver_str%
 
 if "%1" == "clean" (
 	del fnf-practice.exe
@@ -100,11 +104,18 @@ goto :quit
 :create_release
 	rmdir /S /Q release
 	if exist release (
-		echo Faile to delete release folder!
+		echo Failed to delete release folder!
 		exit /b 1
 	)	
-	xcopy /Y .\fnf-practice.exe .\release\fnf-practice-win64\
-	powershell Compress-Archive -Force .\release\fnf-practice-win64 .\release\fnf-practice-win64.zip
+
+	set "release_folder=.\release\fnf-practice-win64-v%git_ver_str%"
+
+	xcopy /Y .\fnf-practice.exe "%release_folder%\"
+	powershell Compress-Archive -Force^
+		"%release_folder%"^
+		"%release_folder%.zip"
+		
+	exit /b !errorlevel!
 
 :quit
 
