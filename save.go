@@ -200,12 +200,7 @@ func LoadSettings() error {
 	if exists {
 		js := SettingsJson{}
 
-		// fill options with invalid values
-		js.Options.Volume = -1
-		js.Options.TargetFPS = -1
-		for r := FnfHitRating(0); r < HitRatingSize; r++ {
-			js.Options.HitWindows[r] = -1
-		}
+		js.Options = DefaultOptions
 
 		err := decodeJsonFile(path, &js)
 		if err != nil {
@@ -220,8 +215,7 @@ func LoadSettings() error {
 				SettingsJsonMajorVersion, js.MajorVersion)
 		}
 
-		// replace invalid options with dafault values since it
-		// likely means that it was unset
+		// replace invalid options with dafault values
 		if js.Options.Volume < 0 {
 			js.Options.Volume = DefaultOptions.Volume
 		}

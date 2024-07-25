@@ -108,6 +108,14 @@ func NewOptionsScreen() *OptionsScreen {
 	}
 	op.Menu.AddItems(downScrollItem)
 
+	ghostTapping := NewMenuItem()
+	ghostTapping.Name = "Ghost Tapping"
+	ghostTapping.Type = MenuItemToggle
+	ghostTapping.ToggleCallback = func(bValue bool) {
+		TheOptions.GhostTapping = bValue
+	}
+	op.Menu.AddItems(ghostTapping)
+
 	loadAudioDuringGpItem := NewMenuItem()
 	loadAudioDuringGpItem.Name = "Load Audio During Game Play"
 	loadAudioDuringGpItem.Type = MenuItemToggle
@@ -171,6 +179,7 @@ func NewOptionsScreen() *OptionsScreen {
 		op.Menu.SetItemNvalue(volumeItem.Id, f32(TheOptions.Volume)*10)
 		op.Menu.SetItemBValue(downScrollItem.Id, TheOptions.DownScroll)
 		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
+		op.Menu.SetItemBValue(ghostTapping.Id, TheOptions.GhostTapping)
 
 		for r := FnfHitRating(0); r < HitRatingSize; r++ {
 			op.Menu.SetItemNvalue(ratingItems[r], f32(TheOptions.HitWindows[r])/f32(time.Millisecond))

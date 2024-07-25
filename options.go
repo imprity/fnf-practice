@@ -223,6 +223,8 @@ type Options struct {
 	HitWindows [HitRatingSize]time.Duration
 
 	LoadAudioDuringGamePlay bool
+
+	GhostTapping bool
 }
 
 var DefaultOptions Options
@@ -239,7 +241,10 @@ func init() {
 	DefaultOptions.HitWindows[HitRatingSick] = time.Millisecond * 45
 
 	DefaultOptions.DownScroll = false
+
 	DefaultOptions.LoadAudioDuringGamePlay = false
+
+	DefaultOptions.GhostTapping = false
 
 	// set TheOptions to DefaultOptions
 	TheOptions = DefaultOptions

@@ -1039,43 +1039,45 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// ===================
 		// handle mispresses
 		// ===================
-		for player := 0; player <= 1; player++ {
-			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-				mispressed := (gs.Pstates[player].IsHoldingBadKey[dir] &&
-					gs.Pstates[player].IsKeyJustPressed[dir])
+		if !TheOptions.GhostTapping {
+			for player := 0; player <= 1; player++ {
+				for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+					mispressed := (gs.Pstates[player].IsHoldingBadKey[dir] &&
+						gs.Pstates[player].IsKeyJustPressed[dir])
 
-				// rewind on mispress
-				rewind := mispressed
+					// rewind on mispress
+					rewind := mispressed
 
-				rewind = rewind && !queuedRewind
+					rewind = rewind && !queuedRewind
 
-				rewind = rewind && player == 0
-				rewind = rewind && !gs.IsBotPlay()
+					rewind = rewind && player == 0
+					rewind = rewind && !gs.IsBotPlay()
 
-				rewind = rewind && gs.RewindOnMistake
-				rewind = rewind && gs.BookMarkSet
+					rewind = rewind && gs.RewindOnMistake
+					rewind = rewind && gs.BookMarkSet
 
-				rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
+					rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
 
-				// TODO : add option to disable this behaviour
-				if rewind {
-					queueRewinds(player, dir,
-						// pause a bit at mispress
-						AnimatedRewind{
-							Target:   gs.AudioPosition(),
-							Duration: time.Millisecond * 300,
-						},
-						AnimatedRewind{
-							Target:   gs.BookMark,
-							Duration: time.Millisecond * 700,
-						},
-					)
-				}
+					// TODO : add option to disable this behaviour
+					if rewind {
+						queueRewinds(player, dir,
+							// pause a bit at mispress
+							AnimatedRewind{
+								Target:   gs.AudioPosition(),
+								Duration: time.Millisecond * 300,
+							},
+							AnimatedRewind{
+								Target:   gs.BookMark,
+								Duration: time.Millisecond * 700,
+							},
+						)
+					}
 
-				if mispressed {
-					gs.Mispresses = append(gs.Mispresses, Mispress{
-						Player: player, Direction: dir, Time: gs.AudioPosition(),
-					})
+					if mispressed {
+						gs.Mispresses = append(gs.Mispresses, Mispress{
+							Player: player, Direction: dir, Time: gs.AudioPosition(),
+						})
+					}
 				}
 			}
 		}
@@ -1576,7 +1578,11 @@ func (gs *GameScreen) Draw() {
 			color := Col01(0.5, 0.5, 0.5, 1.0)
 
 			if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingBadKey[dir] && !gs.positionChangedWhilePaused {
-				color = FnfColor{255, 0, 0, 255}
+				if TheOptions.GhostTapping {
+					color = FnfColor{0x99, 0x65, 0x65, 0xFF}
+				} else {
+					color = FnfColor{255, 0, 0, 255}
+				}
 			}
 
 			var x, y float32
