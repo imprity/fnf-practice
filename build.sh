@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 build_func () {
 	echo "building"
@@ -18,7 +17,13 @@ build_debug_func () {
 }
 
 git describe --tags --always --abbrev=0 > /dev/null
-git describe --tags --always --abbrev=0 > git_tag.txt
+if [ $? -eq 0 ]; then
+    git describe --tags --always --abbrev=0 > git_tag.txt
+else
+    echo "unknown" > git_tag.txt
+fi
+
+set -e
 
 if [ "$1" == "" ]; then
 
