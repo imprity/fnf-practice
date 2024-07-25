@@ -54,9 +54,10 @@ if "%1"=="release" (
 	set "to_build=fnf-practice.exe"
 	set "build_source=main.go"
 	call :build_command
+	if !errorlevel! neq 0 exit /b !errorlevel!
 
-	xcopy /Y .\fnf-practice.exe .\release\fnf-practice-win64\
-	cd release && tar -cvzf fnf-practice-win64.zip .\fnf-practice-win64 & cd ..
+	call :create_release
+	if !errorlevel! neq 0 exit /b !errorlevel!
 
 	goto :quit
 )
@@ -65,17 +66,15 @@ if "%1"=="all" (
 	set "to_build=fnf-practice.exe"
 	set "build_source=main.go"
 	call :build_command
-
 	if !errorlevel! neq 0 exit /b !errorlevel!
 
 	set "to_build=font-gen.exe"
 	set "build_source=font_gen.go"
 	call :build_command
-
 	if !errorlevel! neq 0 exit /b !errorlevel!
 
-	xcopy /Y .\fnf-practice.exe .\release\fnf-practice-win64\
-	cd release && tar -cvzf fnf-practice-win64.zip .\fnf-practice-win64 & cd ..
+	call :create_release
+	if !errorlevel! neq 0 exit /b !errorlevel!
 
 	goto :quit
 )
@@ -97,6 +96,15 @@ goto :quit
 	echo build_source : %build_source%
 	go build -o "%to_build%" -tags=noaudio -gcflags=all="-e -l -N" "%build_source%"
 	exit /b !errorlevel!
+
+:create_release
+	rmdir /S /Q release
+	if exist release (
+		echo Faile to delete release folder!
+		exit /b 1
+	)	
+	xcopy /Y .\fnf-practice.exe .\release\fnf-practice-win64\
+	powershell Compress-Archive -Force .\release\fnf-practice-win64 .\release\fnf-practice-win64.zip
 
 :quit
 
