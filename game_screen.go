@@ -1808,6 +1808,34 @@ func (gs *GameScreen) Draw() {
 	// draw popups
 	// ============================================
 
+	calcTrajectory := func(start rl.Vector2, t float32) (rl.Vector2, float32) {
+		projectileX := float32(0)
+		projectileY := float32(0)
+
+		const height = -30
+		const heightReachAt = 0.4
+
+		const a = float32(height) / -(heightReachAt * heightReachAt)
+		const b = -2.0 * a * heightReachAt
+
+		projectileY = a*t*t + b*t
+
+		xt := t / 0.7
+		xt = float32(math.Pow(float64(xt), 1.3))
+
+		projectileX = -xt * 15
+
+		const colorFadeAt = 0.9
+
+		alpha := t / colorFadeAt
+		alpha = Clamp(alpha, 0, 1)
+
+		alpha = float32(math.Pow(float64(alpha), 10))
+		alpha = 1 - alpha
+
+		return rl.Vector2{start.X + projectileX, start.Y + projectileY}, alpha
+	}
+
 	{
 		const duration = time.Millisecond * 700
 		dequeue := 0
@@ -1817,58 +1845,39 @@ func (gs *GameScreen) Draw() {
 
 			delta := GlobalTimerNow() - popup.Start
 
+			// set where to start to remove popups from if it's duration is over
 			if delta > duration {
 				dequeue = i + 1
 			}
 
-			projectileX := float32(0)
-			projectileY := float32(0)
-			{
-				const height = -30
-				const heightReachAt = float32(duration) * 0.4
+			// NOTE : rating popup origin starts like this
+			//   ------
+			//  |      |
+			//  *      |
+			//  |      |
+			//   ------
+			// x is at left
+			// while y is at center of texture
+			// (weird I know, but It's for aesthetic reason
 
-				const a = float32(height) / -(heightReachAt * heightReachAt)
-				const b = -2.0 * a * heightReachAt
-				yt := float32(delta)
-
-				projectileY = a*yt*yt + b*yt
-
-				xt := float32(delta) / (float32(duration) * 0.7)
-				xt = float32(math.Pow(float64(xt), 1.3))
-
-				projectileX = -xt * 15
+			start := rl.Vector2{
+				X: float32(SCREEN_WIDTH/2) - 200,
+				Y: SCREEN_HEIGHT - GSC.NotesMarginBottom - 200,
 			}
 
-			y := SCREEN_HEIGHT - GSC.NotesMarginBottom - 200 + projectileY
-			x := float32(SCREEN_WIDTH/2) + projectileX - 200
+			if TheOptions.MiddleScroll {
+				start.X = SCREEN_WIDTH - 320
+			}
+
+			tossed, alpha := calcTrajectory(start, f32(f64(delta)/f64(duration)))
 
 			tex := HitRatingTexs[popup.Rating]
 
-			texW := float32(tex.Width)
-			texH := float32(tex.Height)
+			texW, texH := float32(tex.Width), float32(tex.Height)
 
-			texRect := rl.Rectangle{
-				0, 0, texW, texH,
-			}
+			texRect := RectWH(texW, texH)
 
-			mat := rl.MatrixTranslate(
-				x,
-				y-texH*0.5,
-				0)
-
-			alpha := float32(0)
-
-			{
-				const colorFadeAt = float32(duration) * 0.9
-
-				t := float32(delta) / colorFadeAt
-				t = Clamp(t, 0, 1)
-
-				t = float32(math.Pow(float64(t), 10))
-				t = 1 - t
-
-				alpha = t
-			}
+			mat := rl.MatrixTranslate(tossed.X, tossed.Y-texH*0.5, 0)
 
 			DrawTextureTransfromed(tex, texRect, mat, ToRlColor(Col01(1, 1, 1, alpha)))
 		}
