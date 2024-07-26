@@ -1866,7 +1866,7 @@ func (gs *GameScreen) Draw() {
 			}
 
 			if TheOptions.MiddleScroll {
-				start.X = SCREEN_WIDTH - 320
+				start.X = SCREEN_WIDTH - 325
 			}
 
 			tossed, alpha := calcTrajectory(start, f32(f64(delta)/f64(duration)))
@@ -2153,7 +2153,13 @@ func (gs *GameScreen) DrawBigBookMark() {
 			Width: srcRect.Width, Height: srcRect.Height,
 		}
 
-		dstRect.X = (SCREEN_WIDTH * 0.5) - dstRect.Width*0.5 + 50
+		x := f32((SCREEN_WIDTH * 0.5) + 50)
+
+		if TheOptions.MiddleScroll {
+			x = 935
+		}
+
+		dstRect.X = x - dstRect.Width*0.5
 
 		dstRect.Y = bookMarkY - dstRect.Height*0.5
 

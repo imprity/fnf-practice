@@ -108,6 +108,14 @@ func NewOptionsScreen() *OptionsScreen {
 	}
 	op.Menu.AddItems(downScrollItem)
 
+	middleScrollItem := NewMenuItem()
+	middleScrollItem.Name = "Middle Scroll"
+	middleScrollItem.Type = MenuItemToggle
+	middleScrollItem.ToggleCallback = func(bValue bool) {
+		TheOptions.MiddleScroll = bValue
+	}
+	op.Menu.AddItems(middleScrollItem)
+
 	ghostTapping := NewMenuItem()
 	ghostTapping.Name = "Ghost Tapping"
 	ghostTapping.Type = MenuItemToggle
@@ -178,6 +186,7 @@ func NewOptionsScreen() *OptionsScreen {
 		op.Menu.SetItemNvalue(fpsItem.Id, f32(TheOptions.TargetFPS))
 		op.Menu.SetItemNvalue(volumeItem.Id, f32(TheOptions.Volume)*10)
 		op.Menu.SetItemBValue(downScrollItem.Id, TheOptions.DownScroll)
+		op.Menu.SetItemBValue(middleScrollItem.Id, TheOptions.MiddleScroll)
 		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
 		op.Menu.SetItemBValue(ghostTapping.Id, TheOptions.GhostTapping)
 
