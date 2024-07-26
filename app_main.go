@@ -89,7 +89,7 @@ func RunApplication() {
 
 	defer println("program closed successfully!")
 
-	rl.SetConfigFlags(rl.FlagWindowResizable)
+	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowAlwaysRun)
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "fnf-practice")
 	defer rl.CloseWindow()

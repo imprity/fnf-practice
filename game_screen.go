@@ -684,6 +684,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.TempPause(time.Millisecond * 5)
 	}
 
+	if !rl.IsWindowFocused() || rl.IsWindowMinimized() {
+		gs.TempPause(time.Millisecond * 5)
+	}
+
 	if gs.DrawMenu {
 		gs.Menu.EnableInput()
 		DisableInput(gs.InputId)
