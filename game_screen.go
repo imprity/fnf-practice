@@ -92,6 +92,11 @@ var GSC struct {
 	NotesMarginTop    float32
 	NotesMarginBottom float32
 
+	MiddleScrollNotesMarginLeft  float32
+	MiddleScrollNotesMarginRight float32
+
+	MiddleScrollFade float64
+
 	NotesInterval float32
 
 	NotesSize float32
@@ -112,6 +117,11 @@ func init() {
 	GSC.NotesMarginRight = 145
 	GSC.NotesMarginTop = 100
 	GSC.NotesMarginBottom = 100
+
+	GSC.MiddleScrollNotesMarginLeft = 100
+	GSC.MiddleScrollNotesMarginRight = 100
+
+	GSC.MiddleScrollFade = 0.2
 
 	GSC.NotesInterval = 113
 
@@ -1454,6 +1464,11 @@ func (gs *GameScreen) Draw() {
 		{0, 0, 0, 255},
 	}
 
+	fadeC := func(col FnfColor, fade float64) FnfColor {
+		col.A = uint8(f64(col.A) * fade)
+		return col
+	}
+
 	// ============================================
 	// calculate input status transform
 	// ============================================
@@ -1544,10 +1559,20 @@ func (gs *GameScreen) Draw() {
 			fill := LerpRGBA(noteFill[dir], noteFillLight[dir], glowT)
 			stroke := LerpRGBA(noteStroke[dir], noteStrokeLight[dir], glowT)
 
+			if TheOptions.MiddleScroll && player == 1 {
+				fill = fadeC(fill, GSC.MiddleScrollFade)
+				stroke = fadeC(stroke, GSC.MiddleScrollFade)
+			}
+
 			DrawNoteArrow(x, y, scale, dir, fill, stroke)
 
 			glow := noteFill[dir]
 			glow.A = uint8(glowT * 0.5 * 255)
+
+			if TheOptions.MiddleScroll && player == 1 {
+				glow = fadeC(glow, GSC.MiddleScrollFade)
+			}
+
 			DrawNoteGlow(x, y, scale, dir, glow)
 		}
 
@@ -1587,6 +1612,10 @@ func (gs *GameScreen) Draw() {
 				} else {
 					color = FnfColor{255, 0, 0, 255}
 				}
+			}
+
+			if TheOptions.MiddleScroll && player == 1 {
+				color = fadeC(color, GSC.MiddleScrollFade)
 			}
 
 			var x, y float32
@@ -1654,7 +1683,7 @@ func (gs *GameScreen) Draw() {
 					susBeginOffset = statusOffsetY[note.Player][note.Direction]
 				}
 
-				var susColors []SustainColor
+				var susMistakeColors []SustainColor
 
 				//add miss colors if you have to
 				if drawEvent {
@@ -1673,17 +1702,29 @@ func (gs *GameScreen) Draw() {
 							continue
 						}
 
-						susColors = append(susColors, SustainColor{
+						color := noteFillMistake[note.Direction]
+
+						if TheOptions.MiddleScroll && note.Player == 1 {
+							color = fadeC(color, GSC.MiddleScrollFade)
+						}
+
+						susMistakeColors = append(susMistakeColors, SustainColor{
 							Begin: m.Begin, End: m.End,
 							Color: noteFillMistake[note.Direction],
 						})
 					}
 				}
 
+				susColor := noteFill[note.Direction]
+
+				if TheOptions.MiddleScroll && note.Player == 1 {
+					susColor = fadeC(susColor, GSC.MiddleScrollFade)
+				}
+
 				gs.DrawSustainBar(
 					note.Player, note.Direction,
 					susBegin, note.End(),
-					noteFill[note.Direction], susColors,
+					susColor, susMistakeColors,
 					susBeginOffset, 0,
 				)
 
@@ -1699,6 +1740,11 @@ func (gs *GameScreen) Draw() {
 				if drawEvent && noteEvents[0].IsMiss() {
 					arrowFill = noteFillMistake[note.Direction]
 					arrowStroke = noteStrokeMistake[note.Direction]
+				}
+
+				if TheOptions.MiddleScroll && note.Player == 1 {
+					arrowFill = fadeC(arrowFill, GSC.MiddleScrollFade)
+					arrowStroke = fadeC(arrowFill, GSC.MiddleScrollFade)
 				}
 
 				if !isHoldingNote || gs.positionChangedWhilePaused { // draw note if we are not holding it
@@ -1719,6 +1765,11 @@ func (gs *GameScreen) Draw() {
 			if drawEvent && noteEvents[0].IsMiss() {
 				arrowFill = noteFillMistake[note.Direction]
 				arrowStroke = noteStrokeMistake[note.Direction]
+			}
+
+			if TheOptions.MiddleScroll && note.Player == 1 {
+				arrowFill = fadeC(arrowFill, GSC.MiddleScrollFade)
+				arrowStroke = fadeC(arrowFill, GSC.MiddleScrollFade)
 			}
 
 			DrawNoteArrow(x, y, GSC.NotesSize, note.Direction, arrowFill, arrowStroke)
@@ -1858,18 +1909,35 @@ func (gs *GameScreen) Draw() {
 }
 
 func (gs *GameScreen) NoteX(player FnfPlayerNo, dir NoteDir) float32 {
-	player1NoteStartLeft := GSC.NotesMarginLeft
-	player0NoteStartRight := SCREEN_WIDTH - GSC.NotesMarginRight
+	if TheOptions.MiddleScroll {
+		if player == 0 {
+			player0NoteStartLeft := SCREEN_WIDTH*0.5 - GSC.NotesInterval*1.5
+			return player0NoteStartLeft + GSC.NotesInterval*f32(dir)
+		} else {
+			player1NoteStartLeft := GSC.MiddleScrollNotesMarginLeft
+			player1NoteStartRight := SCREEN_WIDTH - GSC.MiddleScrollNotesMarginRight
 
-	var noteX float32 = 0
+			if dir <= NoteDirDown {
+				return player1NoteStartLeft + GSC.NotesInterval*f32(dir)
+			} else {
+				return player1NoteStartRight - GSC.NotesInterval*(3-f32(dir))
+			}
+		}
 
-	if player == 1 {
-		noteX = player1NoteStartLeft + GSC.NotesInterval*float32(dir)
 	} else {
-		noteX = player0NoteStartRight - (GSC.NotesInterval)*(3-float32(dir))
-	}
+		player1NoteStartLeft := GSC.NotesMarginLeft
+		player0NoteStartRight := SCREEN_WIDTH - GSC.NotesMarginRight
 
-	return noteX
+		var noteX float32 = 0
+
+		if player == 1 {
+			noteX = player1NoteStartLeft + GSC.NotesInterval*f32(dir)
+		} else {
+			noteX = player0NoteStartRight - (GSC.NotesInterval)*(3-f32(dir))
+		}
+
+		return noteX
+	}
 }
 
 func (gs *GameScreen) TimeToY(t time.Duration) float32 {

@@ -225,6 +225,8 @@ type Options struct {
 	LoadAudioDuringGamePlay bool
 
 	GhostTapping bool
+
+	MiddleScroll bool
 }
 
 var DefaultOptions Options
@@ -245,6 +247,8 @@ func init() {
 	DefaultOptions.LoadAudioDuringGamePlay = false
 
 	DefaultOptions.GhostTapping = false
+
+	DefaultOptions.MiddleScroll = true
 
 	// set TheOptions to DefaultOptions
 	TheOptions = DefaultOptions
