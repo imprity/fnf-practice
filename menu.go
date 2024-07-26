@@ -126,6 +126,10 @@ type MenuItem struct {
 	RightArrowClickTimer time.Duration
 	KeySelectTimer       time.Duration
 
+	// drawing callbacks
+	BeforeDrawing func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32)
+	AfterDrawing  func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32)
+
 	bound rl.Rectangle
 }
 
@@ -991,6 +995,15 @@ func (md *MenuDrawer) Draw() {
 			continue
 		}
 
+		selectionAnimT := float32(0)
+		if index == md.selectedIndex {
+			selectionAnimT = md.scrollAnimT
+		}
+
+		if item.BeforeDrawing != nil {
+			item.BeforeDrawing(item, item.bound, selectionAnimT)
+		}
+
 		yCenter = yOffset + item.SizeRegular*0.5
 
 		xAdvance = xOffset
@@ -1199,6 +1212,10 @@ func (md *MenuDrawer) Draw() {
 		// update item's rendered rect
 		item.bound = itemBound
 		itemBoundSet = false
+
+		if item.AfterDrawing != nil {
+			item.AfterDrawing(item, item.bound, selectionAnimT)
+		}
 	}
 }
 

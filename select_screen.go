@@ -24,9 +24,8 @@ type SelectScreen struct {
 
 	PreferredDifficulty FnfDifficulty
 
-	DirectoryOpenItemId MenuItemId
-	SongDecoItemId      MenuItemId
-	DeleteSongsItemId   MenuItemId
+	SongDecoItemId    MenuItemId
+	DeleteSongsItemId MenuItemId
 
 	IdToGroup map[FnfPathGroupId]FnfPathGroup
 
@@ -38,9 +37,6 @@ type SelectScreen struct {
 
 	// variables about rendering path items
 	PathDecoToPathTex map[MenuItemId]rl.Texture2D
-
-	PathFontSize float32
-	PathItemSize float32
 
 	InstPlayer      *VaryingSpeedPlayer
 	VoicePlayer     *VaryingSpeedPlayer
@@ -75,9 +71,6 @@ func NewSelectScreen() *SelectScreen {
 
 	// init variables about path rendering
 	ss.PathDecoToPathTex = make(map[MenuItemId]rl.Texture2D)
-
-	ss.PathFontSize = 20
-	ss.PathItemSize = 40
 
 	menuDeco := NewMenuItem()
 	menuDeco.Name = "Menu"
@@ -126,8 +119,35 @@ func NewSelectScreen() *SelectScreen {
 			}
 		})
 	}
+
+	{
+		var directoryOpenBgCol = FnfColor{0x73, 0xFF, 0x99, 220}
+
+		// draw round bg
+		directoryOpen.BeforeDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+			bound = RectExpandPro(bound, 25, 25, 15, 15)
+			rl.DrawRectangleRounded(bound, 1, 10, ToRlColor(directoryOpenBgCol))
+		}
+
+		// draw help message
+		directoryOpen.AfterDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+			helpMsgBound := ElementsBound(ss.searchDirHelpMsg)
+
+			itemCenter := RectCenter(bound)
+			helpMsgBound = RectCentered(helpMsgBound, itemCenter.X, itemCenter.Y)
+
+			helpMsgBound.X = SCREEN_WIDTH - helpMsgBound.Width - 80
+
+			// draw background
+			bgRect := RectExpand(helpMsgBound, 30)
+
+			rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColor(directoryOpenBgCol))
+
+			DrawTextElements(ss.searchDirHelpMsg, helpMsgBound.X, helpMsgBound.Y, FnfWhite)
+		}
+	}
+
 	ss.Menu.AddItems(directoryOpen)
-	ss.DirectoryOpenItemId = directoryOpen.Id
 
 	// =======================================
 	// end of creating directory open menu
@@ -319,11 +339,79 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 			})
 		}
 
+		// draw preview decoding progress
+		menuItem.AfterDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+			if !(ss.PlayInstOnLoad || ss.PlayVoiceOnLoad) {
+				return
+			}
+
+			if id, ok := item.UserData.(FnfPathGroupId); ok {
+				if id != ss.PlayingGroupId {
+					return
+				}
+			}
+
+			const margin = 20
+
+			if !ss.InstPlayer.IsPlaying() && !ss.VoicePlayer.IsPlaying() { // draw decoding progress
+				var instDecoded, voiceDecoded float32
+
+				if ss.PlayInstOnLoad {
+					instDecoded = f32(ss.InstPlayer.DecodedBytesSize()) / (f32(ss.InstPlayer.AudioBytesSize()) * ss.DecodingPercentBeforePlaying)
+				}
+				if ss.PlayVoiceOnLoad {
+					voiceDecoded = f32(ss.VoicePlayer.DecodedBytesSize()) / (f32(ss.VoicePlayer.AudioBytesSize()) * ss.DecodingPercentBeforePlaying)
+				}
+
+				var decoded float32
+				if ss.PlayInstOnLoad && ss.PlayVoiceOnLoad {
+					decoded = min(instDecoded, voiceDecoded)
+				} else if ss.PlayInstOnLoad {
+					decoded = instDecoded
+				} else {
+					decoded = voiceDecoded
+				}
+
+				const ringRaidius = 30
+				const ringRaidiusInner = 12
+
+				ringCenter := rl.Vector2{
+					X: bound.X + bound.Width + ringRaidius + margin,
+					Y: bound.Y + bound.Height*0.5,
+				}
+
+				rl.DrawRing(ringCenter,
+					ringRaidiusInner, ringRaidius,
+					0-90, 360*decoded-90,
+					50, ToRlColor(FnfColor{0, 0, 0, 200}))
+			} else { // draw play icon
+				const iconHeight = 78
+				scale := iconHeight / f32(DancingNoteSprite.Height)
+
+				mat := rl.MatrixScale(scale, scale, 1)
+				mat = rl.MatrixMultiply(mat, rl.MatrixTranslate(
+					bound.X+bound.Width+margin,
+					bound.Y+bound.Height-iconHeight,
+					0,
+				))
+
+				DrawSpriteTransfromed(
+					DancingNoteSprite,
+					int(GlobalTimerNow()/time.Second)%DancingNoteSprite.Count,
+					RectWH(DancingNoteSprite.Width, DancingNoteSprite.Height),
+					mat, ToRlColor(FnfColor{0, 0, 0, 230}),
+				)
+			}
+		}
+
 		return menuItem
 	}
 
 	newBasePathDecoItem := func(collection PathGroupCollection) *MenuItem {
-		dummyDeco := NewDummyDecoMenuItem(ss.PathItemSize)
+		const pathFontSize = 20
+		const PathItemSize = 40
+
+		dummyDeco := NewDummyDecoMenuItem(PathItemSize)
 
 		dummyDeco.UserData = collection.Id()
 
@@ -332,7 +420,7 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		pathImg := RenderUnicodeText(
 			collection.BasePath,
-			desiredFont, ss.PathFontSize, FnfColor{255, 255, 255, 255},
+			desiredFont, pathFontSize, FnfColor{255, 255, 255, 255},
 		)
 
 		pathTex := rl.LoadTextureFromImage(pathImg)
@@ -340,6 +428,21 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		ss.PathDecoToPathTex[dummyDeco.Id] = pathTex
 
 		rl.UnloadImage(pathImg)
+
+		dummyDeco.AfterDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+			// draw bg rectangle
+			bgRect := rl.Rectangle{
+				X: 0, Y: bound.Y,
+				Width: SCREEN_WIDTH, Height: bound.Height,
+			}
+
+			rl.DrawRectangleRec(bgRect, ToRlColor(FnfColor{0, 0, 0, 100}))
+
+			texX := 100
+			texY := bgRect.Y + (bgRect.Height-f32(pathTex.Height))*0.5
+
+			rl.DrawTexture(pathTex, i32(texX), i32(texY), ToRlColor(FnfColor{255, 255, 255, 255}))
+		}
 
 		return dummyDeco
 	}
@@ -637,38 +740,8 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 func (ss *SelectScreen) Draw() {
 	DrawPatternBackground(MenuScreenBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
-	drawPathText := func() {
-		for id, tex := range ss.PathDecoToPathTex {
-			bound, ok := ss.Menu.GetItemBound(id)
-			if ok {
-				// draw bg rectangle
-				bgRect := rl.Rectangle{
-					X: 0, Y: bound.Y,
-					Width: SCREEN_WIDTH, Height: bound.Height,
-				}
-
-				rl.DrawRectangleRec(bgRect, ToRlColor(FnfColor{0, 0, 0, 100}))
-
-				texX := 100
-				texY := bgRect.Y + (bgRect.Height-f32(tex.Height))*0.5
-
-				rl.DrawTexture(tex, i32(texX), i32(texY), ToRlColor(FnfColor{255, 255, 255, 255}))
-			}
-		}
-	}
-
-	if !ss.DrawDeleteMenu {
-		var directoryOpenBgCol = FnfColor{0x73, 0xFF, 0x99, 220}
-
-		// draw bg for directory open item
-		if itemBound, found := ss.Menu.GetItemBound(ss.DirectoryOpenItemId); found {
-			itemBound := RectExpandPro(itemBound, 25, 25, 15, 15)
-			rl.DrawRectangleRounded(itemBound, 1, 10, ToRlColor(directoryOpenBgCol))
-		}
-
+	if !ss.DrawDeleteMenu { // draw select menu
 		ss.Menu.Draw()
-
-		drawPathText()
 
 		selected := ss.Menu.GetSelectedId()
 		data := ss.Menu.GetUserData(selected)
@@ -679,69 +752,6 @@ func (ss *SelectScreen) Draw() {
 		if id, ok := data.(FnfPathGroupId); ok {
 			group = ss.IdToGroup[id]
 			groupSelected = true
-		}
-
-		// draw preview decoding progress
-		if ss.PlayInstOnLoad || ss.PlayVoiceOnLoad {
-			itemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
-				if id, ok := item.UserData.(FnfPathGroupId); ok {
-					return id == ss.PlayingGroupId
-				}
-				return false
-			})
-
-			if bound, ok := ss.Menu.GetItemBound(itemId); ok {
-				const margin = 20
-				if !ss.InstPlayer.IsPlaying() && !ss.VoicePlayer.IsPlaying() { // draw decoding progress
-					var instDecoded, voiceDecoded float32
-
-					if ss.PlayInstOnLoad {
-						instDecoded = f32(ss.InstPlayer.DecodedBytesSize()) / (f32(ss.InstPlayer.AudioBytesSize()) * ss.DecodingPercentBeforePlaying)
-					}
-					if ss.PlayVoiceOnLoad {
-						voiceDecoded = f32(ss.VoicePlayer.DecodedBytesSize()) / (f32(ss.VoicePlayer.AudioBytesSize()) * ss.DecodingPercentBeforePlaying)
-					}
-
-					var decoded float32
-					if ss.PlayInstOnLoad && ss.PlayVoiceOnLoad {
-						decoded = min(instDecoded, voiceDecoded)
-					} else if ss.PlayInstOnLoad {
-						decoded = instDecoded
-					} else {
-						decoded = voiceDecoded
-					}
-
-					const ringRaidius = 30
-					const ringRaidiusInner = 12
-
-					ringCenter := rl.Vector2{
-						X: bound.X + bound.Width + ringRaidius + margin,
-						Y: bound.Y + bound.Height*0.5,
-					}
-
-					rl.DrawRing(ringCenter,
-						ringRaidiusInner, ringRaidius,
-						0-90, 360*decoded-90,
-						50, ToRlColor(FnfColor{0, 0, 0, 200}))
-				} else { // draw play icon
-					const iconHeight = 78
-					scale := iconHeight / f32(DancingNoteSprite.Height)
-
-					mat := rl.MatrixScale(scale, scale, 1)
-					mat = rl.MatrixMultiply(mat, rl.MatrixTranslate(
-						bound.X+bound.Width+margin,
-						bound.Y+bound.Height-iconHeight,
-						0,
-					))
-
-					DrawSpriteTransfromed(
-						DancingNoteSprite,
-						int(GlobalTimerNow()/time.Second)%DancingNoteSprite.Count,
-						RectWH(DancingNoteSprite.Width, DancingNoteSprite.Height),
-						mat, ToRlColor(FnfColor{0, 0, 0, 230}),
-					)
-				}
-			}
 		}
 
 		// draw difficulty text at the top right corner
@@ -760,24 +770,6 @@ func (ss *SelectScreen) Draw() {
 				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
 				ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0, 0, 0, 255}), 4,
 			)
-		}
-
-		// draw help message
-		{
-			helpMsgBound := ElementsBound(ss.searchDirHelpMsg)
-
-			itemBound, _ := ss.Menu.GetItemBound(ss.DirectoryOpenItemId)
-			itemCenter := RectCenter(itemBound)
-			helpMsgBound = RectCentered(helpMsgBound, itemCenter.X, itemCenter.Y)
-
-			helpMsgBound.X = SCREEN_WIDTH - helpMsgBound.Width - 80
-
-			// draw background
-			bgRect := RectExpand(helpMsgBound, 30)
-
-			rl.DrawRectangleRounded(bgRect, 0.2, 10, ToRlColor(directoryOpenBgCol))
-
-			DrawTextElements(ss.searchDirHelpMsg, helpMsgBound.X, helpMsgBound.Y, FnfWhite)
 		}
 
 		// draw preview feature help message
@@ -825,10 +817,8 @@ func (ss *SelectScreen) Draw() {
 				FnfColor{255, 255, 255, 255},
 			)
 		}
-	} else {
+	} else { // draw delete menu
 		ss.DeleteMenu.Draw()
-
-		drawPathText()
 	}
 }
 

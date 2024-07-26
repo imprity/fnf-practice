@@ -352,12 +352,12 @@ func (fg *FontGenScreen) Draw() {
 		var pos rl.Vector2
 		pos.Y = 20
 
-		size := MeasureText(fg.font, str, fg.fontRenderSize, 0)
+		size := fnf.MeasureText(fg.font, str, fg.fontRenderSize, 0)
 		pos.X = fnf.SCREEN_WIDTH - size.X - 20
 		fnf.DrawText(fg.font, str, pos, fg.fontRenderSize, 0, rl.Black)
 		pos.Y += size.Y + 20
 
-		size = MeasureText(fg.sdfFont, str, fg.fontRenderSize, 0)
+		size = fnf.MeasureText(fg.sdfFont, str, fg.fontRenderSize, 0)
 		pos.X = fnf.SCREEN_WIDTH - size.X - 20
 		fnf.DrawText(fg.sdfFont, str, pos, fg.fontRenderSize, 0, rl.Black)
 		pos.Y += size.Y + 20
