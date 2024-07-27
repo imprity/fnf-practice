@@ -2327,7 +2327,7 @@ func (gs *GameScreen) DrawBotPlayIcon() {
 	textSize := MeasureText(FontBold, "Bot Play", fontSize, 0)
 
 	textX := f32(centerX - textSize.X*0.5)
-	textY := f32(165)
+	textY := f32(190)
 
 	DrawText(
 		FontBold, "Bot Play",
