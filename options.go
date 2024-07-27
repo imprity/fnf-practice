@@ -248,7 +248,7 @@ func init() {
 
 	DefaultOptions.GhostTapping = false
 
-	DefaultOptions.MiddleScroll = true
+	DefaultOptions.MiddleScroll = false
 
 	// set TheOptions to DefaultOptions
 	TheOptions = DefaultOptions
