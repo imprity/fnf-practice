@@ -49,6 +49,7 @@ func OverrideFirstScreen(constructor func() Screen) {
 
 var (
 	DrawDebugGraphics bool
+	PrintDebugMsg bool
 )
 
 func SetNextScreen(screen Screen) {
@@ -84,8 +85,6 @@ func RunApplication() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
-
-	var printDebugMsg bool = false
 
 	defer println("program closed successfully!")
 
@@ -242,11 +241,14 @@ func RunApplication() {
 			}
 
 			if rl.IsKeyPressed(TheKM[ToggleDebugMsg]) {
-				printDebugMsg = !printDebugMsg
+				PrintDebugMsg = !PrintDebugMsg
 			}
 
 			if rl.IsKeyPressed(TheKM[ToggleDebugGraphics]) {
 				DrawDebugGraphics = !DrawDebugGraphics
+				if DrawDebugGraphics {
+					PrintDebugMsg = true
+				}
 			}
 
 			{
@@ -318,7 +320,7 @@ func RunApplication() {
 					ToRlColor(FnfColor{255, 255, 255, 255}),
 				)
 
-				if printDebugMsg {
+				if PrintDebugMsg {
 					DrawDebugMsgs()
 				}
 

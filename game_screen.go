@@ -636,6 +636,9 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// note logging toggle
 	if rl.IsKeyPressed(TheKM[ToggleLogNoteEvent]) {
 		gs.LogNoteEvent = !gs.LogNoteEvent
+		if gs.LogNoteEvent {
+			PrintDebugMsg = true
+		}
 	}
 
 	{

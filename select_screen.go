@@ -298,7 +298,8 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 				for diff, hasSong := range group.HasSong {
 					if hasSong {
-						fileBytes, err := os.ReadFile(group.SongPaths[diff])
+						var fileBytes []byte
+						fileBytes, err = os.ReadFile(group.SongPaths[diff])
 						if err != nil {
 							ErrorLogger.Println(err)
 							goto SONG_ERROR
@@ -306,7 +307,8 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 						buffer := bytes.NewBuffer(fileBytes)
 
-						song, err := ParseJsonToFnfSong(buffer)
+						var song FnfSong
+						song, err = ParseJsonToFnfSong(buffer)
 						if err != nil {
 							ErrorLogger.Println(err)
 							goto SONG_ERROR
