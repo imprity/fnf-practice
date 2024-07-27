@@ -644,7 +644,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		if gs.LogNoteEvent {
 			tf = "true"
 		}
-		DebugPrint("Log Note Event", tf)
+
+		DebugPrint(
+			fmt.Sprintf(
+				"Log Note Event [%s]",
+				GetKeyName(TheKM[ToggleLogNoteEvent]),
+			), tf)
 	}
 
 	// =============================================

@@ -1,6 +1,7 @@
 package fnf
 
 import (
+	"fmt"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -45,6 +46,24 @@ func DrawDebugMsgs() {
 
 	defaultFont := rl.GetFontDefault()
 
+	// print help message
+	{
+		str := fmt.Sprintf("press [%s] to toggle debug panel",
+			GetKeyName(TheKM[ToggleDebugMsg]))
+
+		strSize := rl.MeasureTextEx(defaultFont, str, fontSize, fontSpacing)
+
+		textRect = RectUnion(textRect, RectWH(strSize.X, strSize.Y))
+
+		texts = append(texts, textPos{
+			Text: str,
+			Pos:  rl.Vector2{X: offsetY, Y: offsetY},
+		})
+
+		offsetY += strSize.Y + msgHozMargin*2
+	}
+
+	// print debug key and values
 	for _, kv := range DebugMsgs {
 		k := kv.Key
 		v := kv.Value
@@ -92,7 +111,7 @@ func DrawDebugMsgs() {
 	bgRect.Width += 20
 	bgRect.Height += 20
 
-	rl.DrawRectangleRec(bgRect, ToRlColor(FnfColor{0, 0, 0, 100}))
+	rl.DrawRectangleRec(bgRect, ToRlColor(FnfColor{0, 0, 0, 130}))
 
 	rl.BeginBlendMode(rl.BlendAlpha)
 	for _, t := range texts {

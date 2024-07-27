@@ -249,10 +249,15 @@ func RunApplication() {
 				DrawDebugGraphics = !DrawDebugGraphics
 			}
 
-			if DrawDebugGraphics {
-				DebugPrint("Draw Debug Graphics", "true")
-			} else {
-				DebugPrint("Draw Debug Graphics", "false")
+			{
+				str := fmt.Sprintf("Draw Debug Graphics [%s]",
+					GetKeyName(TheKM[ToggleDebugGraphics]))
+
+				if DrawDebugGraphics {
+					DebugPrint(str, "true")
+				} else {
+					DebugPrint(str, "false")
+				}
 			}
 
 			if rl.IsKeyPressed(TheKM[ReloadAssetsKey]) {
