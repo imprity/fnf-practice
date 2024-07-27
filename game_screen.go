@@ -2340,8 +2340,12 @@ func (gs *GameScreen) DrawPauseIcon() {
 	const pauseH = 90
 	const pauseMargin = 25
 
-	const centerX = SCREEN_WIDTH / 2
+	var centerX float32 = SCREEN_WIDTH / 2
 	const centerY = SCREEN_HEIGHT / 2
+
+	if TheOptions.MiddleScroll {
+		centerX = 300
+	}
 
 	const totalW = pauseW*2 + pauseMargin
 
