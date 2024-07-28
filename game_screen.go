@@ -2,6 +2,7 @@ package fnf
 
 import (
 	_ "embed"
+	"os"
 	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
@@ -179,6 +180,9 @@ type GameScreen struct {
 	DifficultyMenuItemId      MenuItemId
 	RewindOnMistakeMenuItemId MenuItemId
 
+	// hit sound
+	HitSoundPlayer *VaryingSpeedPlayer
+
 	// private members
 	isKeyPressed   [FnfPlayerSize][NoteDirSize]bool
 	noteIndexStart int
@@ -226,6 +230,29 @@ func NewGameScreen() *GameScreen {
 	gs.InputId = NewInputGroupId()
 
 	gs.HelpMessage = NewGameHelpMessage(gs.InputId)
+
+	gs.HitSoundPlayer = NewVaryingSpeedPlayer(0, 0)
+
+	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
+	// TODO : This is temporarily loaded here
+	// load it properly with assets later
+	{
+		const hitSoundFile = "./audio/222151__ajaysm__bangu_21.mp3"
+		audioBytes, err := os.ReadFile(hitSoundFile)
+
+		if err != nil {
+			ErrorLogger.Fatalf("failed to read file %v", err)
+		}
+
+		decodedAudio, err2 := DecodeWholeAudio(audioBytes, "mp3")
+
+		if err2 != nil {
+			ErrorLogger.Fatalf("failed to decode hit audio %v", err2)
+		}
+
+		gs.HitSoundPlayer.LoadDecodedAudio(decodedAudio)
+	}
+	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
 
 	// set up menu
 	gs.Menu = NewMenuDrawer()
@@ -1038,6 +1065,18 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
+		playHitSoundIfHumanPlayerHit := func(e NoteEvent) {
+			if gs.IsBotPlay() {
+				return
+			}
+
+			note := gs.Song.Notes[e.Index]
+			if e.IsFirstHit() && note.Player == 0 {
+				gs.HitSoundPlayer.Rewind()
+				gs.HitSoundPlayer.Play()
+			}
+		}
+
 		queuedRewind := false
 
 		queueRewinds := func(player FnfPlayerNo, direction NoteDir, rewinds ...AnimatedRewind) {
@@ -1158,6 +1197,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if len(events) <= 0 {
 				logNoteEvent(e)
 				pushPopupIfHumanPlayerHit(e)
+				playHitSoundIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
 			} else {
 				if e.IsMiss() {
@@ -1199,6 +1239,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					if !last.SameKind(e) {
 						logNoteEvent(e)
 						pushPopupIfHumanPlayerHit(e)
+						playHitSoundIfHumanPlayerHit(e)
 						gs.NoteEvents[e.Index] = append(events, e)
 					}
 				}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 
 	"github.com/ebitengine/oto/v3"
 )
@@ -80,6 +81,12 @@ func NewAudioDeocoder(rawFile []byte, fileType string) (AudioDecoder, error) {
 		} else {
 			return decoder, nil
 		}
+	} else if strings.HasSuffix(strings.ToLower(fileType), "wav") {
+		if decoder, err := wav.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+			return nil, err
+		} else {
+			return decoder, nil
+		}
 	} else {
 		return nil, fmt.Errorf("can't decode audio format %v", fileType)
 	}
@@ -112,7 +119,10 @@ func (vp *VaryingSpeedPlayer) IsReady() bool {
 	return vp.player != nil && vp.stream != nil
 }
 
-func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeAudioInBackground bool) error {
+// If you want to decode the audio, pass raw file bytes, filetype and whether to decode audio in background or not.
+//
+// If your audio bytes are already decoded, just pass in bytes.
+func (vp *VaryingSpeedPlayer) loadAudioImpl(audioBytes []byte, isAudioDecoded bool, fileType string, decodeAudioInBackground bool) error {
 	if vp.player != nil {
 		vp.player.Close()
 		vp.player = nil
@@ -137,11 +147,18 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeA
 	padStartBytes := timeToBytes(vp.padStart)
 	padEndBytes := timeToBytes(vp.padEnd)
 
-	stream, err := NewVaryingSpeedStream(
-		rawFile, fileType, padStartBytes, padEndBytes, decodeAudioInBackground)
+	var stream *VaryingSpeedStream
 
-	if err != nil {
-		return err
+	if !isAudioDecoded {
+		var err error
+		stream, err = NewVaryingSpeedStream(
+			audioBytes, fileType, padStartBytes, padEndBytes, decodeAudioInBackground)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		stream = NewVaryingSpeedStreamFromDecodedAudio(audioBytes, padStartBytes, padEndBytes)
 	}
 
 	player := TheContext.NewPlayer(stream)
@@ -160,6 +177,18 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeA
 	vp.SetVolume(vp.Volume())
 
 	return nil
+}
+
+func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeAudioInBackground bool) error {
+	if err := vp.loadAudioImpl(rawFile, false, fileType, decodeAudioInBackground); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (vp *VaryingSpeedPlayer) LoadDecodedAudio(decodedAudio []byte) {
+	vp.loadAudioImpl(decodedAudio, true, "", false)
 }
 
 // TODO : Position and SetPosition is fucked
@@ -444,6 +473,30 @@ func (vs *VaryingSpeedStream) decodeWholeAudio(rawFile []byte, fileType string) 
 	} else {
 		return err
 	}
+}
+
+
+func NewVaryingSpeedStreamFromDecodedAudio(decodedAudio []byte, padStart, padEnd int64) *VaryingSpeedStream {
+	vs := new(VaryingSpeedStream)
+	vs.speed = 1.0
+
+	if padStart%BytesPerSample != 0 {
+		ErrorLogger.Fatal("padStart is not divisible by BytesPerSample")
+	}
+
+	if padEnd%BytesPerSample != 0 {
+		ErrorLogger.Fatal("padEnd is not divisible by BytesPerSample")
+	}
+
+	vs.padStart = padStart
+	vs.padEnd = padEnd
+
+	vs.usingBgDecoding = false
+	vs.buffer = decodedAudio
+	vs.length = int64(len(decodedAudio))
+	vs.decodedBytesSize = int64(len(decodedAudio))
+
+	return vs
 }
 
 func (vs *VaryingSpeedStream) readSrc(at int64) byte {
