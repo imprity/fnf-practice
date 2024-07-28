@@ -1205,6 +1205,16 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 	}
+
+	// TEST TEST TEST TEST TEST TEST
+	for dir := NoteDir(0); dir < NoteDirSize; dir ++ {
+		lenStr := fmt.Sprintf("%d", len(gs.Pstates[0].HoldingNote[dir]))
+		capStr := fmt.Sprintf("%d", cap(gs.Pstates[0].HoldingNote[dir]))
+
+		DebugPrint(fmt.Sprintf("%s len", NoteDirStrs[dir]), lenStr)
+		DebugPrint(fmt.Sprintf("%s cap", NoteDirStrs[dir]), capStr)
+	}
+	// TEST TEST TEST TEST TEST TEST
 }
 
 type SustainMiss struct {
@@ -1510,7 +1520,7 @@ func (gs *GameScreen) Draw() {
 				if gs.Pstates[p].IsHoldingKey[dir] && !gs.Pstates[p].IsHoldingBadKey[dir] {
 					statusOffsetY[p][dir] = -5
 					statusScaleOffset[p][dir] += 0.1
-					if gs.Pstates[p].IsHoldingNote[dir] {
+					if gs.Pstates[p].IsHoldingAnyNote(dir) {
 						statusOffsetX[p][dir] += (rand.Float32()*2 - 1) * 3
 						statusOffsetY[p][dir] += (rand.Float32()*2 - 1) * 3
 					}
@@ -1647,7 +1657,7 @@ func (gs *GameScreen) Draw() {
 	if !gs.positionChangedWhilePaused {
 		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-				if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingNote[dir] {
+				if gs.Pstates[player].IsHoldingKey[dir] && !gs.Pstates[player].IsHoldingAnyNote(dir) {
 					drawHitOverlay(player, dir)
 				}
 			}
@@ -1670,8 +1680,8 @@ func (gs *GameScreen) Draw() {
 			stepTime := StepsToTime(1, bpm)
 
 			if note.End()-note.HoldReleaseAt > stepTime || gs.positionChangedWhilePaused {
-				isHoldingNote := gs.Pstates[note.Player].IsHoldingNote[note.Direction]
-				isHoldingNote = isHoldingNote && gs.Pstates[note.Player].HoldingNote[note.Direction].Equals(note)
+				isHoldingNote := gs.Pstates[note.Player].IsHoldingAnyNote(note.Direction)
+				isHoldingNote = isHoldingNote && gs.Pstates[note.Player].IsHoldingNote(note)
 
 				var susBegin time.Duration
 
@@ -1790,7 +1800,7 @@ func (gs *GameScreen) Draw() {
 	if !gs.positionChangedWhilePaused {
 		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
 			for dir := NoteDir(0); dir < NoteDirSize; dir++ {
-				if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingNote[dir] {
+				if gs.Pstates[player].IsHoldingKey[dir] && gs.Pstates[player].IsHoldingAnyNote(dir) {
 					drawHitOverlay(player, dir)
 				}
 			}
