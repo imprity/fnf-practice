@@ -253,7 +253,7 @@ func (vp *VaryingSpeedPlayer) Play() {
 
 func (vp *VaryingSpeedPlayer) Rewind() {
 	if vp.IsReady() {
-		vp.stream.Seek(0, io.SeekStart)
+		vp.player.Seek(0, io.SeekStart)
 	}
 }
 
@@ -474,7 +474,6 @@ func (vs *VaryingSpeedStream) decodeWholeAudio(rawFile []byte, fileType string) 
 		return err
 	}
 }
-
 
 func NewVaryingSpeedStreamFromDecodedAudio(decodedAudio []byte, padStart, padEnd int64) *VaryingSpeedStream {
 	vs := new(VaryingSpeedStream)

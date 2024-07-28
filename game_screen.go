@@ -2,12 +2,12 @@ package fnf
 
 import (
 	_ "embed"
-	"os"
 	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
 	"math/rand/v2"
+	"os"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -180,9 +180,6 @@ type GameScreen struct {
 	DifficultyMenuItemId      MenuItemId
 	RewindOnMistakeMenuItemId MenuItemId
 
-	// hit sound
-	HitSoundPlayer *VaryingSpeedPlayer
-
 	// private members
 	isKeyPressed   [FnfPlayerSize][NoteDirSize]bool
 	noteIndexStart int
@@ -199,6 +196,7 @@ type GameScreen struct {
 
 	botPlay bool
 
+	// rewind stuff
 	rewindQueue      CircularQueue[AnimatedRewind]
 	rewindT          float64
 	rewindStarted    bool
@@ -206,6 +204,13 @@ type GameScreen struct {
 	rewindHightLight float64
 	rewindPlayer     FnfPlayerNo
 	rewindDir        NoteDir
+
+	// hit sound
+
+	// we need multiple hit sound players because if we only have one,
+	// that one player might be busy when we need to play another hit sound
+	hitSoundPlayers     []*VaryingSpeedPlayer
+	hitSoundPlayerIndex int
 }
 
 func NewGameScreen() *GameScreen {
@@ -231,26 +236,30 @@ func NewGameScreen() *GameScreen {
 
 	gs.HelpMessage = NewGameHelpMessage(gs.InputId)
 
-	gs.HitSoundPlayer = NewVaryingSpeedPlayer(0, 0)
+	for i := 0; i < 32; i++ {
+		gs.hitSoundPlayers = append(gs.hitSoundPlayers, NewVaryingSpeedPlayer(0, 0))
+	}
 
 	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
 	// TODO : This is temporarily loaded here
 	// load it properly with assets later
 	{
-		const hitSoundFile = "./audio/222151__ajaysm__bangu_21.mp3"
+		const hitSoundFile = "./audio/742277__sadiquecat__ashboy34-temple-block-wooden-room.mp3"
 		audioBytes, err := os.ReadFile(hitSoundFile)
 
 		if err != nil {
 			ErrorLogger.Fatalf("failed to read file %v", err)
 		}
 
-		decodedAudio, err2 := DecodeWholeAudio(audioBytes, "mp3")
+		decodeAudio, err2 := DecodeWholeAudio(audioBytes, "mp3")
 
 		if err2 != nil {
-			ErrorLogger.Fatalf("failed to decode hit audio %v", err2)
+			ErrorLogger.Fatalf("failed to decode audio %v", err2)
 		}
 
-		gs.HitSoundPlayer.LoadDecodedAudio(decodedAudio)
+		for _, player := range gs.hitSoundPlayers {
+			player.LoadDecodedAudio(decodeAudio)
+		}
 	}
 	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
 
@@ -649,6 +658,20 @@ func (gs *GameScreen) CountEvents(player FnfPlayerNo) (int, [HitRatingSize]int) 
 	return misses, hits
 }
 
+func (gs *GameScreen) PlayHitSound() {
+	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Pause()
+	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Rewind()
+	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Play()
+
+	FnfLogger.Printf("played hit sound %v", gs.hitSoundPlayerIndex)
+
+	gs.hitSoundPlayerIndex++
+
+	if gs.hitSoundPlayerIndex >= len(gs.hitSoundPlayers) {
+		gs.hitSoundPlayerIndex = 0
+	}
+}
+
 func (gs *GameScreen) Update(deltaTime time.Duration) {
 	// is song is not loaded then don't do anything
 	if !gs.IsSongLoaded {
@@ -681,6 +704,12 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				GetKeyName(TheKM[ToggleLogNoteEvent]),
 			), tf)
 	}
+
+	// TEST TEST TEST TEST TEST
+	if AreKeysPressed(gs.InputId, rl.KeyE) {
+		gs.PlayHitSound()
+	}
+	// TEST TEST TEST TEST TEST
 
 	// =============================================
 	// temporary pause and unpause
@@ -1072,8 +1101,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 			note := gs.Song.Notes[e.Index]
 			if e.IsFirstHit() && note.Player == 0 {
-				gs.HitSoundPlayer.Rewind()
-				gs.HitSoundPlayer.Play()
+				gs.PlayHitSound()
 			}
 		}
 

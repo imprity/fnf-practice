@@ -49,7 +49,7 @@ func OverrideFirstScreen(constructor func() Screen) {
 
 var (
 	DrawDebugGraphics bool
-	PrintDebugMsg bool
+	PrintDebugMsg     bool
 )
 
 func SetNextScreen(screen Screen) {
