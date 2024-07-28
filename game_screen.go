@@ -1205,16 +1205,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 	}
-
-	// TEST TEST TEST TEST TEST TEST
-	for dir := NoteDir(0); dir < NoteDirSize; dir ++ {
-		lenStr := fmt.Sprintf("%d", len(gs.Pstates[0].HoldingNote[dir]))
-		capStr := fmt.Sprintf("%d", cap(gs.Pstates[0].HoldingNote[dir]))
-
-		DebugPrint(fmt.Sprintf("%s len", NoteDirStrs[dir]), lenStr)
-		DebugPrint(fmt.Sprintf("%s cap", NoteDirStrs[dir]), capStr)
-	}
-	// TEST TEST TEST TEST TEST TEST
 }
 
 type SustainMiss struct {
