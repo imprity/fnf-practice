@@ -33,7 +33,7 @@ func InitAudio() error {
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
 		Format:       oto.FormatSignedInt16LE,
-		BufferSize:   0, // use default
+		BufferSize:   time.Microsecond * 2500,
 	}
 
 	var contextReady chan struct{}
@@ -211,7 +211,7 @@ func (vp *VaryingSpeedPlayer) Position() time.Duration {
 
 	pos := float64(streamPos) - float64(buffSize)*vp.Speed()
 
-	return ByteLengthToTimeDuration(int64(pos), SampleRate)
+	return ByteLengthToTimeDuration(int64(pos))
 }
 
 func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration) {
@@ -618,7 +618,7 @@ func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return ByteLengthToTimeDuration(vs.audioBytesSize(), SampleRate)
+	return ByteLengthToTimeDuration(vs.audioBytesSize())
 }
 
 func (vs *VaryingSpeedStream) DecodedBytesSize() int64 {
@@ -629,7 +629,7 @@ func (vs *VaryingSpeedStream) DecodedBytesSize() int64 {
 
 func (vs *VaryingSpeedStream) DecodedDuration() time.Duration {
 	duration := vs.DecodedBytesSize()
-	return ByteLengthToTimeDuration(duration, SampleRate)
+	return ByteLengthToTimeDuration(duration)
 }
 
 func (vs *VaryingSpeedStream) QuitBackgroundDecoding() {
@@ -653,9 +653,9 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 	return o
 }
 
-func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
+func ByteLengthToTimeDuration(byteLength int64) time.Duration {
 	t := time.Duration(byteLength) / BytesPerSample
-	return t * time.Second / time.Duration(sampleRate)
+	return t * time.Second / time.Duration(SampleRate)
 }
 
 func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
@@ -664,8 +664,10 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 		defer timer.Report()
 	}
 
-	const alwaysDecodeSingleThreaded bool = false
-	const checkIfDecodingWithGoroutinesIsCorrect bool = false
+	// TEST TEST TEST TEST TEST
+	const alwaysDecodeSingleThreaded bool = true
+	const checkIfDecodingWithGoroutinesIsCorrect bool = true
+	// TEST TEST TEST TEST TEST
 
 	const jobCount = 16
 
@@ -763,7 +765,7 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 				buf = buf[:len(buf)+read]
 
 				// some error occured
-				if err != nil && !(err == io.EOF && isLastPart) {
+				if err != nil && !(errors.Is(err, io.EOF) && isLastPart) {
 					decodeErrors[i] = err
 					return
 				}
@@ -830,7 +832,9 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 
 		for i := range len(toCompare) {
 			if toCompare[i] != audioBytes[i] {
-				return nil, fmt.Errorf("audio decoded with multiple goroutines has different value")
+				return nil, fmt.Errorf(
+					"audio decoded with multiple goroutines has different value %d : %X %X",
+					i, toCompare[i], audioBytes[i])
 			}
 		}
 	}

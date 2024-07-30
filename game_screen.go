@@ -9,9 +9,12 @@ import (
 	"math/rand/v2"
 	"os"
 	"time"
+	"path/filepath"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+var _=os.ReadFile
 
 type NotePopup struct {
 	Start  time.Duration
@@ -244,21 +247,21 @@ func NewGameScreen() *GameScreen {
 	// TODO : This is temporarily loaded here
 	// load it properly with assets later
 	{
-		const hitSoundFile = "./audio/742277__sadiquecat__ashboy34-temple-block-wooden-room.mp3"
+		const hitSoundFile = "./audio/222151__ajaysm__bangu_21.ogg"
 		audioBytes, err := os.ReadFile(hitSoundFile)
 
 		if err != nil {
 			ErrorLogger.Fatalf("failed to read file %v", err)
 		}
 
-		decodeAudio, err2 := DecodeWholeAudio(audioBytes, "mp3")
+		decodedAudio, err2 := DecodeWholeAudio(audioBytes, filepath.Ext(hitSoundFile))
 
 		if err2 != nil {
 			ErrorLogger.Fatalf("failed to decode audio %v", err2)
 		}
 
 		for _, player := range gs.hitSoundPlayers {
-			player.LoadDecodedAudio(decodeAudio)
+			player.LoadDecodedAudio(decodedAudio)
 		}
 	}
 	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
