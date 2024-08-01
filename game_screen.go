@@ -195,6 +195,7 @@ type GameScreen struct {
 
 	botPlay bool
 
+	// rewind stuff
 	rewindQueue      CircularQueue[AnimatedRewind]
 	rewindT          float64
 	rewindStarted    bool
@@ -202,6 +203,13 @@ type GameScreen struct {
 	rewindHightLight float64
 	rewindPlayer     FnfPlayerNo
 	rewindDir        NoteDir
+
+	// hit sound
+
+	// we need multiple hit sound players because if we only have one,
+	// that one player might be busy when we need to play another hit sound
+	hitSoundPlayers     []*VaryingSpeedPlayer
+	hitSoundPlayerIndex int
 }
 
 func NewGameScreen() *GameScreen {
@@ -226,6 +234,15 @@ func NewGameScreen() *GameScreen {
 	gs.InputId = NewInputGroupId()
 
 	gs.HelpMessage = NewGameHelpMessage(gs.InputId)
+
+	for i := 0; i < 32; i++ {
+		gs.hitSoundPlayers = append(gs.hitSoundPlayers, NewVaryingSpeedPlayer(0, 0))
+	}
+
+	// load hit sound
+	for _, player := range gs.hitSoundPlayers {
+		player.LoadDecodedAudio(HitSoundAudio)
+	}
 
 	// set up menu
 	gs.Menu = NewMenuDrawer()
@@ -620,6 +637,21 @@ func (gs *GameScreen) CountEvents(player FnfPlayerNo) (int, [HitRatingSize]int) 
 	}
 
 	return misses, hits
+}
+
+func (gs *GameScreen) PlayHitSound() {
+	if TheOptions.HitSoundVolume < 0.001 { // just in case
+		return
+	}
+
+	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Rewind()
+	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Play()
+
+	gs.hitSoundPlayerIndex++
+
+	if gs.hitSoundPlayerIndex >= len(gs.hitSoundPlayers) {
+		gs.hitSoundPlayerIndex = 0
+	}
 }
 
 func (gs *GameScreen) Update(deltaTime time.Duration) {
@@ -1038,6 +1070,17 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
+		playHitSoundIfHumanPlayerHit := func(e NoteEvent) {
+			if gs.IsBotPlay() {
+				return
+			}
+
+			note := gs.Song.Notes[e.Index]
+			if e.IsFirstHit() && note.Player == 0 {
+				gs.PlayHitSound()
+			}
+		}
+
 		queuedRewind := false
 
 		queueRewinds := func(player FnfPlayerNo, direction NoteDir, rewinds ...AnimatedRewind) {
@@ -1158,6 +1201,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if len(events) <= 0 {
 				logNoteEvent(e)
 				pushPopupIfHumanPlayerHit(e)
+				playHitSoundIfHumanPlayerHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
 			} else {
 				if e.IsMiss() {
@@ -1199,6 +1243,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					if !last.SameKind(e) {
 						logNoteEvent(e)
 						pushPopupIfHumanPlayerHit(e)
+						playHitSoundIfHumanPlayerHit(e)
 						gs.NoteEvents[e.Index] = append(events, e)
 					}
 				}
@@ -2585,6 +2630,10 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.ResetGameStates()
 
 	gs.positionChangedWhilePaused = false
+
+	for _, player := range gs.hitSoundPlayers {
+		player.SetVolume(TheOptions.HitSoundVolume)
+	}
 }
 
 func (gs *GameScreen) BeforeScreenEnd() {

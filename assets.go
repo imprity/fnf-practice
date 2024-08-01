@@ -3,8 +3,10 @@ package fnf
 import (
 	"bytes"
 	"embed"
+	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -59,6 +61,8 @@ var PopupBg rl.Texture2D
 
 var BlackPixel rl.Texture2D
 var WhitePixel rl.Texture2D
+
+var HitSoundAudio []byte
 
 var (
 	texsToUnload []rl.Texture2D
@@ -123,6 +127,10 @@ func loadAssets(isReload bool) {
 
 		return tex
 	}
+
+	// =============================
+	// load reloadable assets
+	// =============================
 
 	// load fnf arrows texture
 	{
@@ -241,6 +249,30 @@ func loadAssets(isReload bool) {
 	whitePixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{255, 255, 255, 255}))
 	WhitePixel = rl.LoadTextureFromImage(whitePixelImg)
 	texsToUnload = append(texsToUnload, WhitePixel)
+
+	// =============================
+	// load unreloadable assets
+	// =============================
+	if !isReload {
+		// load hit sound
+		{
+			const hitSoundPath = "assets/hit-sound.ogg"
+
+			audioFile := loadData(hitSoundPath)
+
+			var err error
+
+			var decoder AudioDecoder
+
+			if decoder, err = NewAudioDeocoder(audioFile, filepath.Ext(hitSoundPath)); err != nil {
+				ErrorLogger.Fatalf("failed to create decoder %v", err)
+			}
+
+			if HitSoundAudio, err = io.ReadAll(decoder); err != nil {
+				ErrorLogger.Fatalf("failed to decode audio %v", err)
+			}
+		}
+	}
 }
 
 func unloadAssets(isReload bool) {

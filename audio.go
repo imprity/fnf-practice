@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 
 	"github.com/ebitengine/oto/v3"
 )
@@ -32,7 +33,7 @@ func InitAudio() error {
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
 		Format:       oto.FormatSignedInt16LE,
-		BufferSize:   0, // use default
+		BufferSize:   0,
 	}
 
 	var contextReady chan struct{}
@@ -80,6 +81,12 @@ func NewAudioDeocoder(rawFile []byte, fileType string) (AudioDecoder, error) {
 		} else {
 			return decoder, nil
 		}
+	} else if strings.HasSuffix(strings.ToLower(fileType), "wav") {
+		if decoder, err := wav.DecodeWithSampleRate(SampleRate, bReader); err != nil {
+			return nil, err
+		} else {
+			return decoder, nil
+		}
 	} else {
 		return nil, fmt.Errorf("can't decode audio format %v", fileType)
 	}
@@ -112,7 +119,10 @@ func (vp *VaryingSpeedPlayer) IsReady() bool {
 	return vp.player != nil && vp.stream != nil
 }
 
-func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeAudioInBackground bool) error {
+// If you want to decode the audio, pass raw file bytes, filetype and whether to decode audio in background or not.
+//
+// If your audio bytes are already decoded, just pass in bytes.
+func (vp *VaryingSpeedPlayer) loadAudioImpl(audioBytes []byte, isAudioDecoded bool, fileType string, decodeAudioInBackground bool) error {
 	if vp.player != nil {
 		vp.player.Close()
 		vp.player = nil
@@ -137,11 +147,18 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeA
 	padStartBytes := timeToBytes(vp.padStart)
 	padEndBytes := timeToBytes(vp.padEnd)
 
-	stream, err := NewVaryingSpeedStream(
-		rawFile, fileType, padStartBytes, padEndBytes, decodeAudioInBackground)
+	var stream *VaryingSpeedStream
 
-	if err != nil {
-		return err
+	if !isAudioDecoded {
+		var err error
+		stream, err = NewVaryingSpeedStream(
+			audioBytes, fileType, padStartBytes, padEndBytes, decodeAudioInBackground)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		stream = NewVaryingSpeedStreamFromDecodedAudio(audioBytes, padStartBytes, padEndBytes)
 	}
 
 	player := TheContext.NewPlayer(stream)
@@ -160,6 +177,18 @@ func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeA
 	vp.SetVolume(vp.Volume())
 
 	return nil
+}
+
+func (vp *VaryingSpeedPlayer) LoadAudio(rawFile []byte, fileType string, decodeAudioInBackground bool) error {
+	if err := vp.loadAudioImpl(rawFile, false, fileType, decodeAudioInBackground); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (vp *VaryingSpeedPlayer) LoadDecodedAudio(decodedAudio []byte) {
+	vp.loadAudioImpl(decodedAudio, true, "", false)
 }
 
 // TODO : Position and SetPosition is fucked
@@ -182,7 +211,7 @@ func (vp *VaryingSpeedPlayer) Position() time.Duration {
 
 	pos := float64(streamPos) - float64(buffSize)*vp.Speed()
 
-	return ByteLengthToTimeDuration(int64(pos), SampleRate)
+	return ByteLengthToTimeDuration(int64(pos))
 }
 
 func (vp *VaryingSpeedPlayer) SetPosition(offset time.Duration) {
@@ -224,7 +253,7 @@ func (vp *VaryingSpeedPlayer) Play() {
 
 func (vp *VaryingSpeedPlayer) Rewind() {
 	if vp.IsReady() {
-		vp.stream.Seek(0, io.SeekStart)
+		vp.player.Seek(0, io.SeekStart)
 	}
 }
 
@@ -446,6 +475,29 @@ func (vs *VaryingSpeedStream) decodeWholeAudio(rawFile []byte, fileType string) 
 	}
 }
 
+func NewVaryingSpeedStreamFromDecodedAudio(decodedAudio []byte, padStart, padEnd int64) *VaryingSpeedStream {
+	vs := new(VaryingSpeedStream)
+	vs.speed = 1.0
+
+	if padStart%BytesPerSample != 0 {
+		ErrorLogger.Fatal("padStart is not divisible by BytesPerSample")
+	}
+
+	if padEnd%BytesPerSample != 0 {
+		ErrorLogger.Fatal("padEnd is not divisible by BytesPerSample")
+	}
+
+	vs.padStart = padStart
+	vs.padEnd = padEnd
+
+	vs.usingBgDecoding = false
+	vs.buffer = decodedAudio
+	vs.length = int64(len(decodedAudio))
+	vs.decodedBytesSize = int64(len(decodedAudio))
+
+	return vs
+}
+
 func (vs *VaryingSpeedStream) readSrc(at int64) byte {
 	if at < vs.padStart {
 		return 0
@@ -566,7 +618,7 @@ func (vs *VaryingSpeedStream) AudioBytesSize() int64 {
 func (vs *VaryingSpeedStream) AudioDuration() time.Duration {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	return ByteLengthToTimeDuration(vs.audioBytesSize(), SampleRate)
+	return ByteLengthToTimeDuration(vs.audioBytesSize())
 }
 
 func (vs *VaryingSpeedStream) DecodedBytesSize() int64 {
@@ -577,7 +629,7 @@ func (vs *VaryingSpeedStream) DecodedBytesSize() int64 {
 
 func (vs *VaryingSpeedStream) DecodedDuration() time.Duration {
 	duration := vs.DecodedBytesSize()
-	return ByteLengthToTimeDuration(duration, SampleRate)
+	return ByteLengthToTimeDuration(duration)
 }
 
 func (vs *VaryingSpeedStream) QuitBackgroundDecoding() {
@@ -601,10 +653,13 @@ func (vs *VaryingSpeedStream) TimeDurationToPos(offset time.Duration) int64 {
 	return o
 }
 
-func ByteLengthToTimeDuration(byteLength int64, sampleRate int) time.Duration {
+func ByteLengthToTimeDuration(byteLength int64) time.Duration {
 	t := time.Duration(byteLength) / BytesPerSample
-	return t * time.Second / time.Duration(sampleRate)
+	return t * time.Second / time.Duration(SampleRate)
 }
+
+// TODO : DecodeWholeAudio funciton fails when trying to decode very short audio
+// multithreaded.
 
 func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 	{
@@ -711,7 +766,7 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 				buf = buf[:len(buf)+read]
 
 				// some error occured
-				if err != nil && !(err == io.EOF && isLastPart) {
+				if err != nil && !(errors.Is(err, io.EOF) && isLastPart) {
 					decodeErrors[i] = err
 					return
 				}
@@ -778,7 +833,9 @@ func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 
 		for i := range len(toCompare) {
 			if toCompare[i] != audioBytes[i] {
-				return nil, fmt.Errorf("audio decoded with multiple goroutines has different value")
+				return nil, fmt.Errorf(
+					"audio decoded with multiple goroutines has different value %d : %X %X",
+					i, toCompare[i], audioBytes[i])
 			}
 		}
 	}
