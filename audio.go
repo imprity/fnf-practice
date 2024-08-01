@@ -658,16 +658,17 @@ func ByteLengthToTimeDuration(byteLength int64) time.Duration {
 	return t * time.Second / time.Duration(SampleRate)
 }
 
+// TODO : DecodeWholeAudio funciton fails when trying to decode very short audio
+// multithreaded.
+
 func DecodeWholeAudio(rawFile []byte, fileType string) ([]byte, error) {
 	{
 		timer := NewProfTimer("DecodeWholeAudio")
 		defer timer.Report()
 	}
 
-	// TEST TEST TEST TEST TEST
-	const alwaysDecodeSingleThreaded bool = true
-	const checkIfDecodingWithGoroutinesIsCorrect bool = true
-	// TEST TEST TEST TEST TEST
+	const alwaysDecodeSingleThreaded bool = false
+	const checkIfDecodingWithGoroutinesIsCorrect bool = false
 
 	const jobCount = 16
 

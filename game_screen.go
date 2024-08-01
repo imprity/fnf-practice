@@ -5,16 +5,17 @@ import (
 	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"math"
 	"math/rand/v2"
 	"os"
-	"time"
 	"path/filepath"
+	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var _=os.ReadFile
+var _ = os.ReadFile
 
 type NotePopup struct {
 	Start  time.Duration
@@ -247,17 +248,26 @@ func NewGameScreen() *GameScreen {
 	// TODO : This is temporarily loaded here
 	// load it properly with assets later
 	{
-		const hitSoundFile = "./audio/222151__ajaysm__bangu_21.ogg"
-		audioBytes, err := os.ReadFile(hitSoundFile)
+		const hitSoundFile = "./test-hitsounds/hit-sound17.ogg"
 
-		if err != nil {
+		var err error
+		var audioBytes []byte
+
+		if audioBytes, err = os.ReadFile(hitSoundFile); err != nil {
 			ErrorLogger.Fatalf("failed to read file %v", err)
 		}
 
-		decodedAudio, err2 := DecodeWholeAudio(audioBytes, filepath.Ext(hitSoundFile))
+		// NOTE : we are decoding with out using DecodeWholeAudio function
+		// because it seems to cause error when decoding very short clips like this
+		// not sure why...
+		var decoder AudioDecoder
+		if decoder, err = NewAudioDeocoder(audioBytes, filepath.Ext(hitSoundFile)); err != nil {
+			ErrorLogger.Fatalf("failed to create decoder %v", err)
+		}
 
-		if err2 != nil {
-			ErrorLogger.Fatalf("failed to decode audio %v", err2)
+		var decodedAudio []byte
+		if decodedAudio, err = io.ReadAll(decoder); err != nil {
+			ErrorLogger.Fatalf("failed to decode audio %v", err)
 		}
 
 		for _, player := range gs.hitSoundPlayers {
@@ -662,7 +672,6 @@ func (gs *GameScreen) CountEvents(player FnfPlayerNo) (int, [HitRatingSize]int) 
 }
 
 func (gs *GameScreen) PlayHitSound() {
-	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Pause()
 	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Rewind()
 	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Play()
 
@@ -707,12 +716,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				GetKeyName(TheKM[ToggleLogNoteEvent]),
 			), tf)
 	}
-
-	// TEST TEST TEST TEST TEST
-	if AreKeysPressed(gs.InputId, rl.KeyE) {
-		gs.PlayHitSound()
-	}
-	// TEST TEST TEST TEST TEST
 
 	// =============================================
 	// temporary pause and unpause
