@@ -227,6 +227,8 @@ type Options struct {
 	GhostTapping bool
 
 	MiddleScroll bool
+
+	HitSoundVolume float64
 }
 
 var DefaultOptions Options
@@ -249,6 +251,8 @@ func init() {
 	DefaultOptions.GhostTapping = false
 
 	DefaultOptions.MiddleScroll = false
+
+	DefaultOptions.HitSoundVolume = 0
 
 	// set TheOptions to DefaultOptions
 	TheOptions = DefaultOptions

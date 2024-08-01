@@ -17,6 +17,8 @@ type OptionsScreen struct {
 	HelpMessages map[MenuItemId][]RichTextElement
 
 	HelpMessageOpacity float32
+
+	HitSoundPlayer *VaryingSpeedPlayer
 }
 
 func NewOptionsScreen() *OptionsScreen {
@@ -27,6 +29,9 @@ func NewOptionsScreen() *OptionsScreen {
 	op.Menu = NewMenuDrawer()
 
 	op.HelpMessages = make(map[MenuItemId][]RichTextElement)
+
+	op.HitSoundPlayer = NewVaryingSpeedPlayer(0, 0)
+	op.HitSoundPlayer.LoadDecodedAudio(HitSoundAudio)
 
 	addHelpMessage := func(id MenuItemId, marginTop, marginRight, width float32, richText string) {
 		factory := NewRichTextFactory(width)
@@ -124,6 +129,27 @@ func NewOptionsScreen() *OptionsScreen {
 	}
 	op.Menu.AddItems(ghostTapping)
 
+	hitSoundItem := NewMenuItem()
+	hitSoundItem.Name = "Hit Sound"
+	hitSoundItem.Type = MenuItemNumber
+	hitSoundItem.NValue = float32(TheOptions.HitSoundVolume)
+	hitSoundItem.NValueMin = 0
+	hitSoundItem.NValueMax = 10
+	hitSoundItem.NValueInterval = 1
+	hitSoundItem.NValueFmtString = "%1.f"
+	hitSoundItem.NumberCallback = func(nValue float32) {
+		volume := float64(nValue) / 10
+
+		TheOptions.HitSoundVolume = volume
+		op.HitSoundPlayer.SetVolume(volume)
+
+		if volume > 0.001 { // just in case
+			op.HitSoundPlayer.Rewind()
+			op.HitSoundPlayer.Play()
+		}
+	}
+	op.Menu.AddItems(hitSoundItem)
+
 	loadAudioDuringGpItem := NewMenuItem()
 	loadAudioDuringGpItem.Name = "Load Audio During Game Play"
 	loadAudioDuringGpItem.Type = MenuItemToggle
@@ -189,6 +215,7 @@ func NewOptionsScreen() *OptionsScreen {
 		op.Menu.SetItemBValue(middleScrollItem.Id, TheOptions.MiddleScroll)
 		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
 		op.Menu.SetItemBValue(ghostTapping.Id, TheOptions.GhostTapping)
+		op.Menu.SetItemNvalue(hitSoundItem.Id, float32(TheOptions.HitSoundVolume)*10)
 
 		for r := FnfHitRating(0); r < HitRatingSize; r++ {
 			op.Menu.SetItemNvalue(ratingItems[r], f32(TheOptions.HitWindows[r])/f32(time.Millisecond))

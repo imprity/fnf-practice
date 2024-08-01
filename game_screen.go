@@ -5,17 +5,12 @@ import (
 	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
 	"math"
 	"math/rand/v2"
-	"os"
-	"path/filepath"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
-
-var _ = os.ReadFile
 
 type NotePopup struct {
 	Start  time.Duration
@@ -244,37 +239,10 @@ func NewGameScreen() *GameScreen {
 		gs.hitSoundPlayers = append(gs.hitSoundPlayers, NewVaryingSpeedPlayer(0, 0))
 	}
 
-	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
-	// TODO : This is temporarily loaded here
-	// load it properly with assets later
-	{
-		const hitSoundFile = "./test-hitsounds/hit-sound17.ogg"
-
-		var err error
-		var audioBytes []byte
-
-		if audioBytes, err = os.ReadFile(hitSoundFile); err != nil {
-			ErrorLogger.Fatalf("failed to read file %v", err)
-		}
-
-		// NOTE : we are decoding with out using DecodeWholeAudio function
-		// because it seems to cause error when decoding very short clips like this
-		// not sure why...
-		var decoder AudioDecoder
-		if decoder, err = NewAudioDeocoder(audioBytes, filepath.Ext(hitSoundFile)); err != nil {
-			ErrorLogger.Fatalf("failed to create decoder %v", err)
-		}
-
-		var decodedAudio []byte
-		if decodedAudio, err = io.ReadAll(decoder); err != nil {
-			ErrorLogger.Fatalf("failed to decode audio %v", err)
-		}
-
-		for _, player := range gs.hitSoundPlayers {
-			player.LoadDecodedAudio(decodedAudio)
-		}
+	// load hit sound
+	for _, player := range gs.hitSoundPlayers {
+		player.LoadDecodedAudio(HitSoundAudio)
 	}
-	// TEST TEST TEST TEST TEST TEST TEST TEST TEST
 
 	// set up menu
 	gs.Menu = NewMenuDrawer()
@@ -672,10 +640,12 @@ func (gs *GameScreen) CountEvents(player FnfPlayerNo) (int, [HitRatingSize]int) 
 }
 
 func (gs *GameScreen) PlayHitSound() {
+	if TheOptions.HitSoundVolume < 0.001 { // just in case
+		return
+	}
+
 	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Rewind()
 	gs.hitSoundPlayers[gs.hitSoundPlayerIndex].Play()
-
-	FnfLogger.Printf("played hit sound %v", gs.hitSoundPlayerIndex)
 
 	gs.hitSoundPlayerIndex++
 
@@ -2660,6 +2630,10 @@ func (gs *GameScreen) BeforeScreenTransition() {
 	gs.ResetGameStates()
 
 	gs.positionChangedWhilePaused = false
+
+	for _, player := range gs.hitSoundPlayers {
+		player.SetVolume(TheOptions.HitSoundVolume)
+	}
 }
 
 func (gs *GameScreen) BeforeScreenEnd() {
