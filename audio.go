@@ -33,7 +33,7 @@ func InitAudio() error {
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
 		Format:       oto.FormatSignedInt16LE,
-		BufferSize:   time.Microsecond * 2500,
+		BufferSize:   0,
 	}
 
 	var contextReady chan struct{}
