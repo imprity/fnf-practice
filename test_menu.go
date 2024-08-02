@@ -24,7 +24,7 @@ func NewTestMenu() *MenuDrawer {
 	}
 
 	testDeco := NewMenuItem()
-	testDeco.Name = "TestMenu"
+	testDeco.Name = "Test Menu"
 	testDeco.Type = MenuItemDeco
 	testDeco.FadeIfUnselected = false
 	testDeco.Color = FnfColor{255, 195, 130, 255}
@@ -70,6 +70,14 @@ func NewTestMenu() *MenuDrawer {
 	}
 	menu.AddItems(testNumber)
 
+	emptyList := NewMenuItem()
+	emptyList.Name = "empty list item"
+	emptyList.Type = MenuItemList
+	emptyList.ListCallback = func(selected int, list []string) {
+		FnfLogger.Printf("list selected : %v", list[selected])
+	}
+	menu.AddItems(emptyList)
+
 	testList := NewMenuItem()
 	testList.Name = "list item"
 	testList.Type = MenuItemList
@@ -78,6 +86,14 @@ func NewTestMenu() *MenuDrawer {
 		FnfLogger.Printf("list selected : %v", list[selected])
 	}
 	menu.AddItems(testList)
+
+	emptyKey := NewMenuItem()
+	emptyKey.Name = "empty key item"
+	emptyKey.Type = MenuItemKey
+	emptyKey.KeyCallback = func(index int, prevKey, newKey int32) {
+		FnfLogger.Printf("%vth key changed from %v to %v", index, GetKeyName(prevKey), GetKeyName(newKey))
+	}
+	menu.AddItems(emptyKey)
 
 	testKey := NewMenuItem()
 	testKey.Name = "key item"
@@ -109,6 +125,29 @@ func NewTestMenu() *MenuDrawer {
 			FnfLogger.Printf("%vth key changed from %v to %v", index, GetKeyName(prevKey), GetKeyName(newKey))
 		}
 		menu.AddItems(testKeyMany)
+	}
+
+	{
+		hiddenMenu := NewMenuItem()
+		hiddenMenu.Name = "Sneaky Hidden Menu"
+		hiddenMenu.IsHidden = true
+		menu.AddItems(hiddenMenu)
+	}
+
+	{
+		topMarginTest := NewMenuItem()
+		topMarginTest.Name = "top margin test"
+		topMarginTest.Type = MenuItemNumber
+		topMarginTest.NValueMin = 0
+		topMarginTest.NValueMax = 100
+		topMarginTest.NValue = 0
+		topMarginTest.NValueInterval = 10
+		topMarginTest.NValueFmtString = "%.f"
+		topMarginTest.NumberCallback = func(nValue float32) {
+			FnfLogger.Printf("top margin : %v", nValue)
+			topMarginTest.TopMargin = nValue
+		}
+		menu.AddItems(topMarginTest)
 	}
 
 	return menu

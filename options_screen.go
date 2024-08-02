@@ -10,7 +10,7 @@ import (
 type OptionsScreen struct {
 	Menu *MenuDrawer
 
-	setItemValuesToOptions func()
+	onMatchItemsToOption []func()
 
 	InputId InputGroupId
 
@@ -52,6 +52,10 @@ func NewOptionsScreen() *OptionsScreen {
 		op.HelpMessages[id] = elements
 	}
 
+	onMatch := func(cb func()) {
+		op.onMatchItemsToOption = append(op.onMatchItemsToOption, cb)
+	}
+
 	optionsDeco := NewMenuItem()
 	optionsDeco.Name = "Options"
 	optionsDeco.Type = MenuItemDeco
@@ -91,6 +95,9 @@ func NewOptionsScreen() *OptionsScreen {
 		TheOptions.TargetFPS = int32(nValue)
 	}
 	op.Menu.AddItems(fpsItem)
+	onMatch(func() {
+		op.Menu.SetItemNvalue(fpsItem.Id, f32(TheOptions.TargetFPS))
+	})
 
 	volumeItem := NewMenuItem()
 	volumeItem.Name = "Volume"
@@ -104,6 +111,9 @@ func NewOptionsScreen() *OptionsScreen {
 		TheOptions.Volume = float64(nValue) / 10
 	}
 	op.Menu.AddItems(volumeItem)
+	onMatch(func() {
+		op.Menu.SetItemNvalue(volumeItem.Id, f32(TheOptions.Volume)*10)
+	})
 
 	downScrollItem := NewMenuItem()
 	downScrollItem.Name = "Down Scroll"
@@ -112,6 +122,9 @@ func NewOptionsScreen() *OptionsScreen {
 		TheOptions.DownScroll = bValue
 	}
 	op.Menu.AddItems(downScrollItem)
+	onMatch(func() {
+		op.Menu.SetItemBValue(downScrollItem.Id, TheOptions.DownScroll)
+	})
 
 	middleScrollItem := NewMenuItem()
 	middleScrollItem.Name = "Middle Scroll"
@@ -120,6 +133,9 @@ func NewOptionsScreen() *OptionsScreen {
 		TheOptions.MiddleScroll = bValue
 	}
 	op.Menu.AddItems(middleScrollItem)
+	onMatch(func() {
+		op.Menu.SetItemBValue(middleScrollItem.Id, TheOptions.MiddleScroll)
+	})
 
 	ghostTapping := NewMenuItem()
 	ghostTapping.Name = "Ghost Tapping"
@@ -128,6 +144,9 @@ func NewOptionsScreen() *OptionsScreen {
 		TheOptions.GhostTapping = bValue
 	}
 	op.Menu.AddItems(ghostTapping)
+	onMatch(func() {
+		op.Menu.SetItemBValue(ghostTapping.Id, TheOptions.GhostTapping)
+	})
 
 	hitSoundItem := NewMenuItem()
 	hitSoundItem.Name = "Hit Sound"
@@ -149,6 +168,9 @@ func NewOptionsScreen() *OptionsScreen {
 		}
 	}
 	op.Menu.AddItems(hitSoundItem)
+	onMatch(func() {
+		op.Menu.SetItemNvalue(hitSoundItem.Id, float32(TheOptions.HitSoundVolume)*10)
+	})
 
 	loadAudioDuringGpItem := NewMenuItem()
 	loadAudioDuringGpItem.Name = "Load Audio During Game Play"
@@ -159,6 +181,9 @@ func NewOptionsScreen() *OptionsScreen {
 	loadAudioDuringGpItem.SizeSelected = 75
 	loadAudioDuringGpItem.SelectedLeftMargin = 5
 	op.Menu.AddItems(loadAudioDuringGpItem)
+	onMatch(func() {
+		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
+	})
 
 	addHelpMessage(loadAudioDuringGpItem.Id,
 		50, 50, 460,
@@ -206,20 +231,12 @@ func NewOptionsScreen() *OptionsScreen {
 
 			ratingItems[rating] = ratingOpt.Id
 		}
-	}
 
-	op.setItemValuesToOptions = func() {
-		op.Menu.SetItemNvalue(fpsItem.Id, f32(TheOptions.TargetFPS))
-		op.Menu.SetItemNvalue(volumeItem.Id, f32(TheOptions.Volume)*10)
-		op.Menu.SetItemBValue(downScrollItem.Id, TheOptions.DownScroll)
-		op.Menu.SetItemBValue(middleScrollItem.Id, TheOptions.MiddleScroll)
-		op.Menu.SetItemBValue(loadAudioDuringGpItem.Id, TheOptions.LoadAudioDuringGamePlay)
-		op.Menu.SetItemBValue(ghostTapping.Id, TheOptions.GhostTapping)
-		op.Menu.SetItemNvalue(hitSoundItem.Id, float32(TheOptions.HitSoundVolume)*10)
-
-		for r := FnfHitRating(0); r < HitRatingSize; r++ {
-			op.Menu.SetItemNvalue(ratingItems[r], f32(TheOptions.HitWindows[r])/f32(time.Millisecond))
-		}
+		onMatch(func() {
+			for r := FnfHitRating(0); r < HitRatingSize; r++ {
+				op.Menu.SetItemNvalue(ratingItems[r], f32(TheOptions.HitWindows[r])/f32(time.Millisecond))
+			}
+		})
 	}
 
 	// create key control options
@@ -307,6 +324,10 @@ func NewOptionsScreen() *OptionsScreen {
 					item.KeyValues[index] = newKey
 				}
 			}
+
+			onMatch(func() {
+				op.Menu.SetItemKeyValues(item.Id, NoteKeys(dir))
+			})
 		}
 
 		debugKeys := []FnfBinding{
@@ -356,10 +377,50 @@ func NewOptionsScreen() *OptionsScreen {
 			case ZoomInKey, ZoomOutKey:
 				item.NameMinWidth = 460
 			}
+
+			onMatch(func() {
+				op.Menu.SetItemKeyValues(item.Id, []int32{TheKM[key]})
+			})
 		}
 	}
 
+	resetOptItem := NewMenuItem()
+	resetOptItem.Name = "RESET OPTIONS"
+	resetOptItem.Type = MenuItemTrigger
+
+	resetOptItem.TopMargin = 40
+
+	resetOptItem.StrokeColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
+	resetOptItem.StrokeWidthSelected = 10
+	resetOptItem.ColorSelected = FnfWhite
+
+	resetOptItem.TriggerCallback = func() {
+		DisplayOptionsPopup(
+			"Reset options to default?", false,
+			[]string{"Yes", "No"},
+			func(selected string, isCanceled bool) {
+				if isCanceled {
+					return
+				}
+
+				if selected == "Yes" {
+					TheOptions = DefaultOptions
+					TheKM = DefaultKM
+					op.MatchItemsToOption()
+				}
+			},
+		)
+	}
+
+	op.Menu.AddItems(resetOptItem)
+
 	return op
+}
+
+func (op *OptionsScreen) MatchItemsToOption() {
+	for _, cb := range op.onMatchItemsToOption {
+		cb()
+	}
 }
 
 func (op *OptionsScreen) Update(deltaTime time.Duration) {
@@ -408,9 +469,7 @@ func (op *OptionsScreen) BeforeScreenTransition() {
 	op.Menu.BeforeScreenTransition()
 	op.Menu.SelectItemAt(0, false) // select first item
 
-	if op.setItemValuesToOptions != nil {
-		op.setItemValuesToOptions()
-	}
+	op.MatchItemsToOption()
 }
 
 func (op *OptionsScreen) BeforeScreenEnd() {

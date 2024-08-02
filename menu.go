@@ -70,6 +70,7 @@ type MenuItem struct {
 
 	// margin between next item
 	BottomMargin float32
+	TopMargin    float32
 
 	SelectedLeftMargin float32
 
@@ -147,7 +148,9 @@ var MenuItemDefaults = MenuItem{
 
 	ToggleStyleCheckBox: true,
 
-	BottomMargin:       30,
+	BottomMargin: 30,
+	TopMargin:    0,
+
 	SelectedLeftMargin: 10,
 
 	CheckedBoxColor:   FnfColor{0x79, 0xE4, 0xAF, 0xFF},
@@ -531,7 +534,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 					}
 				case MenuItemList:
 					if item.ListCallback != nil {
-						selected := Clamp(item.ListSelected, 0, len(item.List))
+						selected := Clamp(item.ListSelected, 0, len(item.List)-1)
 						item.ListCallback(selected, item.List)
 					}
 				case MenuItemKey:
@@ -762,8 +765,11 @@ func (md *MenuDrawer) calculateSelectionY(index int) float32 {
 	selectionY := float32(SCREEN_HEIGHT * 0.5)
 	selectionY -= selected.SizeRegular * 0.5
 
-	for index, item := range md.items {
-		if index >= md.selectedIndex {
+	var hasVisibleAbove bool = false
+	var isFirstVisibleAbove bool = true
+
+	for i, item := range md.items {
+		if i >= index {
 			break
 		}
 
@@ -771,7 +777,19 @@ func (md *MenuDrawer) calculateSelectionY(index int) float32 {
 			continue
 		}
 
+		hasVisibleAbove = true
+
 		selectionY -= item.SizeRegular + item.BottomMargin
+
+		if isFirstVisibleAbove {
+			isFirstVisibleAbove = false
+		} else {
+			selectionY -= item.TopMargin
+		}
+	}
+
+	if hasVisibleAbove {
+		selectionY -= selected.TopMargin
 	}
 
 	return selectionY
@@ -990,9 +1008,17 @@ func (md *MenuDrawer) Draw() {
 		)
 	}
 
+	drawingFirstItem := true
+
 	for index, item := range md.items {
 		if item.IsHidden {
 			continue
+		}
+
+		if drawingFirstItem {
+			drawingFirstItem = false
+		} else {
+			yOffset += item.TopMargin
 		}
 
 		selectionAnimT := float32(0)
@@ -1192,8 +1218,11 @@ func (md *MenuDrawer) Draw() {
 							itemFill, itemStroke, itemStrokeWidth)
 					}
 				case MenuItemList:
-					drawTextCentered(item.List[item.ListSelected], size, valueScale, valueWidthMax,
-						itemFill, itemStroke, itemStrokeWidth)
+					if len(item.List) > 0 {
+						selected := Clamp(item.ListSelected, 0, len(item.List)-1)
+						drawTextCentered(item.List[selected], size, valueScale, valueWidthMax,
+							itemFill, itemStroke, itemStrokeWidth)
+					}
 				case MenuItemNumber:
 					toDraw := fmt.Sprintf(item.NValueFmtString, item.NValue)
 					drawTextCentered(toDraw, size, valueScale, valueWidthMax,
@@ -1483,11 +1512,22 @@ func (md *MenuDrawer) SetItemList(id MenuItemId, list []string, selected int) {
 	item := md.GetItemById(id)
 
 	if item != nil {
+		item.List = list
 		if len(list) > 0 {
-			selected = Clamp(selected, 0, len(list)-1)
-			item.List = list
-			item.ListSelected = selected
+			item.ListSelected = Clamp(selected, 0, len(list)-1)
+		} else {
+			item.ListSelected = 0
 		}
+	}
+}
+
+// Sets item KeyValues.
+// Doesn't trigger item callback and animation
+func (md *MenuDrawer) SetItemKeyValues(id MenuItemId, keyValues []int32) {
+	item := md.GetItemById(id)
+
+	if item != nil {
+		item.KeyValues = keyValues
 	}
 }
 
@@ -1504,6 +1544,10 @@ func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
 func (md *MenuDrawer) BeforeScreenTransition() {
 	md.scrollAnimT = 1
 	md.yOffset = md.calculateSelectionY(md.selectedIndex)
+}
+
+func (md *MenuDrawer) BeforeScreenEnd() {
+	// pass
 }
 
 func (md *MenuDrawer) Free() {

@@ -480,12 +480,12 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 
 	deleteConfirm := NewMenuItem()
 
+	deleteConfirm.Name = "DELETE SONGS"
+	deleteConfirm.Type = MenuItemTrigger
+
 	deleteConfirm.StrokeColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
 	deleteConfirm.StrokeWidthSelected = 10
 	deleteConfirm.ColorSelected = FnfWhite
-
-	deleteConfirm.Name = "DELETE SONGS"
-	deleteConfirm.Type = MenuItemTrigger
 
 	deleteConfirm.TriggerCallback = func() {
 		// count how many songs are going to be deleted
