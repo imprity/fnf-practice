@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -241,7 +242,71 @@ func loadAssets(isReload bool) {
 	// =============================
 	if !isReload {
 		// load hit sound
-		{
+
+		loadCustomHitSound := func() bool {
+			var err error
+
+			var dirPath string
+			if dirPath, err = RelativePath("./"); err != nil {
+				ErrorLogger.Printf("failed to load custom hitsound %v", err)
+				return false
+			}
+
+			var dirEntries []os.DirEntry
+			if dirEntries, err = os.ReadDir(dirPath); err != nil {
+				ErrorLogger.Printf("failed to load custom hitsound %v", err)
+				return false
+			}
+
+			var foundHitSoundCandidate bool = false
+
+			for _, entry := range dirEntries {
+				if mode := entry.Type(); !(mode.IsRegular() && !mode.IsDir()) {
+					continue
+				}
+
+				nameLow := strings.ToLower(entry.Name())
+
+				if nameLow == "hit-sound.ogg" ||
+					nameLow == "hit-sound.mp3" ||
+					nameLow == "hit-sound.wav" {
+
+					foundHitSoundCandidate = true
+
+					var audioErr error
+
+					var audioFile []byte
+					if audioFile, audioErr = os.ReadFile(filepath.Join(dirPath, entry.Name())); audioErr != nil {
+						ErrorLogger.Printf("failed to decode custom hitsound %v: %v", entry.Name(), audioErr)
+						continue
+					}
+
+					var decoder AudioDecoder
+					if decoder, audioErr = NewAudioDeocoder(audioFile, filepath.Ext(nameLow)); audioErr != nil {
+						ErrorLogger.Printf("failed to decode custom hitsound %v: %v", entry.Name(), audioErr)
+						continue
+					}
+
+					var audio []byte
+					if audio, audioErr = io.ReadAll(decoder); audioErr != nil {
+						ErrorLogger.Printf("failed to decode custom hitsound %v: %v", entry.Name(), audioErr)
+						continue
+					}
+
+					HitSoundAudio = audio
+
+					return true
+				}
+			}
+
+			if foundHitSoundCandidate {
+				DisplayAlert("failed to load custom hitsound")
+			}
+
+			return false
+		}
+
+		if !loadCustomHitSound() {
 			const hitSoundPath = "assets/hit-sound.ogg"
 
 			audioFile := loadData(hitSoundPath)
