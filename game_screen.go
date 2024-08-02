@@ -2103,7 +2103,7 @@ func (gs *GameScreen) DrawSustainBar(
 func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c FnfColor) {
 	rl.BeginBlendMode(rl.BlendAddColors)
 
-	arrowH := ArrowsStrokeSprite.Height
+	arrowH := ArrowsSprite.Height
 
 	glowW := ArrowsGlowSprite.Width
 	glowH := ArrowsGlowSprite.Height
@@ -2130,20 +2130,23 @@ func DrawNoteGlow(x, y float32, arrowHeight float32, dir NoteDir, c FnfColor) {
 	FnfEndBlendMode()
 }
 
+func ArrowsSpriteFillIndex(dir NoteDir) int {
+	return int(4 + dir)
+}
+
+func ArrowsSpriteStrokeIndex(dir NoteDir) int {
+	return int(dir)
+}
+
 func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke FnfColor) {
-	texW := ArrowsStrokeSprite.Width
-	texH := ArrowsStrokeSprite.Height
+	texW := ArrowsSprite.Width
+	texH := ArrowsSprite.Height
 
 	scale := arrowHeight / texH
 
-	strokeRect := rl.Rectangle{
+	spriteRect := rl.Rectangle{
 		X: 0, Y: 0,
-		Width: ArrowsStrokeSprite.Width, Height: ArrowsStrokeSprite.Height,
-	}
-
-	fillRect := rl.Rectangle{
-		X: 0, Y: 0,
-		Width: ArrowsFillSprite.Width, Height: ArrowsFillSprite.Height,
+		Width: texW, Height: texH,
 	}
 
 	//check if it arrow is in screen
@@ -2153,21 +2156,14 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
 		}
 
-		fill := fillRect
-		stroke := strokeRect
+		xformed := spriteRect
 
-		fill.Width *= scale
-		fill.Height *= scale
+		xformed.Width *= scale
+		xformed.Height *= scale
 
-		stroke.Width *= scale
-		stroke.Height *= scale
+		xformed = RectCentered(xformed, x, y)
 
-		fill = RectCentered(fill, x, y)
-		stroke = RectCentered(stroke, x, y)
-
-		union := RectUnion(fill, stroke)
-
-		if !rl.CheckCollisionRecs(screenRect, union) {
+		if !rl.CheckCollisionRecs(screenRect, xformed) {
 			return
 		}
 	}
@@ -2181,8 +2177,12 @@ func DrawNoteArrow(x, y float32, arrowHeight float32, dir NoteDir, fill, stroke 
 			0),
 	)
 
-	DrawSpriteTransfromed(ArrowsFillSprite, int(dir), fillRect, mat, ToRlColor(fill))
-	DrawSpriteTransfromed(ArrowsStrokeSprite, int(dir), strokeRect, mat, ToRlColor(stroke))
+	DrawSpriteTransfromed(
+		ArrowsSprite, ArrowsSpriteFillIndex(dir),
+		spriteRect, mat, ToRlColor(fill))
+	DrawSpriteTransfromed(
+		ArrowsSprite, ArrowsSpriteStrokeIndex(dir),
+		spriteRect, mat, ToRlColor(stroke))
 }
 
 func (gs *GameScreen) DrawBigBookMark() {

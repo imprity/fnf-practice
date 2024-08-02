@@ -37,6 +37,11 @@ func SpriteRect(sprite Sprite, spriteN int) rl.Rectangle {
 
 	_ = rowCount // might use this later
 
+	// prevent dvidision by zero
+	// (it also makes no sense for col and row count to be zero)
+	colCount = max(colCount, 1)
+	rowCount = max(rowCount, 1)
+
 	col := spriteN % colCount
 	row := spriteN / colCount
 

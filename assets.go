@@ -15,11 +15,9 @@ import (
 var EmebededAssets embed.FS
 
 var (
-	ArrowsFillSprite   Sprite
-	ArrowsStrokeSprite Sprite
+	ArrowsSprite     Sprite
+	ArrowsGlowSprite Sprite
 )
-
-var ArrowsGlowSprite Sprite
 
 var UIarrowsSprite Sprite
 
@@ -134,31 +132,19 @@ func loadAssets(isReload bool) {
 
 	// load fnf arrows texture
 	{
-		strokeTex := loadTexture("assets/arrows_outer.png", true, ".png")
-		fillTex := loadTexture("assets/arrows_inner.png", true, ".png")
+		var err error
+		ArrowsSprite, err = ParseSpriteJsonMetadata(bytes.NewBuffer(loadData("assets/arrows.json")))
 
-		if strokeTex.Width != fillTex.Width || strokeTex.Height != fillTex.Height {
-			ErrorLogger.Fatal("Arrow fill and stroke images should have same size")
+		if err != nil {
+			ErrorLogger.Fatal(err)
 		}
 
-		ArrowsStrokeSprite.Texture = strokeTex
-		ArrowsFillSprite.Texture = fillTex
-
-		ArrowsStrokeSprite.Count = int(NoteDirSize)
-		ArrowsFillSprite.Count = int(NoteDirSize)
-
-		ArrowsStrokeSprite.Height = f32(strokeTex.Height)
-		ArrowsFillSprite.Height = f32(fillTex.Height)
-
-		// NOTE : we will assume that we can get arrow width
-		// by just devding the texture width by 4
-		ArrowsStrokeSprite.Width = f32(strokeTex.Width) / f32(NoteDirSize)
-		ArrowsFillSprite.Width = f32(fillTex.Width) / f32(NoteDirSize)
+		ArrowsSprite.Texture = loadTexture("assets/arrows.png", true, ".png")
 	}
 
 	// load fnf arrows glow texture
 	{
-		glowTex := loadTexture("assets/arrows_glow.png", true, ".png")
+		glowTex := loadTexture("assets/arrows-glow.png", true, ".png")
 
 		ArrowsGlowSprite.Texture = glowTex
 
@@ -172,7 +158,7 @@ func loadAssets(isReload bool) {
 
 	// load ui arrows texture
 	{
-		uiArrowsTex := loadTexture("assets/ui_arrows.png", true, ".png")
+		uiArrowsTex := loadTexture("assets/ui-arrows.png", true, ".png")
 
 		UIarrowsSprite.Texture = uiArrowsTex
 
@@ -219,14 +205,14 @@ func loadAssets(isReload bool) {
 		DancingNoteSprite.Texture = loadTexture("assets/dancing-note.png", true, ".png")
 	}
 
-	BookMarkBigTex = loadTexture("assets/bookmark_big.png", true, ".png")
-	BookMarkSmallTex = loadTexture("assets/bookmark_small.png", true, ".png")
+	BookMarkBigTex = loadTexture("assets/bookmark-big.png", true, ".png")
+	BookMarkSmallTex = loadTexture("assets/bookmark-small.png", true, ".png")
 
-	GameScreenBg = loadTexture("assets/background 1.png", true, ".png")
-	MenuScreenBg = loadTexture("assets/menu_background.png", true, ".png")
-	MenuScreenSimpleBg = loadTexture("assets/menu_background_simple.png", true, ".png")
-	SongLoadingScreen = loadTexture("assets/song loading screen.png", true, ".png")
-	DirSelectScreen = loadTexture("assets/directory select screen.png", true, ".png")
+	GameScreenBg = loadTexture("assets/game-background.png", true, ".png")
+	MenuScreenBg = loadTexture("assets/menu-background.png", true, ".png")
+	MenuScreenSimpleBg = loadTexture("assets/menu-background-simple.png", true, ".png")
+	SongLoadingScreen = loadTexture("assets/song-loading-screen.png", true, ".png")
+	DirSelectScreen = loadTexture("assets/directory-select-screen.png", true, ".png")
 
 	ratingImgPaths := [HitRatingSize]string{
 		"assets/bad.png",
@@ -238,7 +224,7 @@ func loadAssets(isReload bool) {
 		HitRatingTexs[r] = loadTexture(ratingImgPaths[r], true, ".png")
 	}
 
-	PopupBg = loadTexture("assets/popup_bg.png", true, ".png")
+	PopupBg = loadTexture("assets/popup-bg.png", true, ".png")
 
 	// create black pixel
 	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))
