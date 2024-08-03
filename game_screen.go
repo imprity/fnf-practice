@@ -749,19 +749,20 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	gs.Menu.Update(deltaTime)
 
 	if gs.DrawMenu {
-		botPlay := gs.Menu.GetItemBValue(gs.BotPlayMenuItemId)
-		if botPlay != gs.IsBotPlay() {
-			gs.SetBotPlay(botPlay)
+		if botPlay, ok := gs.Menu.GetItemBValue(gs.BotPlayMenuItemId); ok {
+			if botPlay != gs.IsBotPlay() {
+				gs.SetBotPlay(botPlay)
+			}
 		}
 
-		_, dStr := gs.Menu.GetItemListSelected(gs.DifficultyMenuItemId)
-
-		for d, str := range DifficultyStrs {
-			difficulty := FnfDifficulty(d)
-			if dStr == str {
-				if difficulty != gs.SelectedDifficulty {
-					gs.SelectedDifficulty = difficulty
-					gs.SetSong(gs.Songs[gs.SelectedDifficulty])
+		if _, dStr, ok := gs.Menu.GetItemListSelected(gs.DifficultyMenuItemId); ok {
+			for d, str := range DifficultyStrs {
+				difficulty := FnfDifficulty(d)
+				if dStr == str {
+					if difficulty != gs.SelectedDifficulty {
+						gs.SelectedDifficulty = difficulty
+						gs.SetSong(gs.Songs[gs.SelectedDifficulty])
+					}
 				}
 			}
 		}

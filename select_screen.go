@@ -630,15 +630,16 @@ func (ss *SelectScreen) Update(deltaTime time.Duration) {
 	// ====================================
 	{
 		selected := ss.Menu.GetSelectedId()
-		data := ss.Menu.GetUserData(selected)
-		if id, ok := data.(FnfPathGroupId); ok {
-			group := ss.IdToGroup[id]
+		if data, ok := ss.Menu.GetItemUserData(selected); ok {
+			if id, isPathGroup := data.(FnfPathGroupId); isPathGroup {
+				group := ss.IdToGroup[id]
 
-			if AreKeysPressed(ss.InputId, TheKM[PauseKey]) {
-				ss.StartPreviewDecoding(group)
+				if AreKeysPressed(ss.InputId, TheKM[PauseKey]) {
+					ss.StartPreviewDecoding(group)
+				}
+
+				DebugPrint("Seleted group id", fmt.Sprintf("%d", group.Id()))
 			}
-
-			DebugPrint("Seleted group id", fmt.Sprintf("%d", group.Id()))
 		}
 	}
 
@@ -668,15 +669,15 @@ func (ss *SelectScreen) Draw() {
 
 	ss.Menu.Draw()
 
-	selected := ss.Menu.GetSelectedId()
-	data := ss.Menu.GetUserData(selected)
-
 	var group FnfPathGroup
 	var groupSelected bool = false
 
-	if id, ok := data.(FnfPathGroupId); ok {
-		group = ss.IdToGroup[id]
-		groupSelected = true
+	selected := ss.Menu.GetSelectedId()
+	if data, ok := ss.Menu.GetItemUserData(selected); ok {
+		if id, isPathGroup := data.(FnfPathGroupId); isPathGroup {
+			group = ss.IdToGroup[id]
+			groupSelected = true
+		}
 	}
 
 	// draw difficulty text at the top right corner
@@ -798,7 +799,7 @@ func (ds *DeleteScreen) AddSongList(
 		toBeDeletedCount := 0
 
 		for boxId := range ds.DeleteCheckBoxes {
-			if del := ds.Menu.GetItemBValue(boxId); del {
+			if del, ok := ds.Menu.GetItemBValue(boxId); del && ok {
 				toBeDeletedCount += 1
 			}
 		}
@@ -877,7 +878,7 @@ func (ds *DeleteScreen) PassDeletionListSelectScreen() {
 	var toDelete []FnfPathGroupId
 
 	for boxId, groupId := range ds.DeleteCheckBoxes {
-		if del := ds.Menu.GetItemBValue(boxId); del {
+		if del, ok := ds.Menu.GetItemBValue(boxId); del && ok {
 			toDelete = append(toDelete, groupId)
 		}
 	}

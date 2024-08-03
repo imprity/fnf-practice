@@ -1330,15 +1330,6 @@ func (md *MenuDrawer) GetSelectedId() MenuItemId {
 	return 0
 }
 
-func (md *MenuDrawer) GetUserData(id MenuItemId) any {
-	item := md.GetItemById(id)
-	if item == nil {
-		return nil
-	}
-
-	return item.UserData
-}
-
 func (md *MenuDrawer) SearchItem(searchFunc func(item *MenuItem) bool) MenuItemId {
 	for _, item := range md.items {
 		if searchFunc(item) {
@@ -1427,6 +1418,22 @@ func (md *MenuDrawer) SetItemHidden(id MenuItemId, hidden bool) {
 	}
 }
 
+func (md *MenuDrawer) SetItemUserData(id MenuItemId, userData any) {
+	item := md.GetItemById(id)
+	if item != nil {
+		item.UserData = userData
+	}
+}
+
+func (md *MenuDrawer) GetItemUserData(id MenuItemId) (any, bool) {
+	item := md.GetItemById(id)
+	if item == nil {
+		return nil, false
+	}
+
+	return item.UserData, true
+}
+
 // Sets item BValue.
 // Doesn't trigger item callback
 func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) {
@@ -1445,13 +1452,13 @@ func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) {
 	}
 }
 
-func (md *MenuDrawer) GetItemBValue(id MenuItemId) bool {
+func (md *MenuDrawer) GetItemBValue(id MenuItemId) (bValue bool, ok bool) {
 	item := md.GetItemById(id)
 	if item != nil {
-		return item.BValue
+		return item.BValue, true
 	}
 
-	return false
+	return false, false
 }
 
 // Sets item NValue.
@@ -1470,13 +1477,13 @@ func (md *MenuDrawer) SetItemNvalue(id MenuItemId, nValue float32) {
 	}
 }
 
-func (md *MenuDrawer) GetItemNValue(id MenuItemId) float32 {
+func (md *MenuDrawer) GetItemNValue(id MenuItemId) (float32, bool) {
 	item := md.GetItemById(id)
 	if item != nil {
-		return item.NValue
+		return item.NValue, true
 	}
 
-	return 0
+	return 0, false
 }
 
 // Sets item ListSelected.
@@ -1493,14 +1500,15 @@ func (md *MenuDrawer) SetItemListSelected(id MenuItemId, selected int) {
 	}
 }
 
-func (md *MenuDrawer) GetItemListSelected(id MenuItemId) (index int, selected string) {
+func (md *MenuDrawer) GetItemListSelected(id MenuItemId) (index int, selected string, ok bool) {
 	item := md.GetItemById(id)
 
 	if item != nil && len(item.List) > 0 {
 		index = Clamp(item.ListSelected, 0, len(item.List)-1)
 		selected = item.List[index]
+		ok = true
 	} else {
-		index, selected = 0, ""
+		index, selected, ok = 0, "", false
 	}
 
 	return
@@ -1529,6 +1537,17 @@ func (md *MenuDrawer) SetItemKeyValues(id MenuItemId, keyValues []int32) {
 	if item != nil {
 		item.KeyValues = keyValues
 	}
+}
+
+func (md *MenuDrawer) GetItemKeyValues(id MenuItemId) ([]int32, bool) {
+	item := md.GetItemById(id)
+	if item != nil {
+		var copy []int32
+		copy = append(copy, item.KeyValues...)
+		return copy, true
+	}
+
+	return []int32{}, false
 }
 
 func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
