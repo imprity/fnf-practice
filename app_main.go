@@ -35,6 +35,7 @@ func init() {
 
 var (
 	TheSelectScreen  *SelectScreen
+	TheDeleteScreen  *DeleteScreen
 	TheOptionsScreen *OptionsScreen
 	TheGameScreen    *GameScreen
 
@@ -135,6 +136,7 @@ func RunApplication() {
 	// create screens
 	TheGameScreen = NewGameScreen()
 	TheSelectScreen = NewSelectScreen()
+	TheDeleteScreen = NewDeleteScreen()
 	TheOptionsScreen = NewOptionsScreen()
 
 	screensToFree := []Screen{

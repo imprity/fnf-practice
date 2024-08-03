@@ -17,10 +17,7 @@ import (
 )
 
 type SelectScreen struct {
-	Menu       *MenuDrawer
-	DeleteMenu *MenuDrawer
-
-	DrawDeleteMenu bool
+	Menu *MenuDrawer
 
 	PreferredDifficulty FnfDifficulty
 
@@ -32,8 +29,6 @@ type SelectScreen struct {
 	Collections []PathGroupCollection
 
 	InputId InputGroupId
-
-	ShouldDeletePathGroup map[FnfPathGroupId]bool
 
 	// variables about rendering path items
 	PathDecoToPathTex map[MenuItemId]rl.Texture2D
@@ -168,8 +163,6 @@ func NewSelectScreen() *SelectScreen {
 	// menus about deleting songs
 	// ============================
 
-	// init delete menu
-	ss.DeleteMenu = NewMenuDrawer()
 	deleteSongsItem := NewMenuItem()
 	deleteSongsItem.Name = "Delete Songs"
 	deleteSongsItem.Type = MenuItemTrigger
@@ -178,7 +171,6 @@ func NewSelectScreen() *SelectScreen {
 	}
 	ss.Menu.AddItems(deleteSongsItem)
 	ss.DeleteSongsItemId = deleteSongsItem.Id
-
 	// =====================
 	// add song deco
 	// =====================
@@ -465,91 +457,91 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 	}
 }
 
-func (ss *SelectScreen) ShowDeleteMenu() {
-	if ss.DrawDeleteMenu {
+func (ss *SelectScreen) DeletePathGroups(toDelete []FnfPathGroupId) {
+	if len(toDelete) <= 0 {
 		return
 	}
 
-	ss.StopPreviewPlayers()
+	idMap := make(map[FnfPathGroupId]bool)
 
-	ss.DrawDeleteMenu = true
+	for _, id := range toDelete {
+		idMap[id] = true
+	}
 
-	ss.DeleteMenu.ClearItems()
+	var newCollections []PathGroupCollection
 
-	ss.ShouldDeletePathGroup = make(map[FnfPathGroupId]bool)
+	for _, collection := range ss.Collections {
+		newGroups := []FnfPathGroup{}
 
-	deleteConfirm := NewMenuItem()
-
-	deleteConfirm.Name = "DELETE SONGS"
-	deleteConfirm.Type = MenuItemTrigger
-
-	deleteConfirm.StrokeColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
-	deleteConfirm.StrokeWidthSelected = 10
-	deleteConfirm.ColorSelected = FnfWhite
-
-	deleteConfirm.TriggerCallback = func() {
-		// count how many songs are going to be deleted
-		toBeDeletedCount := 0
-
-		for _, del := range ss.ShouldDeletePathGroup {
-			if del {
-				toBeDeletedCount += 1
+		for _, group := range collection.PathGroups {
+			// we don't have to check if key exists in a map
+			// because we want none existent item to be false anyway
+			if del := idMap[group.Id()]; !del {
+				newGroups = append(newGroups, group)
 			}
 		}
 
-		if toBeDeletedCount <= 0 {
-			// just exit when there's nothing to delete
-			ss.HideDeleteMenu(false)
-			return
-		}
-
-		DisplayOptionsPopup(
-			fmt.Sprintf("Delete %d songs?", toBeDeletedCount),
-			false,
-			[]string{"Yes", "No"},
-			func(selected string, isCanceled bool) {
-				// if it's canceled, then do nothing
-				if !isCanceled {
-					ss.HideDeleteMenu(selected == "Yes")
+		if len(newGroups) > 0 {
+			collection.PathGroups = newGroups
+			newCollections = append(newCollections, collection)
+		} else {
+			ss.Menu.DeleteFunc(func(item *MenuItem) bool {
+				if id, ok := item.UserData.(PathGroupCollectionId); ok {
+					return id == collection.Id()
 				}
-			},
-		)
+				return false
+			})
+		}
 	}
 
-	ss.DeleteMenu.AddItems(deleteConfirm)
+	ss.Collections = newCollections
 
-	var firstItemId MenuItemId = -1
+	ss.Menu.DeleteFunc(
+		func(item *MenuItem) bool {
+			data := item.UserData
 
-	// create delete check box for each song we have
+			if id, ok := data.(FnfPathGroupId); ok {
+				// we don't have to check if key exists in a map
+				// because we want none existent item to be false anyway
+				return idMap[id]
+			}
+
+			return false
+		},
+	)
+
+	err := SaveCollections(ss.Collections)
+	if err != nil {
+		DisplayAlert("Failed to save song list")
+	}
+}
+
+func (ss *SelectScreen) ShowDeleteMenu() {
+	var decoItems []*MenuItem
+
 	for _, collection := range ss.Collections {
-		decoItemId := ss.Menu.SearchItem(func(item *MenuItem) bool {
-			if id, ok := item.UserData.(PathGroupCollectionId); ok {
-				return id == collection.Id()
+		decoId := ss.Menu.SearchItem(func(item *MenuItem) bool {
+			if id, ok := item.UserData.(PathGroupCollectionId); ok && id == collection.Id() {
+				return true
 			}
 			return false
 		})
 
-		ss.DeleteMenu.AddItems(ss.Menu.GetItemById(decoItemId))
-
-		for _, group := range collection.PathGroups {
-			deleteItem := NewMenuItem()
-			deleteItem.Type = MenuItemToggle
-			deleteItem.Name = group.SongName
-
-			deleteItem.ToggleCallback = func(bValue bool) {
-				ss.ShouldDeletePathGroup[group.Id()] = bValue
-			}
-
-			ss.DeleteMenu.AddItems(deleteItem)
-
-			if firstItemId < 0 {
-				firstItemId = deleteItem.Id
-			}
+		if decoItem := ss.Menu.GetItemById(decoId); decoItem != nil {
+			decoItems = append(decoItems, decoItem)
 		}
 	}
 
-	// make delete menu select 0
-	ss.DeleteMenu.SelectItem(firstItemId, false)
+	collectionToDeco := make(map[PathGroupCollectionId]*MenuItem)
+
+	for _, item := range decoItems {
+		if id, ok := item.UserData.(PathGroupCollectionId); ok {
+			collectionToDeco[id] = item
+		}
+	}
+
+	TheDeleteScreen.AddSongList(ss.Collections, collectionToDeco)
+	SetNextScreen(TheDeleteScreen)
 }
 
 func (ss *SelectScreen) StopPreviewPlayers() {
@@ -616,223 +608,146 @@ PREVIEW_ERROR:
 	ss.PlayInstOnLoad = false
 }
 
-func (ss *SelectScreen) HideDeleteMenu(deleteMarked bool) {
-	if !ss.DrawDeleteMenu {
-		return
-	}
-
-	if deleteMarked {
-		var newCollections []PathGroupCollection
-
-		for _, collection := range ss.Collections {
-			newGroups := []FnfPathGroup{}
-
-			for _, group := range collection.PathGroups {
-				if _, del := ss.ShouldDeletePathGroup[group.Id()]; !del {
-					newGroups = append(newGroups, group)
-				}
-			}
-
-			if len(newGroups) > 0 {
-				collection.PathGroups = newGroups
-				newCollections = append(newCollections, collection)
-			} else {
-				toDelete := ss.Menu.SearchItem(func(item *MenuItem) bool {
-					if id, ok := item.UserData.(PathGroupCollectionId); ok {
-						return id == collection.Id()
-					}
-					return false
-				})
-				ss.Menu.DeleteItems(toDelete)
-			}
-		}
-
-		ss.Collections = newCollections
-
-		ss.Menu.DeleteFunc(
-			func(item *MenuItem) bool {
-				data := item.UserData
-
-				if id, ok := data.(FnfPathGroupId); ok {
-					return ss.ShouldDeletePathGroup[id]
-				}
-
-				return false
-			},
-		)
-
-		err := SaveCollections(ss.Collections)
-		if err != nil {
-			DisplayAlert("Failed to save song list")
-		}
-	}
-
-	ss.DrawDeleteMenu = false
-
-	// clear delete items
-	ss.DeleteMenu.ClearItems()
-	// clear marked to be deleted
-	ss.ShouldDeletePathGroup = nil
-
-}
-
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
-	if !ss.DrawDeleteMenu {
-		ss.Menu.Update(deltaTime)
+	ss.Menu.Update(deltaTime)
 
-		if AreKeysPressed(ss.InputId, NoteKeys(NoteDirLeft)...) {
-			ss.PreferredDifficulty -= 1
-		}
+	if AreKeysPressed(ss.InputId, NoteKeys(NoteDirLeft)...) {
+		ss.PreferredDifficulty -= 1
+	}
 
-		if AreKeysPressed(ss.InputId, NoteKeys(NoteDirRight)...) {
-			ss.PreferredDifficulty += 1
-		}
+	if AreKeysPressed(ss.InputId, NoteKeys(NoteDirRight)...) {
+		ss.PreferredDifficulty += 1
+	}
 
-		ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
+	ss.PreferredDifficulty = Clamp(ss.PreferredDifficulty, 0, DifficultySize-1)
 
-		// set song deco and delete songs visibility
-		ss.Menu.SetItemHidden(ss.SongDecoItemId, len(ss.Collections) <= 0)
-		ss.Menu.SetItemHidden(ss.DeleteSongsItemId, len(ss.Collections) <= 0)
+	// set song deco and delete songs visibility
+	ss.Menu.SetItemHidden(ss.SongDecoItemId, len(ss.Collections) <= 0)
+	ss.Menu.SetItemHidden(ss.DeleteSongsItemId, len(ss.Collections) <= 0)
 
-		// ====================================
-		// do things with the FnfPathGroup
-		// ====================================
-		{
-			selected := ss.Menu.GetSelectedId()
-			data := ss.Menu.GetUserData(selected)
-			if id, ok := data.(FnfPathGroupId); ok {
-				group := ss.IdToGroup[id]
+	// ====================================
+	// do things with the FnfPathGroup
+	// ====================================
+	{
+		selected := ss.Menu.GetSelectedId()
+		data := ss.Menu.GetUserData(selected)
+		if id, ok := data.(FnfPathGroupId); ok {
+			group := ss.IdToGroup[id]
 
-				if AreKeysPressed(ss.InputId, TheKM[PauseKey]) {
-					ss.StartPreviewDecoding(group)
-				}
-
-				DebugPrint("Seleted group id", fmt.Sprintf("%d", group.Id()))
+			if AreKeysPressed(ss.InputId, TheKM[PauseKey]) {
+				ss.StartPreviewDecoding(group)
 			}
+
+			DebugPrint("Seleted group id", fmt.Sprintf("%d", group.Id()))
 		}
+	}
 
-		instReady := f32(ss.InstPlayer.DecodedBytesSize()) > f32(ss.InstPlayer.AudioBytesSize())*ss.DecodingPercentBeforePlaying
-		voiceReady := f32(ss.VoicePlayer.DecodedBytesSize()) > f32(ss.VoicePlayer.AudioBytesSize())*ss.DecodingPercentBeforePlaying
+	instReady := f32(ss.InstPlayer.DecodedBytesSize()) > f32(ss.InstPlayer.AudioBytesSize())*ss.DecodingPercentBeforePlaying
+	voiceReady := f32(ss.VoicePlayer.DecodedBytesSize()) > f32(ss.VoicePlayer.AudioBytesSize())*ss.DecodingPercentBeforePlaying
 
-		if ss.PlayInstOnLoad && ss.PlayVoiceOnLoad {
-			if instReady && voiceReady {
-				ss.InstPlayer.Play()
-				ss.VoicePlayer.Play()
-			}
-		} else if ss.PlayInstOnLoad && instReady {
+	if ss.PlayInstOnLoad && ss.PlayVoiceOnLoad {
+		if instReady && voiceReady {
 			ss.InstPlayer.Play()
-		} else if ss.PlayVoiceOnLoad && voiceReady {
 			ss.VoicePlayer.Play()
 		}
+	} else if ss.PlayInstOnLoad && instReady {
+		ss.InstPlayer.Play()
+	} else if ss.PlayVoiceOnLoad && voiceReady {
+		ss.VoicePlayer.Play()
+	}
 
-		for i, c := range ss.Collections {
-			key := fmt.Sprintf("Collection %d ID", i)
-			value := fmt.Sprintf("%d", c.Id())
-			DebugPrint(key, value)
-		}
-	} else {
-		ss.DeleteMenu.Update(deltaTime)
-
-		if AreKeysPressed(ss.DeleteMenu.InputId, TheKM[EscapeKey]) {
-			ss.HideDeleteMenu(false)
-		}
+	for i, c := range ss.Collections {
+		key := fmt.Sprintf("Collection %d ID", i)
+		value := fmt.Sprintf("%d", c.Id())
+		DebugPrint(key, value)
 	}
 }
 
 func (ss *SelectScreen) Draw() {
 	DrawPatternBackground(MenuScreenBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
 
-	if !ss.DrawDeleteMenu { // draw select menu
-		ss.Menu.Draw()
+	ss.Menu.Draw()
 
-		selected := ss.Menu.GetSelectedId()
-		data := ss.Menu.GetUserData(selected)
+	selected := ss.Menu.GetSelectedId()
+	data := ss.Menu.GetUserData(selected)
 
-		var group FnfPathGroup
-		var groupSelected bool = false
+	var group FnfPathGroup
+	var groupSelected bool = false
 
-		if id, ok := data.(FnfPathGroupId); ok {
-			group = ss.IdToGroup[id]
-			groupSelected = true
+	if id, ok := data.(FnfPathGroupId); ok {
+		group = ss.IdToGroup[id]
+		groupSelected = true
+	}
+
+	// draw difficulty text at the top right corner
+	if groupSelected {
+		difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+
+		str := DifficultyStrs[difficulty]
+		size := float32(65)
+
+		textSize := MeasureText(SdfFontBold, DifficultyStrs[difficulty], size, 0)
+
+		x := SCREEN_WIDTH - (100 + textSize.X)
+		y := float32(20)
+
+		DrawTextOutlined(
+			SdfFontBold, str, rl.Vector2{x, y}, size, 0,
+			ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0, 0, 0, 255}), 4,
+		)
+	}
+
+	// draw preview feature help message
+	{
+		const fontSize = 35
+		const margin = 15
+
+		factory := NewRichTextFactory(100)
+		factory.LineBreakRule = LineBreakNever
+
+		styleBlack := RichTextStyle{
+			FontSize:    fontSize,
+			Font:        SdfFontClear,
+			Fill:        FnfColor{0, 0, 0, 255},
+			Stroke:      FnfColor{255, 255, 255, 255},
+			StrokeWidth: 7,
 		}
 
-		// draw difficulty text at the top right corner
+		styleRed := styleBlack
+		styleRed.Fill = FnfColor{0xFF, 0x00, 0x00, 0xFF}
+
 		if groupSelected {
-			difficulty := GetAvaliableDifficulty(ss.PreferredDifficulty, group)
+			factory.SetStyle(styleBlack)
+			factory.Print("press ")
 
-			str := DifficultyStrs[difficulty]
-			size := float32(65)
+			factory.SetStyle(styleRed)
+			factory.Print(GetKeyName(TheKM[PauseKey]))
 
-			textSize := MeasureText(SdfFontBold, DifficultyStrs[difficulty], size, 0)
+			factory.SetStyle(styleBlack)
+			factory.Print(" to listen to the song")
+		} else {
+			factory.SetStyle(styleBlack)
+			factory.Print("version ")
 
-			x := SCREEN_WIDTH - (100 + textSize.X)
-			y := float32(20)
-
-			DrawTextOutlined(
-				SdfFontBold, str, rl.Vector2{x, y}, size, 0,
-				ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0, 0, 0, 255}), 4,
-			)
+			factory.SetStyle(styleRed)
+			factory.Print(GIT_TAG_VERSION)
 		}
 
-		// draw preview feature help message
-		{
-			const fontSize = 35
-			const margin = 15
+		elements := factory.Elements(TextAlignLeft, 0, 0)
+		bound := ElementsBound(elements)
 
-			factory := NewRichTextFactory(100)
-			factory.LineBreakRule = LineBreakNever
-
-			styleBlack := RichTextStyle{
-				FontSize:    fontSize,
-				Font:        SdfFontClear,
-				Fill:        FnfColor{0, 0, 0, 255},
-				Stroke:      FnfColor{255, 255, 255, 255},
-				StrokeWidth: 7,
-			}
-
-			styleRed := styleBlack
-			styleRed.Fill = FnfColor{0xFF, 0x00, 0x00, 0xFF}
-
-			if groupSelected {
-				factory.SetStyle(styleBlack)
-				factory.Print("press ")
-
-				factory.SetStyle(styleRed)
-				factory.Print(GetKeyName(TheKM[PauseKey]))
-
-				factory.SetStyle(styleBlack)
-				factory.Print(" to listen to the song")
-			} else {
-				factory.SetStyle(styleBlack)
-				factory.Print("version ")
-
-				factory.SetStyle(styleRed)
-				factory.Print(GIT_TAG_VERSION)
-			}
-
-			elements := factory.Elements(TextAlignLeft, 0, 0)
-			bound := ElementsBound(elements)
-
-			DrawTextElements(elements,
-				SCREEN_WIDTH-bound.Width-margin,
-				SCREEN_HEIGHT-bound.Height-margin,
-				FnfColor{255, 255, 255, 255},
-			)
-		}
-	} else { // draw delete menu
-		ss.DeleteMenu.Draw()
+		DrawTextElements(elements,
+			SCREEN_WIDTH-bound.Width-margin,
+			SCREEN_HEIGHT-bound.Height-margin,
+			FnfColor{255, 255, 255, 255},
+		)
 	}
 }
 
 func (ss *SelectScreen) BeforeScreenTransition() {
-	ss.DrawDeleteMenu = false
-
 	ss.Menu.BeforeScreenTransition()
 
 	ss.GenerateHelpMsg()
-
-	ss.DeleteMenu.ClearItems()
-	ss.DeleteMenu.BeforeScreenTransition()
 
 	ss.StopPreviewPlayers()
 }
@@ -847,4 +762,147 @@ func (ss *SelectScreen) Free() {
 	for _, tex := range ss.PathDecoToPathTex {
 		rl.UnloadTexture(tex)
 	}
+}
+
+// ================================
+// DeleteScreen stuff
+// ================================
+
+type DeleteScreen struct {
+	Menu             *MenuDrawer
+	DeleteCheckBoxes map[MenuItemId]FnfPathGroupId
+}
+
+func NewDeleteScreen() *DeleteScreen {
+	ds := new(DeleteScreen)
+	ds.Menu = NewMenuDrawer()
+	return ds
+}
+
+func (ds *DeleteScreen) AddSongList(
+	collections []PathGroupCollection,
+	collectionPathDecos map[PathGroupCollectionId]*MenuItem,
+) {
+	ds.Menu.ClearItems()
+
+	ds.DeleteCheckBoxes = make(map[MenuItemId]FnfPathGroupId)
+
+	deleteConfirm := NewMenuItem()
+	deleteConfirm.Name = "DELETE SONGS"
+	deleteConfirm.Type = MenuItemTrigger
+	deleteConfirm.StrokeColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
+	deleteConfirm.StrokeWidthSelected = 10
+	deleteConfirm.ColorSelected = FnfWhite
+	deleteConfirm.TriggerCallback = func() {
+		// count how many songs are going to be deleted
+		toBeDeletedCount := 0
+
+		for boxId := range ds.DeleteCheckBoxes {
+			if del := ds.Menu.GetItemBValue(boxId); del {
+				toBeDeletedCount += 1
+			}
+		}
+
+		if toBeDeletedCount <= 0 {
+			// just exit when there's nothing to delete
+			ds.PassDeletionListSelectScreen()
+			return
+		}
+
+		DisplayOptionsPopup(
+			fmt.Sprintf("Delete %d songs?", toBeDeletedCount),
+			false,
+			[]string{"Yes", "No"},
+			func(selected string, isCanceled bool) {
+				// if it's canceled, then do nothing
+				if !isCanceled {
+					if selected == "Yes" {
+						ds.PassDeletionListSelectScreen()
+					} else {
+						SetNextScreen(TheSelectScreen)
+					}
+				}
+			},
+		)
+	}
+
+	ds.Menu.AddItems(deleteConfirm)
+
+	var firstSongItemId MenuItemId = -1
+
+	// create delete check box for each song we have
+	for _, collection := range collections {
+		// add path deco items
+		if item, ok := collectionPathDecos[collection.Id()]; ok {
+			ds.Menu.AddItems(item)
+		}
+
+		var songItems []*MenuItem
+		var songItemIds []MenuItemId
+
+		for _, group := range collection.PathGroups {
+			deleteItem := NewMenuItem()
+			deleteItem.Type = MenuItemToggle
+			deleteItem.Name = group.SongName
+
+			songItems = append(songItems, deleteItem)
+			songItemIds = append(songItemIds, deleteItem.Id)
+			ds.DeleteCheckBoxes[deleteItem.Id] = group.Id()
+
+			if firstSongItemId < 0 {
+				firstSongItemId = deleteItem.Id
+			}
+		}
+
+		deleteAllItem := NewMenuItem()
+		deleteAllItem.Type = MenuItemToggle
+		deleteAllItem.Name = "EVERYTHING"
+		deleteAllItem.Color = FnfColor{0xF6, 0x08, 0x08, 130}
+		deleteAllItem.ColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
+		deleteAllItem.ToggleCallback = func(bValue bool) {
+			for _, id := range songItemIds {
+				ds.Menu.SetItemBValue(id, bValue)
+			}
+		}
+
+		ds.Menu.AddItems(deleteAllItem)
+		ds.Menu.AddItems(songItems...)
+	}
+
+	// make delete menu select firstSongItem
+	ds.Menu.SelectItem(firstSongItemId, false)
+}
+
+func (ds *DeleteScreen) PassDeletionListSelectScreen() {
+	var toDelete []FnfPathGroupId
+
+	for boxId, groupId := range ds.DeleteCheckBoxes {
+		if del := ds.Menu.GetItemBValue(boxId); del {
+			toDelete = append(toDelete, groupId)
+		}
+	}
+
+	TheSelectScreen.DeletePathGroups(toDelete)
+	SetNextScreen(TheSelectScreen)
+}
+
+func (ds *DeleteScreen) Update(deltaTime time.Duration) {
+	ds.Menu.Update(deltaTime)
+
+	if AreKeysPressed(ds.Menu.InputId, TheKM[EscapeKey]) {
+		SetNextScreen(TheSelectScreen)
+	}
+}
+func (ds *DeleteScreen) Draw() {
+	DrawPatternBackground(MenuScreenBg, 0, 0, ToRlColor(FnfColor{255, 255, 255, 255}))
+	ds.Menu.Draw()
+}
+func (ds *DeleteScreen) BeforeScreenTransition() {
+	ds.Menu.BeforeScreenTransition()
+}
+func (ds *DeleteScreen) BeforeScreenEnd() {
+	ds.Menu.BeforeScreenEnd()
+}
+func (ds *DeleteScreen) Free() {
+	ds.Menu.Free()
 }
