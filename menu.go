@@ -379,6 +379,8 @@ type MenuDrawer struct {
 	keySelectedIndex int
 
 	items []*MenuItem
+
+	idToIndexCache map[MenuItemId]int
 }
 
 func NewMenuDrawer() *MenuDrawer {
@@ -1305,7 +1307,10 @@ func (md *MenuDrawer) SelectItemAt(index int, playScrollAnimation bool) (int, Me
 }
 
 func (md *MenuDrawer) SelectedIndex() int {
-	return md.selectedIndex
+	if len(md.items) <= 0 {
+		return 0
+	}
+	return Clamp(md.selectedIndex, 0, len(md.items)-1)
 }
 
 func (md *MenuDrawer) GetSelectedItem() *MenuItem {
@@ -1341,8 +1346,32 @@ func (md *MenuDrawer) SearchItem(searchFunc func(item *MenuItem) bool) MenuItemI
 }
 
 func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
-	for _, item := range md.items {
+	var cachedIndex int
+	var ok bool
+
+	if md.idToIndexCache == nil {
+		md.idToIndexCache = make(map[MenuItemId]int)
+		goto INVALID_CACHE
+	}
+
+	if cachedIndex, ok = md.idToIndexCache[id]; !ok {
+		goto INVALID_CACHE
+	}
+
+	if !(0 <= cachedIndex && cachedIndex < len(md.items)) {
+		goto INVALID_CACHE
+	}
+
+	if md.items[cachedIndex].Id != id {
+		goto INVALID_CACHE
+	}
+
+	return md.items[cachedIndex]
+
+INVALID_CACHE:
+	for index, item := range md.items {
 		if item.Id == id {
+			md.idToIndexCache[item.Id] = index
 			return item
 		}
 	}
@@ -1351,6 +1380,8 @@ func (md *MenuDrawer) GetItemById(id MenuItemId) *MenuItem {
 }
 
 func (md *MenuDrawer) AddItems(items ...*MenuItem) {
+	md.idToIndexCache = nil
+
 	for _, item := range items {
 		if item != nil {
 			md.items = append(md.items, item)
@@ -1359,6 +1390,8 @@ func (md *MenuDrawer) AddItems(items ...*MenuItem) {
 }
 
 func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
+	md.idToIndexCache = nil
+
 	at = Clamp(at, 0, len(md.items))
 
 	var newItems []*MenuItem
@@ -1371,6 +1404,8 @@ func (md *MenuDrawer) InsertAt(at int, items ...*MenuItem) {
 }
 
 func (md *MenuDrawer) DeleteItems(ids ...MenuItemId) {
+	md.idToIndexCache = nil
+
 	md.items = slices.DeleteFunc(md.items, func(item *MenuItem) bool {
 		for _, id := range ids {
 			if item.Id == id {
@@ -1382,6 +1417,8 @@ func (md *MenuDrawer) DeleteItems(ids ...MenuItemId) {
 }
 
 func (md *MenuDrawer) DeleteItemsAt(indices ...int) {
+	md.idToIndexCache = nil
+
 	var newItems []*MenuItem
 
 	for i, item := range md.items {
@@ -1394,10 +1431,14 @@ func (md *MenuDrawer) DeleteItemsAt(indices ...int) {
 }
 
 func (md *MenuDrawer) DeleteFunc(del func(*MenuItem) bool) {
+	md.idToIndexCache = nil
+
 	md.items = slices.DeleteFunc(md.items, del)
 }
 
 func (md *MenuDrawer) ClearItems() {
+	md.idToIndexCache = nil
+
 	md.items = md.items[:0]
 }
 
