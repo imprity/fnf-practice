@@ -1250,6 +1250,16 @@ func (md *MenuDrawer) Draw() {
 	}
 }
 
+func (md *MenuDrawer) GetItemIds() []MenuItemId {
+	var ids []MenuItemId
+
+	for _, item := range md.items {
+		ids = append(ids, item.Id)
+	}
+
+	return ids
+}
+
 // Try to select the item with id.
 // Fails if item doesn't exist, or it's not selectable.
 //

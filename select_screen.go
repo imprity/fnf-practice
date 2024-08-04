@@ -770,8 +770,7 @@ func (ss *SelectScreen) Free() {
 // ================================
 
 type DeleteScreen struct {
-	Menu             *MenuDrawer
-	DeleteCheckBoxes map[MenuItemId]FnfPathGroupId
+	Menu *MenuDrawer
 }
 
 func NewDeleteScreen() *DeleteScreen {
@@ -786,8 +785,6 @@ func (ds *DeleteScreen) AddSongList(
 ) {
 	ds.Menu.ClearItems()
 
-	ds.DeleteCheckBoxes = make(map[MenuItemId]FnfPathGroupId)
-
 	deleteConfirm := NewMenuItem()
 	deleteConfirm.Name = "DELETE SONGS"
 	deleteConfirm.Type = MenuItemTrigger
@@ -796,17 +793,11 @@ func (ds *DeleteScreen) AddSongList(
 	deleteConfirm.ColorSelected = FnfWhite
 	deleteConfirm.TriggerCallback = func() {
 		// count how many songs are going to be deleted
-		toBeDeletedCount := 0
-
-		for boxId := range ds.DeleteCheckBoxes {
-			if del, ok := ds.Menu.GetItemBValue(boxId); del && ok {
-				toBeDeletedCount += 1
-			}
-		}
+		toBeDeletedCount := len(ds.GetPathGroupsToDelete())
 
 		if toBeDeletedCount <= 0 {
 			// just exit when there's nothing to delete
-			ds.PassDeletionListSelectScreen()
+			SetNextScreen(TheSelectScreen)
 			return
 		}
 
@@ -845,10 +836,10 @@ func (ds *DeleteScreen) AddSongList(
 			deleteItem := NewMenuItem()
 			deleteItem.Type = MenuItemToggle
 			deleteItem.Name = group.SongName
+			deleteItem.UserData = group.Id()
 
 			songItems = append(songItems, deleteItem)
 			songItemIds = append(songItemIds, deleteItem.Id)
-			ds.DeleteCheckBoxes[deleteItem.Id] = group.Id()
 
 			if firstSongItemId < 0 {
 				firstSongItemId = deleteItem.Id
@@ -874,16 +865,38 @@ func (ds *DeleteScreen) AddSongList(
 	ds.Menu.SelectItem(firstSongItemId, false)
 }
 
-func (ds *DeleteScreen) PassDeletionListSelectScreen() {
-	var toDelete []FnfPathGroupId
+func (ds *DeleteScreen) GetPathGroupsToDelete() []FnfPathGroupId {
+	items := ds.Menu.GetItemIds()
+	var groups []FnfPathGroupId
 
-	for boxId, groupId := range ds.DeleteCheckBoxes {
-		if del, ok := ds.Menu.GetItemBValue(boxId); del && ok {
-			toDelete = append(toDelete, groupId)
+	for _, item := range items {
+		var ok bool
+
+		var userData any
+		if userData, ok = ds.Menu.GetItemUserData(item); !ok {
+			continue
+		}
+
+		var groupId FnfPathGroupId
+		if groupId, ok = userData.(FnfPathGroupId); !ok {
+			continue
+		}
+
+		var del bool
+		if del, ok = ds.Menu.GetItemBValue(item); !ok {
+			continue
+		}
+
+		if del {
+			groups = append(groups, groupId)
 		}
 	}
 
-	TheSelectScreen.DeletePathGroups(toDelete)
+	return groups
+}
+
+func (ds *DeleteScreen) PassDeletionListSelectScreen() {
+	TheSelectScreen.DeletePathGroups(ds.GetPathGroupsToDelete())
 	SetNextScreen(TheSelectScreen)
 }
 
