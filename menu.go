@@ -1442,42 +1442,52 @@ func (md *MenuDrawer) ClearItems() {
 	md.items = md.items[:0]
 }
 
-func (md *MenuDrawer) IsItemHidden(id MenuItemId) bool {
+func (md *MenuDrawer) IsItemHidden(id MenuItemId) (isHidden bool, ok bool) {
 	item := md.GetItemById(id)
-	if item == nil {
-		// NOTE : I think returning false is better since it's the default value
-		return false
+	if item != nil {
+		return item.IsHidden, true
 	}
 
-	return item.IsHidden
+	// NOTE : I think returning false is better since it's the default value
+	return false, false
 }
 
-func (md *MenuDrawer) SetItemHidden(id MenuItemId, hidden bool) {
+// Sets item IsHidden.
+// Returns true on success.
+func (md *MenuDrawer) SetItemHidden(id MenuItemId, hidden bool) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		item.IsHidden = hidden
+		return true
 	}
+
+	return false
 }
 
-func (md *MenuDrawer) SetItemUserData(id MenuItemId, userData any) {
+// Sets item UserData.
+// Returns true on success.
+func (md *MenuDrawer) SetItemUserData(id MenuItemId, userData any) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		item.UserData = userData
+		return true
 	}
+	return false
 }
 
 func (md *MenuDrawer) GetItemUserData(id MenuItemId) (any, bool) {
 	item := md.GetItemById(id)
-	if item == nil {
-		return nil, false
+	if item != nil {
+		return item.UserData, true
 	}
 
-	return item.UserData, true
+	return nil, false
 }
 
 // Sets item BValue.
-// Doesn't trigger item callback
-func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) {
+// Doesn't trigger item callback.
+// Returns true on success.
+func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		if item.BValue != bValue {
@@ -1490,7 +1500,11 @@ func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) {
 				item.ValueClickTimer = GlobalTimerNow()
 			}
 		}
+
+		return true
 	}
+
+	return false
 }
 
 func (md *MenuDrawer) GetItemBValue(id MenuItemId) (bValue bool, ok bool) {
@@ -1503,8 +1517,9 @@ func (md *MenuDrawer) GetItemBValue(id MenuItemId) (bValue bool, ok bool) {
 }
 
 // Sets item NValue.
-// Doesn't trigger item callback
-func (md *MenuDrawer) SetItemNvalue(id MenuItemId, nValue float32) {
+// Doesn't trigger item callback.
+// Returns true on success.
+func (md *MenuDrawer) SetItemNvalue(id MenuItemId, nValue float32) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		prevValue := item.NValue
@@ -1515,7 +1530,10 @@ func (md *MenuDrawer) SetItemNvalue(id MenuItemId, nValue float32) {
 
 			item.ValueClickTimer = GlobalTimerNow()
 		}
+		return true
 	}
+
+	return false
 }
 
 func (md *MenuDrawer) GetItemNValue(id MenuItemId) (float32, bool) {
@@ -1528,17 +1546,22 @@ func (md *MenuDrawer) GetItemNValue(id MenuItemId) (float32, bool) {
 }
 
 // Sets item ListSelected.
-// Doesn't trigger item callback
-func (md *MenuDrawer) SetItemListSelected(id MenuItemId, selected int) {
+// Doesn't trigger item callback.
+// Returns true on success.
+func (md *MenuDrawer) SetItemListSelected(id MenuItemId, selected int) bool {
 	item := md.GetItemById(id)
-	if item != nil && len(item.List) > 0 {
-		selected = Clamp(selected, 0, len(item.List)-1)
+	if item != nil {
+		if len(item.List) > 0 {
+			selected = Clamp(selected, 0, len(item.List)-1)
 
-		if selected != item.ListSelected && item.Type == MenuItemList {
-			item.ListSelected = selected
-			item.ValueClickTimer = GlobalTimerNow()
+			if selected != item.ListSelected && item.Type == MenuItemList {
+				item.ListSelected = selected
+				item.ValueClickTimer = GlobalTimerNow()
+			}
 		}
+		return true
 	}
+	return false
 }
 
 func (md *MenuDrawer) GetItemListSelected(id MenuItemId) (index int, selected string, ok bool) {
@@ -1556,8 +1579,9 @@ func (md *MenuDrawer) GetItemListSelected(id MenuItemId) (index int, selected st
 }
 
 // Sets item List.
-// Doesn't trigger item callback and animation
-func (md *MenuDrawer) SetItemList(id MenuItemId, list []string, selected int) {
+// Doesn't trigger item callback and animation.
+// Returns true on success.
+func (md *MenuDrawer) SetItemList(id MenuItemId, list []string, selected int) bool {
 	item := md.GetItemById(id)
 
 	if item != nil {
@@ -1567,17 +1591,25 @@ func (md *MenuDrawer) SetItemList(id MenuItemId, list []string, selected int) {
 		} else {
 			item.ListSelected = 0
 		}
+
+		return true
 	}
+
+	return false
 }
 
 // Sets item KeyValues.
-// Doesn't trigger item callback and animation
-func (md *MenuDrawer) SetItemKeyValues(id MenuItemId, keyValues []int32) {
+// Doesn't trigger item callback and animation.
+// Returns true on success.
+func (md *MenuDrawer) SetItemKeyValues(id MenuItemId, keyValues []int32) bool {
 	item := md.GetItemById(id)
 
 	if item != nil {
 		item.KeyValues = keyValues
+		return true
 	}
+
+	return false
 }
 
 func (md *MenuDrawer) GetItemKeyValues(id MenuItemId) ([]int32, bool) {
