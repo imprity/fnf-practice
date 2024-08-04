@@ -857,6 +857,14 @@ func (ds *DeleteScreen) AddSongList(
 			}
 		}
 
+		for _, item := range songItems {
+			item.ToggleCallback = func(bValue bool) {
+				if bValue == false {
+					ds.Menu.SetItemBValue(deleteAllItem.Id, false)
+				}
+			}
+		}
+
 		ds.Menu.AddItems(deleteAllItem)
 		ds.Menu.AddItems(songItems...)
 	}
