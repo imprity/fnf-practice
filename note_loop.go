@@ -405,16 +405,26 @@ func GetKeyPressState(
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	isBotPlay bool,
+	opponentMode bool,
 	hitWindow time.Duration,
 ) [FnfPlayerSize][NoteDirSize]bool {
 
 	keyPressState := GetBotKeyPresseState(
-		wasKeyPressed, notes, noteIndexStart, isPlayingAudio, prevAudioPos, audioPos, isBotPlay, hitWindow)
+		wasKeyPressed,
+		notes,
+		noteIndexStart,
+		isPlayingAudio,
+		prevAudioPos,
+		audioPos,
+		isBotPlay,
+		opponentMode,
+		hitWindow,
+	)
 
 	if !isBotPlay {
 		for dir, keys := range NoteKeysArr() {
 			if AreKeysDown(inputId, keys...) {
-				keyPressState[0][dir] = true
+				keyPressState[mainPlayer(opponentMode)][dir] = true
 			}
 		}
 	}
@@ -422,12 +432,14 @@ func GetKeyPressState(
 	return keyPressState
 }
 
-func isNoteForBot(note FnfNote, isBotPlay bool) bool {
+func isNoteForBot(note FnfNote, isBotPlay bool, opponentMode bool) bool {
 	if isBotPlay {
 		return true
 	}
 
-	return note.Player >= 1
+	otherP := otherPlayer(opponentMode)
+
+	return note.Player == otherP
 }
 
 func GetBotKeyPresseState(
@@ -438,6 +450,7 @@ func GetBotKeyPresseState(
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	isBotPlay bool,
+	opponentMode bool,
 	hitWindow time.Duration,
 ) [FnfPlayerSize][NoteDirSize]bool {
 
@@ -448,7 +461,7 @@ func GetBotKeyPresseState(
 	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
 
-		if isNoteForBot(note, isBotPlay) {
+		if isNoteForBot(note, isBotPlay, opponentMode) {
 			if note.IsSustain() {
 				shouldHit := note.IsAudioPositionInDuration(audioPos, tinyWindow)
 				shouldHit = shouldHit || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)

@@ -169,6 +169,8 @@ type GameScreen struct {
 
 	RewindOnMistake bool
 
+	OpponentMode bool
+
 	InputId InputGroupId
 
 	// menu stuff
@@ -178,6 +180,7 @@ type GameScreen struct {
 	BotPlayMenuItemId         MenuItemId
 	DifficultyMenuItemId      MenuItemId
 	RewindOnMistakeMenuItemId MenuItemId
+	OpponentModeMenuItemId    MenuItemId
 
 	// private members
 	isKeyPressed   [FnfPlayerSize][NoteDirSize]bool
@@ -274,6 +277,12 @@ func NewGameScreen() *GameScreen {
 		}
 		gs.RewindOnMistakeMenuItemId = rewindItem.Id
 		gs.Menu.AddItems(rewindItem)
+
+		opponentModeItem := whiteMenuItem()
+		opponentModeItem.Type = MenuItemToggle
+		opponentModeItem.Name = "Opponent Mode"
+		gs.OpponentModeMenuItemId = opponentModeItem.Id
+		gs.Menu.AddItems(opponentModeItem)
 
 		botPlayItem := whiteMenuItem()
 		botPlayItem.Type = MenuItemToggle
@@ -714,6 +723,8 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 			gs.Menu.SetItemBValue(gs.RewindOnMistakeMenuItemId, gs.RewindOnMistake)
 
+			gs.Menu.SetItemBValue(gs.OpponentModeMenuItemId, gs.OpponentMode)
+
 			var difficultyList []string
 			var difficultySelected int
 
@@ -764,6 +775,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 						gs.SetSong(gs.Songs[gs.SelectedDifficulty])
 					}
 				}
+			}
+		}
+
+		if opponentMode, ok := gs.Menu.GetItemBValue(gs.OpponentModeMenuItemId); ok {
+			if gs.OpponentMode != opponentMode {
+				gs.OpponentMode = opponentMode
+				gs.ResetGameStates()
 			}
 		}
 	}
@@ -1010,6 +1028,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.Song.Notes, gs.noteIndexStart,
 		gs.IsPlayingAudio(), prevAudioPos, audioPos,
 		gs.botPlay,
+		gs.OpponentMode,
 		HitWindow(),
 	)
 
@@ -1060,7 +1079,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 
 			note := gs.Song.Notes[e.Index]
-			if e.IsFirstHit() && note.Player == 0 {
+			if e.IsFirstHit() && note.Player == gs.mainPlayer() {
 				rating := GetHitRating(note.StartsAt, e.Time)
 
 				popup := NotePopup{
@@ -1077,7 +1096,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 
 			note := gs.Song.Notes[e.Index]
-			if e.IsFirstHit() && note.Player == 0 {
+			if e.IsFirstHit() && note.Player == gs.mainPlayer() {
 				gs.PlayHitSound()
 			}
 		}
@@ -1116,7 +1135,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 					rewind = rewind && !queuedRewind
 
-					rewind = rewind && player == 0
+					rewind = rewind && player == gs.mainPlayer()
 					rewind = rewind && !gs.IsBotPlay()
 
 					rewind = rewind && gs.RewindOnMistake
@@ -1160,8 +1179,8 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				rewind = rewind && !queuedRewind
 				rewind = rewind && gs.BookMarkSet
 				rewind = rewind && e.IsMiss()
-				rewind = rewind && eventNote.Player == 0            //note is player0's note
-				rewind = rewind && gs.AudioPosition() > gs.BookMark //do not move foward
+				rewind = rewind && eventNote.Player == gs.mainPlayer() //note is main player's note
+				rewind = rewind && gs.AudioPosition() > gs.BookMark    //do not move foward
 				// ignore miss if note is overlapped with bookmark
 				rewind = rewind && !eventNote.IsAudioPositionInDuration(gs.BookMark, HitWindow())
 
@@ -1613,7 +1632,7 @@ func (gs *GameScreen) Draw() {
 			fill := LerpRGBA(noteFill[dir], noteFillLight[dir], glowT)
 			stroke := LerpRGBA(noteStroke[dir], noteStrokeLight[dir], glowT)
 
-			if TheOptions.MiddleScroll && player == 1 {
+			if TheOptions.MiddleScroll && player == gs.otherPlayer() {
 				fill = fadeC(fill, GSC.MiddleScrollFade)
 				stroke = fadeC(stroke, GSC.MiddleScrollFade)
 			}
@@ -1623,7 +1642,7 @@ func (gs *GameScreen) Draw() {
 			glow := noteFill[dir]
 			glow.A = uint8(glowT * 0.5 * 255)
 
-			if TheOptions.MiddleScroll && player == 1 {
+			if TheOptions.MiddleScroll && player == gs.otherPlayer() {
 				glow = fadeC(glow, GSC.MiddleScrollFade)
 			}
 
@@ -1668,7 +1687,7 @@ func (gs *GameScreen) Draw() {
 				}
 			}
 
-			if TheOptions.MiddleScroll && player == 1 {
+			if TheOptions.MiddleScroll && player == gs.otherPlayer() {
 				color = fadeC(color, GSC.MiddleScrollFade)
 			}
 
@@ -1706,7 +1725,7 @@ func (gs *GameScreen) Draw() {
 	for _, note := range gs.Song.Notes {
 		noteEvents := gs.NoteEvents[note.Index]
 
-		drawEvent := (note.Player == 0 && !gs.IsPlayingAudio() && len(noteEvents) > 0)
+		drawEvent := (note.Player == gs.mainPlayer() && !gs.IsPlayingAudio() && len(noteEvents) > 0)
 
 		x := gs.NoteX(note.Player, note.Direction)
 		y := gs.TimeToY(note.StartsAt)
@@ -1758,7 +1777,7 @@ func (gs *GameScreen) Draw() {
 
 						color := noteFillMistake[note.Direction]
 
-						if TheOptions.MiddleScroll && note.Player == 1 {
+						if TheOptions.MiddleScroll && note.Player == gs.otherPlayer() {
 							color = fadeC(color, GSC.MiddleScrollFade)
 						}
 
@@ -1771,7 +1790,7 @@ func (gs *GameScreen) Draw() {
 
 				susColor := noteFill[note.Direction]
 
-				if TheOptions.MiddleScroll && note.Player == 1 {
+				if TheOptions.MiddleScroll && note.Player == gs.otherPlayer() {
 					susColor = fadeC(susColor, GSC.MiddleScrollFade)
 				}
 
@@ -1796,7 +1815,7 @@ func (gs *GameScreen) Draw() {
 					arrowStroke = noteStrokeMistake[note.Direction]
 				}
 
-				if TheOptions.MiddleScroll && note.Player == 1 {
+				if TheOptions.MiddleScroll && note.Player == gs.otherPlayer() {
 					arrowFill = fadeC(arrowFill, GSC.MiddleScrollFade)
 					arrowStroke = fadeC(arrowFill, GSC.MiddleScrollFade)
 				}
@@ -1821,7 +1840,7 @@ func (gs *GameScreen) Draw() {
 				arrowStroke = noteStrokeMistake[note.Direction]
 			}
 
-			if TheOptions.MiddleScroll && note.Player == 1 {
+			if TheOptions.MiddleScroll && note.Player == gs.otherPlayer() {
 				arrowFill = fadeC(arrowFill, GSC.MiddleScrollFade)
 				arrowStroke = fadeC(arrowFill, GSC.MiddleScrollFade)
 			}
@@ -1848,7 +1867,7 @@ func (gs *GameScreen) Draw() {
 	// ============================================
 	if !gs.IsPlayingAudio() && len(gs.Mispresses) > 0 && !gs.IsBotPlay() {
 		for _, miss := range gs.Mispresses {
-			if miss.Player == 0 {
+			if miss.Player == gs.mainPlayer() {
 				DrawNoteArrow(
 					gs.NoteX(miss.Player, miss.Direction), gs.TimeToY(miss.Time),
 					GSC.NotesSize, miss.Direction,
@@ -1973,30 +1992,30 @@ func (gs *GameScreen) Draw() {
 
 func (gs *GameScreen) NoteX(player FnfPlayerNo, dir NoteDir) float32 {
 	if TheOptions.MiddleScroll {
-		if player == 0 {
-			player0NoteStartLeft := SCREEN_WIDTH*0.5 - GSC.NotesInterval*1.5
-			return player0NoteStartLeft + GSC.NotesInterval*f32(dir)
+		if player == gs.mainPlayer() {
+			mainPNoteStartLeft := SCREEN_WIDTH*0.5 - GSC.NotesInterval*1.5
+			return mainPNoteStartLeft + GSC.NotesInterval*f32(dir)
 		} else {
-			player1NoteStartLeft := GSC.MiddleScrollNotesMarginLeft
-			player1NoteStartRight := SCREEN_WIDTH - GSC.MiddleScrollNotesMarginRight
+			otherPNoteStartLeft := GSC.MiddleScrollNotesMarginLeft
+			otherPNoteStartRight := SCREEN_WIDTH - GSC.MiddleScrollNotesMarginRight
 
 			if dir <= NoteDirDown {
-				return player1NoteStartLeft + GSC.NotesInterval*f32(dir)
+				return otherPNoteStartLeft + GSC.NotesInterval*f32(dir)
 			} else {
-				return player1NoteStartRight - GSC.NotesInterval*(3-f32(dir))
+				return otherPNoteStartRight - GSC.NotesInterval*(3-f32(dir))
 			}
 		}
 
 	} else {
-		player1NoteStartLeft := GSC.NotesMarginLeft
-		player0NoteStartRight := SCREEN_WIDTH - GSC.NotesMarginRight
+		otherPNoteStartLeft := GSC.NotesMarginLeft
+		mainPNoteStartRight := SCREEN_WIDTH - GSC.NotesMarginRight
 
 		var noteX float32 = 0
 
-		if player == 1 {
-			noteX = player1NoteStartLeft + GSC.NotesInterval*f32(dir)
+		if player == gs.otherPlayer() {
+			noteX = otherPNoteStartLeft + GSC.NotesInterval*f32(dir)
 		} else {
-			noteX = player0NoteStartRight - (GSC.NotesInterval)*(3-f32(dir))
+			noteX = mainPNoteStartRight - (GSC.NotesInterval)*(3-f32(dir))
 		}
 
 		return noteX
@@ -2332,7 +2351,7 @@ func (gs *GameScreen) DrawProgressBar() {
 	for _, events := range gs.NoteEvents {
 		for _, e := range events {
 			note := gs.Song.Notes[e.Index]
-			if note.Player == 0 {
+			if note.Player == gs.mainPlayer() {
 				if e.IsMiss() {
 					drawRectAt(e.Time)
 				}
@@ -2341,7 +2360,7 @@ func (gs *GameScreen) DrawProgressBar() {
 	}
 
 	for _, miss := range gs.Mispresses {
-		if miss.Player == 0 {
+		if miss.Player == gs.mainPlayer() {
 			drawRectAt(miss.Time)
 		}
 	}
@@ -2525,7 +2544,7 @@ func (gs *GameScreen) DrawPlayerEventCounter() {
 		rl.Vector2{labelPos.X, labelPos.Y + textSize}, textSize, 0, ToRlColor(FnfColor{0, 0, 0, 255}),
 	)
 
-	misses, hits := gs.CountEvents(0)
+	misses, hits := gs.CountEvents(gs.mainPlayer())
 
 	numberPos := rl.Vector2{labelPos.X + 8 + labelSize.X, labelPos.Y}
 
@@ -2626,6 +2645,8 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.Menu.BeforeScreenTransition()
 
+	gs.OpponentMode = false
+
 	gs.SetAudioPosition(0)
 
 	gs.ResetGameStates()
@@ -2652,6 +2673,30 @@ func (gs *GameScreen) BeforeScreenEnd() {
 
 func (gs *GameScreen) Free() {
 	gs.HelpMessage.Free()
+}
+
+func mainPlayer(opponentMode bool) FnfPlayerNo {
+	if opponentMode {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func otherPlayer(opponentMode bool) FnfPlayerNo {
+	if opponentMode {
+		return 0
+	} else {
+		return 1
+	}
+}
+
+func (gs *GameScreen) mainPlayer() FnfPlayerNo {
+	return mainPlayer(gs.OpponentMode)
+}
+
+func (gs *GameScreen) otherPlayer() FnfPlayerNo {
+	return otherPlayer(gs.OpponentMode)
 }
 
 // =================================
