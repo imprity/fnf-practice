@@ -135,59 +135,51 @@ func SustainNoteTunneled(
 	return tunneled
 }
 
-func UpdateNotesAndStates(
+func UpdateNotesAndStatesForHuman(
 	song FnfSong,
-	pStates [FnfPlayerSize]PlayerState,
-	wasKeyPressed [FnfPlayerSize][NoteDirSize]bool,
-	isKeyPressed [FnfPlayerSize][NoteDirSize]bool,
+	pState PlayerState,
+	humanP FnfPlayerNo,
+	wasKeyPressed [NoteDirSize]bool,
+	isKeyPressed [NoteDirSize]bool,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	audioDuration time.Duration,
 	isPlayingAudio bool,
 	hitWindow time.Duration,
-	botPlay bool,
 	noteIndexStart int,
-) ([FnfPlayerSize]PlayerState, []NoteEvent, int) {
+) (PlayerState, []NoteEvent) {
 	notes := song.Notes
-
-	newNoteIndexStart := noteIndexStart
 
 	var noteEvents []NoteEvent
 
 	avgPos := (audioPos + prevAudioPos) / 2
 
 	if isPlayingAudio {
-		var isKeyJustPressed [FnfPlayerSize][NoteDirSize]bool
-		var isKeyJustReleased [FnfPlayerSize][NoteDirSize]bool
+		var isKeyJustPressed [NoteDirSize]bool
+		var isKeyJustReleased [NoteDirSize]bool
 
-		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
-			for dir := range NoteDirSize {
-				if !wasKeyPressed[player][dir] && isKeyPressed[player][dir] {
-					isKeyJustPressed[player][dir] = true
-				}
+		for dir := range NoteDirSize {
+			if !wasKeyPressed[dir] && isKeyPressed[dir] {
+				isKeyJustPressed[dir] = true
+			}
 
-				if wasKeyPressed[player][dir] && !isKeyPressed[player][dir] {
-					isKeyJustReleased[player][dir] = true
-				}
+			if wasKeyPressed[dir] && !isKeyPressed[dir] {
+				isKeyJustReleased[dir] = true
 			}
 		}
 
-		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
-			pStates[player].IsKeyJustPressed = isKeyJustPressed[player]
-			pStates[player].IsKeyJustReleased = isKeyJustReleased[player]
-		}
+		pState.IsKeyJustPressed = isKeyJustPressed
+		pState.IsKeyJustReleased = isKeyJustReleased
 
 		//clear note miss state
-		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
-			for dir := range NoteDirSize {
-				pStates[player].DidMissNote[dir] = false
-			}
+		for dir := range NoteDirSize {
+			pState.DidMissNote[dir] = false
 		}
 
 		// declare convinience functions
 
-		didHitNote := [FnfPlayerSize][NoteDirSize]bool{}
-		hitNote := [FnfPlayerSize][NoteDirSize]FnfNote{}
+		didHitNote := [NoteDirSize]bool{}
+		hitNote := [NoteDirSize]FnfNote{}
 
 		onNoteHit := func(note FnfNote, event *NoteEvent) {
 			if !notes[note.Index].IsHit {
@@ -197,77 +189,78 @@ func UpdateNotesAndStates(
 			}
 
 			notes[note.Index].IsHit = true
-			pStates[note.Player].IsHoldingBadKey[note.Direction] = false
-			didHitNote[note.Player][note.Direction] = true
-			hitNote[note.Player][note.Direction] = note
+			pState.IsHoldingBadKey[note.Direction] = false
+			didHitNote[note.Direction] = true
+			hitNote[note.Direction] = note
 		}
 
 		onNoteHold := func(note FnfNote, event *NoteEvent) {
 			onNoteHit(note, event)
 
-			pStates[note.Player].HoldingNotes[note.Direction] = append(pStates[note.Player].HoldingNotes[note.Direction], note)
+			pState.HoldingNotes[note.Direction] = append(pState.HoldingNotes[note.Direction], note)
 		}
 
 		onNoteMiss := func(note FnfNote, event *NoteEvent) {
 			event.SetMiss()
 
-			pStates[note.Player].DidMissNote[note.Direction] = true
-			pStates[note.Player].NoteMissAt[note.Direction] = GlobalTimerNow()
+			pState.DidMissNote[note.Direction] = true
+			pState.NoteMissAt[note.Direction] = GlobalTimerNow()
 		}
 
 		// we check if user pressed any key
 		// and if so mark all as bad hit (it will be overidden as not bad later)
-		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
-			for dir := range NoteDirSize {
-				if isKeyPressed[player][dir] && !pStates[player].IsHoldingKey[dir] {
-					pStates[player].IsHoldingKey[dir] = true
-					pStates[player].KeyPressedAt[dir] = GlobalTimerNow()
+		for dir := range NoteDirSize {
+			if isKeyPressed[dir] && !pState.IsHoldingKey[dir] {
+				pState.IsHoldingKey[dir] = true
+				pState.KeyPressedAt[dir] = GlobalTimerNow()
 
-					pStates[player].IsHoldingBadKey[dir] = true
-				} else if !isKeyPressed[player][dir] {
-					if pStates[player].IsHoldingKey[dir] {
-						pStates[player].KeyReleasedAt[dir] = GlobalTimerNow()
+				pState.IsHoldingBadKey[dir] = true
+			} else if !isKeyPressed[dir] {
+				if pState.IsHoldingKey[dir] {
+					pState.KeyReleasedAt[dir] = GlobalTimerNow()
 
-						if pStates[player].IsHoldingBadKey[dir] {
-							pStates[player].DidReleaseBadKey[dir] = true
-						} else {
-							pStates[player].DidReleaseBadKey[dir] = false
-						}
+					if pState.IsHoldingBadKey[dir] {
+						pState.DidReleaseBadKey[dir] = true
+					} else {
+						pState.DidReleaseBadKey[dir] = false
 					}
-
-					pStates[player].IsHoldingKey[dir] = false
-					pStates[player].IsHoldingBadKey[dir] = false
 				}
+
+				pState.IsHoldingKey[dir] = false
+				pState.IsHoldingBadKey[dir] = false
 			}
 		}
 
 		// update any notes that were held but now no longer being held
-		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
-			for dir := range NoteDirSize {
-				if !isKeyPressed[player][dir] && pStates[player].IsHoldingAnyNote(dir) {
-					for _, note := range pStates[player].HoldingNotes[dir] {
-						notes[note.Index].HoldReleaseAt = audioPos
+		for dir := range NoteDirSize {
+			if !isKeyPressed[dir] && pState.IsHoldingAnyNote(dir) {
+				for _, note := range pState.HoldingNotes[dir] {
+					notes[note.Index].HoldReleaseAt = audioPos
 
-						event := NoteEvent{
-							Time:  avgPos,
-							Index: note.Index,
-						}
-						event.SetRelease()
-
-						noteEvents = append(noteEvents, event)
+					event := NoteEvent{
+						Time:  avgPos,
+						Index: note.Index,
 					}
+					event.SetRelease()
 
-					pStates[player].HoldingNotes[dir] = pStates[player].HoldingNotes[dir][:0]
+					noteEvents = append(noteEvents, event)
 				}
+
+				pState.HoldingNotes[dir] = pState.HoldingNotes[dir][:0]
 			}
 		}
-
-		newNoteIndexSet := false
 
 		for ; noteIndexStart < len(notes); noteIndexStart++ {
 			note := notes[noteIndexStart]
 
-			np := note.Player
+			if note.StartsAt > audioPos+hitWindow {
+				break
+			}
+
+			if note.Player != humanP {
+				continue
+			}
+
 			nd := note.Direction
 
 			event := NoteEvent{
@@ -276,7 +269,7 @@ func UpdateNotesAndStates(
 			}
 
 			//check if user hit note
-			if isKeyJustPressed[np][nd] {
+			if isKeyJustPressed[nd] {
 				var hit bool
 
 				if note.IsSustain() {
@@ -288,8 +281,8 @@ func UpdateNotesAndStates(
 					hit = hit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 				}
 
-				hitElse := (didHitNote[np][nd] && !hitNote[np][nd].IsSustain())
-				hit = hit && (!hitElse || (hitElse && hitNote[np][nd].IsOverlapped(note)))
+				hitElse := (didHitNote[nd] && !hitNote[nd].IsSustain())
+				hit = hit && (!hitElse || (hitElse && hitNote[nd].IsOverlapped(note)))
 
 				if hit {
 					if note.IsSustain() {
@@ -306,14 +299,14 @@ func UpdateNotesAndStates(
 				!note.IsHit &&
 				note.StartPassedWindow(audioPos, hitWindow) &&
 				note.IsAudioPositionInDuration(audioPos, hitWindow) {
-				if isKeyPressed[np][nd] {
+				if isKeyPressed[nd] {
 					onNoteHold(note, &event)
 				}
 			}
 
 			//check if user missed note
 			if note.IsSustain() {
-				missed := !pStates[np].IsHoldingNote(note)
+				missed := !pState.IsHoldingNote(note)
 				missed = missed && note.StartPassedWindow(audioPos, hitWindow)
 				missed = missed && note.IsAudioPositionInDuration(audioPos, hitWindow)
 
@@ -342,58 +335,199 @@ func UpdateNotesAndStates(
 			if !event.IsNone() {
 				noteEvents = append(noteEvents, event)
 			}
+		}
+	}
 
-			if !newNoteIndexSet &&
-				(note.IsStartInWindow(audioPos, hitWindow) ||
-					note.IsAudioPositionInDuration(audioPos, hitWindow)) {
+	if !isPlayingAudio && AbsI(audioDuration-audioPos) < time.Millisecond { // when song is done
+		for dir := range NoteDirSize {
+			// release notes that are being held
+			if pState.IsHoldingAnyNote(dir) {
+				for _, note := range pState.HoldingNotes[dir] {
+					notes[note.Index].HoldReleaseAt = audioPos
 
-				newNoteIndexSet = true
-				newNoteIndexStart = note.Index
+					event := NoteEvent{
+						Time:  avgPos,
+						Index: note.Index,
+					}
+					event.SetRelease()
+
+					noteEvents = append(noteEvents, event)
+				}
+
+				pState.HoldingNotes[dir] = pState.HoldingNotes[dir][:0]
 			}
+
+			// update key release stuff
+			if pState.IsHoldingKey[dir] {
+				pState.IsHoldingKey[dir] = false
+				pState.IsKeyJustReleased[dir] = true
+				pState.KeyReleasedAt[dir] = GlobalTimerNow()
+
+				if pState.IsHoldingBadKey[dir] {
+					pState.IsHoldingBadKey[dir] = false
+					pState.DidReleaseBadKey[dir] = true
+				}
+			}
+		}
+	}
+
+	return pState, noteEvents
+}
+
+func UpdateNotesAndStatesForBot(
+	song FnfSong,
+	pState PlayerState,
+	botP FnfPlayerNo,
+	prevAudioPos time.Duration,
+	audioPos time.Duration,
+	isPlayingAudio bool,
+	hitWindow time.Duration,
+	noteIndexStart int,
+) (PlayerState, []NoteEvent) {
+	notes := song.Notes
+
+	var noteEvents []NoteEvent
+
+	avgPos := (audioPos + prevAudioPos) / 2
+
+	//clear note miss state
+	for dir := range NoteDirSize {
+		pState.DidMissNote[dir] = false
+	}
+
+	// release notes that are needs to be held
+	for dir := range NoteDirSize {
+		var newHoldingNotes []FnfNote
+
+		for _, note := range pState.HoldingNotes[dir] {
+			if note.End() < audioPos-time.Millisecond*10 {
+				notes[note.Index].HoldReleaseAt = audioPos
+
+				event := NoteEvent{
+					Time:  avgPos,
+					Index: note.Index,
+				}
+				event.SetRelease()
+
+				noteEvents = append(noteEvents, event)
+			} else {
+				newHoldingNotes = append(newHoldingNotes, note)
+			}
+		}
+
+		pState.HoldingNotes[dir] = newHoldingNotes
+	}
+
+	var pressKey [NoteDirSize]bool
+
+	if isPlayingAudio {
+		for ; noteIndexStart < len(notes); noteIndexStart++ {
+			note := notes[noteIndexStart]
 
 			if note.StartsAt > audioPos+hitWindow {
 				break
 			}
-		}
-		noteIndexStart = newNoteIndexStart
-	}
 
-	if !isPlayingAudio && AbsI(audioDuration-audioPos) < time.Millisecond { // when song is done
-		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
-			for dir := range NoteDirSize {
-				// release notes that are being held
-				if pStates[player].IsHoldingAnyNote(dir) {
-					for _, note := range pStates[player].HoldingNotes[dir] {
-						notes[note.Index].HoldReleaseAt = audioPos
+			if note.Player != botP {
+				continue
+			}
 
-						event := NoteEvent{
-							Time:  avgPos,
-							Index: note.Index,
-						}
-						event.SetRelease()
+			event := NoteEvent{
+				Time:  avgPos,
+				Index: note.Index,
+			}
 
-						noteEvents = append(noteEvents, event)
+			if note.IsSustain() {
+				hit := note.IsAudioPositionInDuration(audioPos, 0) || SustainNoteTunneled(note, prevAudioPos, audioPos, 0)
+
+				if hit {
+					notes[note.Index].IsHit = true
+					pressKey[note.Direction] = true
+					if note.IsHit {
+						event.SetHit()
+					} else {
+						event.SetFirstHit()
 					}
 
-					pStates[player].HoldingNotes[dir] = pStates[player].HoldingNotes[dir][:0]
+					if !pState.IsHoldingNote(note) {
+						pState.HoldingNotes[note.Direction] = append(pState.HoldingNotes[note.Direction], note)
+					}
 				}
 
-				// update key release stuff
-				if pStates[player].IsHoldingKey[dir] {
-					pStates[player].IsHoldingKey[dir] = false
-					pStates[player].IsKeyJustReleased[dir] = true
-					pStates[player].KeyReleasedAt[dir] = GlobalTimerNow()
+			} else {
+				if !note.IsHit {
+					hit := note.StartsAt <= audioPos && note.IsStartInWindow(audioPos, hitWindow)
+					hit = hit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 
-					if pStates[player].IsHoldingBadKey[dir] {
-						pStates[player].IsHoldingBadKey[dir] = false
-						pStates[player].DidReleaseBadKey[dir] = true
+					if hit {
+						pressKey[note.Direction] = true
+						notes[note.Index].IsHit = true
+						event.SetFirstHit()
+					}
+				}
+			}
+
+			if !event.IsNone() {
+				noteEvents = append(noteEvents, event)
+			}
+		}
+
+		// update pstate
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			pState.IsKeyJustPressed[dir] = false
+			pState.IsKeyJustReleased[dir] = false
+			pState.DidReleaseBadKey[dir] = false
+		}
+
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			if pressKey[dir] {
+				if !pState.IsHoldingKey[dir] {
+					pState.IsKeyJustPressed[dir] = true
+					pState.KeyPressedAt[dir] = GlobalTimerNow()
+				}
+			} else {
+				if pState.IsHoldingKey[dir] {
+					pState.IsKeyJustReleased[dir] = true
+					pState.KeyReleasedAt[dir] = GlobalTimerNow()
+
+					if pState.IsHoldingBadKey[dir] {
+						pState.IsHoldingBadKey[dir] = false
+						pState.DidReleaseBadKey[dir] = true
 					}
 				}
 			}
 		}
+
+		for dir := NoteDir(0); dir < NoteDirSize; dir++ {
+			pState.IsHoldingBadKey[dir] = false
+		}
+
+		pState.IsHoldingKey = pressKey
 	}
 
-	return pStates, noteEvents, newNoteIndexStart
+	return pState, noteEvents
+}
+
+func CalculateNewNoteIndexStart(
+	song FnfSong,
+	audioPos time.Duration,
+	hitWindow time.Duration,
+	noteIndexStart int,
+) int {
+	notes := song.Notes
+	hitWindow = max(hitWindow, time.Millisecond*5)
+
+	newStart := noteIndexStart
+
+	for ; newStart < len(notes); newStart++ {
+		note := notes[newStart]
+
+		if note.IsStartInWindow(audioPos, hitWindow) || note.IsAudioPositionInDuration(audioPos, hitWindow) {
+			return newStart
+		}
+	}
+
+	return noteIndexStart
 }
 
 func GetKeyPressState(

@@ -1022,29 +1022,59 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 	wasKeyPressed := gs.isKeyPressed
 
-	gs.isKeyPressed = GetKeyPressState(
-		wasKeyPressed,
-		gs.InputId,
-		gs.Song.Notes, gs.noteIndexStart,
-		gs.IsPlayingAudio(), prevAudioPos, audioPos,
-		gs.botPlay,
-		gs.OpponentMode,
-		HitWindow(),
-	)
+	if !gs.IsBotPlay() {
+		for dir, keys := range NoteKeysArr() {
+			if AreKeysDown(gs.InputId, keys...) {
+				gs.isKeyPressed[gs.mainPlayer()][dir] = true
+			} else {
+				gs.isKeyPressed[gs.mainPlayer()][dir] = false
+			}
+		}
+	}
 
 	var noteEvents []NoteEvent
 
-	gs.Pstates, noteEvents, gs.noteIndexStart = UpdateNotesAndStates(
+	for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
+		if isPlayerHuman(player, gs.IsBotPlay(), gs.OpponentMode) {
+			var eventsHuman []NoteEvent
+
+			gs.Pstates[player], eventsHuman = UpdateNotesAndStatesForHuman(
+				gs.Song,
+				gs.Pstates[player],
+				player,
+				wasKeyPressed[player],
+				gs.isKeyPressed[player],
+				prevAudioPos,
+				audioPos,
+				gs.AudioDuration(),
+				gs.IsPlayingAudio(),
+				HitWindow(),
+				gs.noteIndexStart,
+			)
+
+			noteEvents = append(noteEvents, eventsHuman...)
+		} else {
+			var eventsBot []NoteEvent
+
+			gs.Pstates[player], eventsBot = UpdateNotesAndStatesForBot(
+				gs.Song,
+				gs.Pstates[player],
+				player,
+				prevAudioPos,
+				audioPos,
+				gs.IsPlayingAudio(),
+				HitWindow(),
+				gs.noteIndexStart,
+			)
+
+			noteEvents = append(noteEvents, eventsBot...)
+		}
+	}
+
+	gs.noteIndexStart = CalculateNewNoteIndexStart(
 		gs.Song,
-		gs.Pstates,
-		wasKeyPressed,
-		gs.isKeyPressed,
-		prevAudioPos,
 		audioPos,
-		gs.AudioDuration(),
-		gs.IsPlayingAudio(),
 		HitWindow(),
-		gs.botPlay,
 		gs.noteIndexStart,
 	)
 
@@ -2673,6 +2703,14 @@ func (gs *GameScreen) BeforeScreenEnd() {
 
 func (gs *GameScreen) Free() {
 	gs.HelpMessage.Free()
+}
+
+func isPlayerHuman(playerNo FnfPlayerNo, botPlay bool, opponentMode bool) bool {
+	if botPlay {
+		return false
+	}
+
+	return playerNo == mainPlayer(opponentMode)
 }
 
 func mainPlayer(opponentMode bool) FnfPlayerNo {
