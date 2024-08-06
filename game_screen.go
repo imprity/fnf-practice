@@ -1032,6 +1032,25 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		}
 	}
 
+	if *FlagBotObeyGameRule {
+		for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
+			if !isPlayerHuman(player, gs.IsBotPlay(), gs.OpponentMode) {
+				gs.isKeyPressed[player] = SimulateKeyPressForBot(
+					gs.Song,
+					player,
+					wasKeyPressed[player],
+					prevAudioPos,
+					audioPos,
+					gs.IsBotPlay(),
+					gs.OpponentMode,
+					gs.IsPlayingAudio(),
+					HitWindow(),
+					gs.noteIndexStart,
+				)
+			}
+		}
+	}
+
 	var noteEvents []NoteEvent
 
 	for player := FnfPlayerNo(0); player < FnfPlayerSize; player++ {
@@ -1056,16 +1075,32 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		} else {
 			var eventsBot []NoteEvent
 
-			gs.Pstates[player], eventsBot = UpdateNotesAndStatesForBot(
-				gs.Song,
-				gs.Pstates[player],
-				player,
-				prevAudioPos,
-				audioPos,
-				gs.IsPlayingAudio(),
-				HitWindow(),
-				gs.noteIndexStart,
-			)
+			if *FlagBotObeyGameRule {
+				gs.Pstates[player], eventsBot = UpdateNotesAndStatesForHuman(
+					gs.Song,
+					gs.Pstates[player],
+					player,
+					wasKeyPressed[player],
+					gs.isKeyPressed[player],
+					prevAudioPos,
+					audioPos,
+					gs.AudioDuration(),
+					gs.IsPlayingAudio(),
+					HitWindow(),
+					gs.noteIndexStart,
+				)
+			} else {
+				gs.Pstates[player], eventsBot = UpdateNotesAndStatesForBot(
+					gs.Song,
+					gs.Pstates[player],
+					player,
+					prevAudioPos,
+					audioPos,
+					gs.IsPlayingAudio(),
+					HitWindow(),
+					gs.noteIndexStart,
+				)
+			}
 
 			noteEvents = append(noteEvents, eventsBot...)
 		}

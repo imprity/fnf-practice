@@ -530,42 +530,6 @@ func CalculateNewNoteIndexStart(
 	return noteIndexStart
 }
 
-func GetKeyPressState(
-	wasKeyPressed [FnfPlayerSize][NoteDirSize]bool,
-	inputId InputGroupId,
-	notes []FnfNote,
-	noteIndexStart int,
-	isPlayingAudio bool,
-	prevAudioPos time.Duration,
-	audioPos time.Duration,
-	isBotPlay bool,
-	opponentMode bool,
-	hitWindow time.Duration,
-) [FnfPlayerSize][NoteDirSize]bool {
-
-	keyPressState := GetBotKeyPresseState(
-		wasKeyPressed,
-		notes,
-		noteIndexStart,
-		isPlayingAudio,
-		prevAudioPos,
-		audioPos,
-		isBotPlay,
-		opponentMode,
-		hitWindow,
-	)
-
-	if !isBotPlay {
-		for dir, keys := range NoteKeysArr() {
-			if AreKeysDown(inputId, keys...) {
-				keyPressState[mainPlayer(opponentMode)][dir] = true
-			}
-		}
-	}
-
-	return keyPressState
-}
-
 func isNoteForBot(note FnfNote, isBotPlay bool, opponentMode bool) bool {
 	if isBotPlay {
 		return true
@@ -576,45 +540,48 @@ func isNoteForBot(note FnfNote, isBotPlay bool, opponentMode bool) bool {
 	return note.Player == otherP
 }
 
-func GetBotKeyPresseState(
-	wasKeyPressed [FnfPlayerSize][NoteDirSize]bool,
-	notes []FnfNote,
-	noteIndexStart int,
-	isPlayingAudio bool,
+func SimulateKeyPressForBot(
+	song FnfSong,
+	player FnfPlayerNo,
+	wasKeyPressed [NoteDirSize]bool,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
 	isBotPlay bool,
 	opponentMode bool,
+	isPlayingAudio bool,
 	hitWindow time.Duration,
-) [FnfPlayerSize][NoteDirSize]bool {
+	noteIndexStart int,
+) [NoteDirSize]bool {
 
-	var keyPressed [FnfPlayerSize][NoteDirSize]bool
+	var keyPressed [NoteDirSize]bool
 
 	const tinyWindow = time.Millisecond * 10
+
+	notes := song.Notes
 
 	for ; noteIndexStart < len(notes); noteIndexStart++ {
 		note := notes[noteIndexStart]
 
-		if isNoteForBot(note, isBotPlay, opponentMode) {
+		if note.Player == player {
 			if note.IsSustain() {
 				shouldHit := note.IsAudioPositionInDuration(audioPos, tinyWindow)
 				shouldHit = shouldHit || SustainNoteTunneled(note, prevAudioPos, audioPos, hitWindow)
 				shouldHit = shouldHit || (!note.IsHit &&
 					note.StartsAt <= (audioPos+tinyWindow/2) &&
-					note.IsAudioPositionInDuration(audioPos, HitWindow()))
+					note.IsAudioPositionInDuration(audioPos, hitWindow))
 
 				if shouldHit {
-					keyPressed[note.Player][note.Direction] = true
+					keyPressed[note.Direction] = true
 				}
 			} else {
 				if !note.IsHit {
-					shouldHit := note.StartsAt <= (audioPos+tinyWindow/2) && note.IsStartInWindow(audioPos, HitWindow())
+					shouldHit := note.StartsAt <= (audioPos+tinyWindow/2) && note.IsStartInWindow(audioPos, hitWindow)
 					shouldHit = shouldHit || NoteStartTunneled(note, prevAudioPos, audioPos, hitWindow)
 					if shouldHit {
-						if wasKeyPressed[note.Player][note.Direction] {
-							keyPressed[note.Player][note.Direction] = false
+						if wasKeyPressed[note.Direction] {
+							keyPressed[note.Direction] = false
 						} else {
-							keyPressed[note.Player][note.Direction] = true
+							keyPressed[note.Direction] = true
 						}
 					}
 				}

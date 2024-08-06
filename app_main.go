@@ -75,8 +75,12 @@ func GetRenderedScreenRect() rl.Rectangle {
 		SCREEN_HEIGHT * scale}
 }
 
-var FlagPProf = flag.Bool("pprof", false, "run with pprof server")
-var FlagHotReloading = flag.Bool("hot", false, "enable hot reloading")
+var (
+	FlagPProf           = flag.Bool("pprof", false, "run with pprof server")
+	FlagHotReloading    = flag.Bool("hot", false, "enable hot reloading")
+	FlagBotObeyGameRule = flag.Bool("bot-obey-game-rule", false,
+		"make bots actually play the game rather than pretending to play")
+)
 
 func RunApplication() {
 	flag.Parse()
