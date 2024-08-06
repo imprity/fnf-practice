@@ -131,6 +131,9 @@ goto :quit
 	xcopy /Y .\assets\hit-sound.ogg ".\release\%release_folder%\"
 	if !errorlevel! neq 0 exit /b !errorlevel!
 
+	xcopy /Y .\change-hit-sound.txt ".\release\%release_folder%\"
+	if !errorlevel! neq 0 exit /b !errorlevel!
+
 	mkdir .\release\zip
 	if !errorlevel! neq 0 exit /b !errorlevel!
 

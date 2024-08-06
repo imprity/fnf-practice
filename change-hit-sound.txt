@@ -1,0 +1,4 @@
+How to change hit sound.
+
+1. Change the original hit sound file from hit-sound.ogg to hit-sound.ogg.bak
+2. Drop in the new hit sound you like and change it's file name to hit-sound.ogg or hit-sound.mp3 or hit-sound.wav
