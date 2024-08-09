@@ -51,15 +51,24 @@ var (
 	DirSelectScreen   rl.Texture2D
 )
 
+var (
+	SplashFillSprite   Sprite
+	SplashStrokeSprite Sprite
+)
+
 var HitRatingTexs [HitRatingSize]rl.Texture2D
 
-var BookMarkBigTex rl.Texture2D
-var BookMarkSmallTex rl.Texture2D
+var (
+	BookMarkBigTex   rl.Texture2D
+	BookMarkSmallTex rl.Texture2D
+)
 
 var PopupBg rl.Texture2D
 
-var BlackPixel rl.Texture2D
-var WhitePixel rl.Texture2D
+var (
+	BlackPixel rl.Texture2D
+	WhitePixel rl.Texture2D
+)
 
 var HitSoundAudio []byte
 
@@ -204,6 +213,41 @@ func loadAssets(isReload bool) {
 			ErrorLogger.Fatal(err)
 		}
 		DancingNoteSprite.Texture = loadTexture("assets/dancing-note.png", true, ".png")
+	}
+
+	// load splash fill sprite
+	{
+		jsonBytes := loadData("assets/splash-fill.json")
+		buffer := bytes.NewBuffer(jsonBytes)
+		var err error
+		SplashFillSprite, err = ParseSpriteJsonMetadata(buffer)
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
+		SplashFillSprite.Texture = loadTexture("assets/splash-fill.png", true, ".png")
+	}
+
+	// load splash stroke sprite
+	{
+		jsonBytes := loadData("assets/splash-stroke.json")
+		buffer := bytes.NewBuffer(jsonBytes)
+		var err error
+		SplashStrokeSprite, err = ParseSpriteJsonMetadata(buffer)
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
+		SplashStrokeSprite.Texture = loadTexture("assets/splash-stroke.png", true, ".png")
+	}
+
+	// check if splash fill and stroke have the same size and sprite count
+	if SplashFillSprite.Count != SplashStrokeSprite.Count {
+		ErrorLogger.Fatal("SplashFillSprite and SplashStrokeSprite have different sprite count")
+	}
+	if SplashFillSprite.Width != SplashStrokeSprite.Width {
+		ErrorLogger.Fatal("SplashFillSprite and SplashStrokeSprite have different width")
+	}
+	if SplashFillSprite.Height != SplashStrokeSprite.Height {
+		ErrorLogger.Fatal("SplashFillSprite and SplashStrokeSprite have different height")
 	}
 
 	BookMarkBigTex = loadTexture("assets/bookmark-big.png", true, ".png")

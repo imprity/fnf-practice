@@ -17,6 +17,13 @@ type NotePopup struct {
 	Rating FnfHitRating
 }
 
+type NoteSplash struct {
+	Start          time.Duration
+	Player         FnfPlayerNo
+	Direction      NoteDir
+	DrawAfterNotes bool
+}
+
 type GameHelpMessage struct {
 	TextImage rl.RenderTexture2D
 
@@ -107,6 +114,8 @@ var GSC struct {
 	PixelsPerMillis float32
 
 	RewindHightlightDuration time.Duration
+
+	NoteSplashDuration time.Duration
 }
 
 func init() {
@@ -132,6 +141,8 @@ func init() {
 	GSC.PixelsPerMillis = 0.45
 
 	GSC.RewindHightlightDuration = time.Millisecond * 600
+
+	GSC.NoteSplashDuration = time.Millisecond * 250
 }
 
 type GameScreen struct {
@@ -156,6 +167,8 @@ type GameScreen struct {
 	NoteEvents [][]NoteEvent
 
 	PopupQueue CircularQueue[NotePopup]
+
+	SplashQueue CircularQueue[NoteSplash]
 
 	HelpMessage *GameHelpMessage
 
@@ -226,6 +239,10 @@ func NewGameScreen() *GameScreen {
 
 	gs.PopupQueue = CircularQueue[NotePopup]{
 		Data: make([]NotePopup, 128), // 128 popups should be enough for everyone right?
+	}
+
+	gs.SplashQueue = CircularQueue[NoteSplash]{
+		Data: make([]NoteSplash, 256), // 256 splashes should be enough for everyone right?
 	}
 
 	gs.rewindQueue = CircularQueue[AnimatedRewind]{
@@ -1166,6 +1183,22 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			}
 		}
 
+		pushNoteSplashIfMainPlayerSickHit := func(e NoteEvent) {
+			note := gs.Song.Notes[e.Index]
+			if e.IsFirstHit() && note.Player == gs.mainPlayer() {
+				rating := GetHitRating(note.StartsAt, e.Time)
+				if rating == HitRatingSick {
+					splash := NoteSplash{
+						Start:          GlobalTimerNow(),
+						Player:         note.Player,
+						Direction:      note.Direction,
+						DrawAfterNotes: note.IsSustain(),
+					}
+					gs.SplashQueue.Enqueue(splash)
+				}
+			}
+		}
+
 		queuedRewind := false
 
 		queueRewinds := func(player FnfPlayerNo, direction NoteDir, rewinds ...AnimatedRewind) {
@@ -1287,6 +1320,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				logNoteEvent(e)
 				pushPopupIfHumanPlayerHit(e)
 				playHitSoundIfHumanPlayerHit(e)
+				pushNoteSplashIfMainPlayerSickHit(e)
 				gs.NoteEvents[e.Index] = append(events, e)
 			} else {
 				if e.IsMiss() {
@@ -1329,6 +1363,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 						logNoteEvent(e)
 						pushPopupIfHumanPlayerHit(e)
 						playHitSoundIfHumanPlayerHit(e)
+						pushNoteSplashIfMainPlayerSickHit(e)
 						gs.NoteEvents[e.Index] = append(events, e)
 					}
 				}
@@ -1663,7 +1698,7 @@ func (gs *GameScreen) Draw() {
 		}
 	}
 
-	// fucntion that hits note overlay
+	// fucntion that draws note hit overlay
 	// NOTE : we have to define it as a function because
 	// we want to draw it below note if it's just a regular note
 	// but we want to draw on top of holding note
@@ -1723,6 +1758,52 @@ func (gs *GameScreen) Draw() {
 			DrawNoteArrow(x, y, scale*1.1, dir, color, color)
 		}
 	}
+
+	// fucntion that draws note splash
+	// NOTE : we have to define it as a function because
+	// we want to draw it below note if it's just a regular note
+	// but we want to draw on top of holding note
+	drawNoteSplash := func(drawingAfterNotes bool) {
+		duration := GSC.NoteSplashDuration
+		const splashHeight = 260
+
+		splashScale := splashHeight / SplashFillSprite.Height
+
+		for i := range gs.SplashQueue.Length {
+			splash := gs.SplashQueue.At(i)
+
+			if splash.DrawAfterNotes != drawingAfterNotes {
+				continue
+			}
+
+			delta := GlobalTimerNow() - splash.Start
+
+			centerX := gs.NoteX(splash.Player, splash.Direction)
+
+			centerY := GSC.NotesMarginTop
+			if TheOptions.DownScroll {
+				centerY = SCREEN_HEIGHT - GSC.NotesMarginBottom
+			}
+
+			x := centerX - SplashFillSprite.Width*splashScale*0.5
+			y := centerY - SplashFillSprite.Height*splashScale*0.5
+
+			spriteN := int(f32(SplashFillSprite.Count) * (f32(delta) / f32(duration)))
+			spriteN = Clamp(spriteN, 0, SplashFillSprite.Count-1)
+
+			mat := rl.MatrixScale(splashScale, splashScale, 1)
+			mat = rl.MatrixMultiply(mat, rl.MatrixTranslate(x, y, 0))
+
+			rect := RectWH(SplashFillSprite.Width, SplashFillSprite.Height)
+
+			DrawSpriteTransfromed(SplashFillSprite, spriteN,
+				rect, mat, ToRlColor(noteFlash[splash.Direction]))
+
+			DrawSpriteTransfromed(SplashStrokeSprite, spriteN,
+				rect, mat, ToRlColor(noteStrokeLight[splash.Direction]))
+		}
+	}
+
 	// ============================================
 	// draw bot play icon
 	// ============================================
@@ -1770,6 +1851,11 @@ func (gs *GameScreen) Draw() {
 			DrawNoteArrow(x, y, scale, dir, color, color)
 		}
 	}
+
+	// ============================================
+	// draw note splash
+	// ============================================
+	drawNoteSplash(false)
 
 	// ============================================
 	// draw regular note hit
@@ -1915,6 +2001,11 @@ func (gs *GameScreen) Draw() {
 	}
 
 	// ============================================
+	// draw note splash
+	// ============================================
+	drawNoteSplash(true)
+
+	// ============================================
 	// draw sustain note hit
 	// ============================================
 	if !gs.positionChangedWhilePaused {
@@ -1924,6 +2015,30 @@ func (gs *GameScreen) Draw() {
 					drawHitOverlay(player, dir)
 				}
 			}
+		}
+	}
+
+	// ============================================
+	// dequeue consumed note splashes
+	// ============================================
+	{
+		duration := GSC.NoteSplashDuration
+		dequeue := 0
+
+		for i := range gs.SplashQueue.Length {
+			splash := gs.SplashQueue.At(i)
+
+			delta := GlobalTimerNow() - splash.Start
+
+			// set where to start to remove popups from if it's duration is over
+			if delta > duration {
+				dequeue = i + 1
+				break
+			}
+		}
+
+		for range dequeue {
+			gs.SplashQueue.Dequeue()
 		}
 	}
 
