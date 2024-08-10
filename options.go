@@ -229,6 +229,8 @@ type Options struct {
 	MiddleScroll bool
 
 	HitSoundVolume float64
+
+	NoteSplash bool
 }
 
 var DefaultOptions Options
@@ -253,6 +255,8 @@ func init() {
 	DefaultOptions.MiddleScroll = false
 
 	DefaultOptions.HitSoundVolume = 0
+
+	DefaultOptions.NoteSplash = true
 
 	// set TheOptions to DefaultOptions
 	TheOptions = DefaultOptions

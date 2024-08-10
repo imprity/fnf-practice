@@ -1185,6 +1185,10 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		}
 
 		pushNoteSplashIfMainPlayerSickHit := func(e NoteEvent) {
+			if !TheOptions.NoteSplash {
+				return
+			}
+
 			note := gs.Song.Notes[e.Index]
 			if e.IsFirstHit() && note.Player == gs.mainPlayer() {
 				rating := GetHitRating(note.StartsAt, e.Time)

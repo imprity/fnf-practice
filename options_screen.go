@@ -148,6 +148,17 @@ func NewOptionsScreen() *OptionsScreen {
 		op.Menu.SetItemBValue(ghostTapping.Id, TheOptions.GhostTapping)
 	})
 
+	noteSplash := NewMenuItem()
+	noteSplash.Name = "Note Splash"
+	noteSplash.Type = MenuItemToggle
+	noteSplash.ToggleCallback = func(bValue bool) {
+		TheOptions.NoteSplash = bValue
+	}
+	op.Menu.AddItems(noteSplash)
+	onMatch(func() {
+		op.Menu.SetItemBValue(noteSplash.Id, TheOptions.NoteSplash)
+	})
+
 	hitSoundItem := NewMenuItem()
 	hitSoundItem.Name = "Hit Sound"
 	hitSoundItem.Type = MenuItemNumber
