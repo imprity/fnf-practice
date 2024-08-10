@@ -117,6 +117,7 @@ var GSC struct {
 	RewindHightlightDuration time.Duration
 
 	NoteSplashDuration time.Duration
+	NoteSplashHeight   float32
 }
 
 func init() {
@@ -143,7 +144,8 @@ func init() {
 
 	GSC.RewindHightlightDuration = time.Millisecond * 600
 
-	GSC.NoteSplashDuration = time.Millisecond * 255
+	GSC.NoteSplashDuration = time.Millisecond * 320
+	GSC.NoteSplashHeight = 310
 }
 
 type GameScreen struct {
@@ -1635,17 +1637,32 @@ func (gs *GameScreen) Draw() {
 	}
 
 	noteFillSplash := [NoteDirSize]FnfColor{}
+	/*
+		for i, c := range noteFill {
+
+			hsv := ColToHSV(c)
+			hsv.Y *= 0.1
+			hsv.Z *= 3.0
+
+			if hsv.Z > 1 {
+				hsv.Z = 1
+			}
+
+			noteFillSplash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
+		}
+	*/
 	for i, c := range noteFill {
 
 		hsv := ColToHSV(c)
-		hsv.Y *= 0.1
-		hsv.Z *= 3.0
+		hsv.Y *= 0.9
+		hsv.Z *= 1.1
 
 		if hsv.Z > 1 {
 			hsv.Z = 1
 		}
 
 		noteFillSplash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
+		noteFillSplash[i].A = 100
 	}
 
 	noteStrokeSplash := [NoteDirSize]FnfColor{}
@@ -1798,9 +1815,8 @@ func (gs *GameScreen) Draw() {
 	// but we want to draw on top of holding note
 	drawNoteSplash := func(drawingAfterNotes bool) {
 		duration := GSC.NoteSplashDuration
-		const splashHeight = 270
 
-		splashScale := splashHeight / SplashFillSprite[0].Height
+		splashScale := GSC.NoteSplashHeight / SplashFillSprite[0].Height
 
 		for i := range gs.SplashQueue.Length {
 			splash := gs.SplashQueue.At(i)
