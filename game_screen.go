@@ -143,7 +143,7 @@ func init() {
 
 	GSC.RewindHightlightDuration = time.Millisecond * 600
 
-	GSC.NoteSplashDuration = time.Millisecond * 260
+	GSC.NoteSplashDuration = time.Millisecond * 255
 }
 
 type GameScreen struct {
@@ -1596,19 +1596,6 @@ func (gs *GameScreen) Draw() {
 		noteStrokeLight[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
-	noteFlash := [NoteDirSize]FnfColor{}
-	for i, c := range noteFill {
-		hsv := ColToHSV(c)
-		hsv.Y *= 0.1
-		hsv.Z *= 3
-
-		if hsv.Z > 1 {
-			hsv.Z = 1
-		}
-
-		noteFlash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
-	}
-
 	noteFillGrey := [NoteDirSize]FnfColor{}
 	for i, c := range noteFill {
 		hsv := ColToHSV(c)
@@ -1641,6 +1628,42 @@ func (gs *GameScreen) Draw() {
 		{0, 0, 0, 255},
 		{0, 0, 0, 255},
 		{0, 0, 0, 255},
+	}
+
+	noteFillSplash := [NoteDirSize]FnfColor{}
+	for i, c := range noteFill {
+
+		hsv := ColToHSV(c)
+		hsv.Y *= 0.1
+		hsv.Z *= 3.0
+
+		if hsv.Z > 1 {
+			hsv.Z = 1
+		}
+
+		noteFillSplash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
+	}
+
+	noteStrokeSplash := [NoteDirSize]FnfColor{}
+	for i, c := range noteFill {
+		hsv := ColToHSV(c)
+		hsv.Y *= 0.3
+		hsv.Z *= 0.6
+
+		noteStrokeSplash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
+	}
+
+	noteFlash := [NoteDirSize]FnfColor{}
+	for i, c := range noteFill {
+		hsv := ColToHSV(c)
+		hsv.Y *= 0.1
+		hsv.Z *= 3
+
+		if hsv.Z > 1 {
+			hsv.Z = 1
+		}
+
+		noteFlash[i] = ColFromHSV(hsv.X, hsv.Y, hsv.Z)
 	}
 
 	fadeC := func(col FnfColor, fade float64) FnfColor {
@@ -1803,10 +1826,10 @@ func (gs *GameScreen) Draw() {
 			rect := RectWH(SplashFillSprite[0].Width, SplashFillSprite[0].Height)
 
 			DrawSpriteTransfromed(SplashFillSprite[splash.SplashIndex], spriteN,
-				rect, mat, ToRlColor(noteFlash[splash.Direction]))
+				rect, mat, ToRlColor(noteFillSplash[splash.Direction]))
 
 			DrawSpriteTransfromed(SplashStrokeSprite[splash.SplashIndex], spriteN,
-				rect, mat, ToRlColor(noteStrokeLight[splash.Direction]))
+				rect, mat, ToRlColor(noteStrokeSplash[splash.Direction]))
 		}
 	}
 
@@ -2039,6 +2062,7 @@ func (gs *GameScreen) Draw() {
 			// set where to start to remove popups from if it's duration is over
 			if delta > duration {
 				dequeue = i + 1
+			} else {
 				break
 			}
 		}
