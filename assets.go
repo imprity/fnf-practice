@@ -3,6 +3,7 @@ package fnf
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -52,8 +53,8 @@ var (
 )
 
 var (
-	SplashFillSprite   Sprite
-	SplashStrokeSprite Sprite
+	SplashFillSprite   [2]Sprite
+	SplashStrokeSprite [2]Sprite
 )
 
 var HitRatingTexs [HitRatingSize]rl.Texture2D
@@ -216,38 +217,47 @@ func loadAssets(isReload bool) {
 	}
 
 	// load splash fill sprite
-	{
-		jsonBytes := loadData("assets/splash-fill.json")
+	for i := range 2 {
+		jsonBytes := loadData(fmt.Sprintf("assets/splash-fill%d.json", i+1))
 		buffer := bytes.NewBuffer(jsonBytes)
 		var err error
-		SplashFillSprite, err = ParseSpriteJsonMetadata(buffer)
+		SplashFillSprite[i], err = ParseSpriteJsonMetadata(buffer)
 		if err != nil {
 			ErrorLogger.Fatal(err)
 		}
-		SplashFillSprite.Texture = loadTexture("assets/splash-fill.png", true, ".png")
+		SplashFillSprite[i].Texture = loadTexture(
+			fmt.Sprintf("assets/splash-fill%d.png", i+1), true, ".png")
 	}
 
 	// load splash stroke sprite
-	{
-		jsonBytes := loadData("assets/splash-stroke.json")
+	for i := range 2 {
+		jsonBytes := loadData(fmt.Sprintf("assets/splash-stroke%d.json", i+1))
 		buffer := bytes.NewBuffer(jsonBytes)
 		var err error
-		SplashStrokeSprite, err = ParseSpriteJsonMetadata(buffer)
+		SplashStrokeSprite[i], err = ParseSpriteJsonMetadata(buffer)
 		if err != nil {
 			ErrorLogger.Fatal(err)
 		}
-		SplashStrokeSprite.Texture = loadTexture("assets/splash-stroke.png", true, ".png")
+		SplashStrokeSprite[i].Texture = loadTexture(
+			fmt.Sprintf("assets/splash-stroke%d.png", i+1), true, ".png")
 	}
 
 	// check if splash fill and stroke have the same size and sprite count
-	if SplashFillSprite.Count != SplashStrokeSprite.Count {
-		ErrorLogger.Fatal("SplashFillSprite and SplashStrokeSprite have different sprite count")
-	}
-	if SplashFillSprite.Width != SplashStrokeSprite.Width {
-		ErrorLogger.Fatal("SplashFillSprite and SplashStrokeSprite have different width")
-	}
-	if SplashFillSprite.Height != SplashStrokeSprite.Height {
-		ErrorLogger.Fatal("SplashFillSprite and SplashStrokeSprite have different height")
+	for a := range 2 {
+		for b := range 2 {
+			if SplashFillSprite[a].Count != SplashStrokeSprite[b].Count {
+				ErrorLogger.Fatal(
+					fmt.Errorf("SplashFillSprite%d and SplashStrokeSprite%d have different sprite count", a, b))
+			}
+			if SplashFillSprite[a].Width != SplashStrokeSprite[b].Width {
+				ErrorLogger.Fatal(
+					fmt.Errorf("SplashFillSprite%d and SplashStrokeSprite%d have different width", a, b))
+			}
+			if SplashFillSprite[a].Height != SplashStrokeSprite[b].Height {
+				ErrorLogger.Fatal(
+					fmt.Errorf("SplashFillSprite%d and SplashStrokeSprite%d have different height", a, b))
+			}
+		}
 	}
 
 	BookMarkBigTex = loadTexture("assets/bookmark-big.png", true, ".png")

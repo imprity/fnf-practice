@@ -21,6 +21,7 @@ type NoteSplash struct {
 	Start          time.Duration
 	Player         FnfPlayerNo
 	Direction      NoteDir
+	SplashIndex    int
 	DrawAfterNotes bool
 }
 
@@ -142,7 +143,7 @@ func init() {
 
 	GSC.RewindHightlightDuration = time.Millisecond * 600
 
-	GSC.NoteSplashDuration = time.Millisecond * 250
+	GSC.NoteSplashDuration = time.Millisecond * 260
 }
 
 type GameScreen struct {
@@ -1188,11 +1189,16 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if e.IsFirstHit() && note.Player == gs.mainPlayer() {
 				rating := GetHitRating(note.StartsAt, e.Time)
 				if rating == HitRatingSick {
+					index := 0
+					if rand.IntN(100) > 50 {
+						index = 1
+					}
 					splash := NoteSplash{
 						Start:          GlobalTimerNow(),
 						Player:         note.Player,
 						Direction:      note.Direction,
 						DrawAfterNotes: note.IsSustain(),
+						SplashIndex:    index,
 					}
 					gs.SplashQueue.Enqueue(splash)
 				}
@@ -1765,9 +1771,9 @@ func (gs *GameScreen) Draw() {
 	// but we want to draw on top of holding note
 	drawNoteSplash := func(drawingAfterNotes bool) {
 		duration := GSC.NoteSplashDuration
-		const splashHeight = 260
+		const splashHeight = 270
 
-		splashScale := splashHeight / SplashFillSprite.Height
+		splashScale := splashHeight / SplashFillSprite[0].Height
 
 		for i := range gs.SplashQueue.Length {
 			splash := gs.SplashQueue.At(i)
@@ -1785,21 +1791,21 @@ func (gs *GameScreen) Draw() {
 				centerY = SCREEN_HEIGHT - GSC.NotesMarginBottom
 			}
 
-			x := centerX - SplashFillSprite.Width*splashScale*0.5
-			y := centerY - SplashFillSprite.Height*splashScale*0.5
+			x := centerX - SplashFillSprite[0].Width*splashScale*0.5
+			y := centerY - SplashFillSprite[0].Height*splashScale*0.5
 
-			spriteN := int(f32(SplashFillSprite.Count) * (f32(delta) / f32(duration)))
-			spriteN = Clamp(spriteN, 0, SplashFillSprite.Count-1)
+			spriteN := int(f32(SplashFillSprite[0].Count) * (f32(delta) / f32(duration)))
+			spriteN = Clamp(spriteN, 0, SplashFillSprite[0].Count-1)
 
 			mat := rl.MatrixScale(splashScale, splashScale, 1)
 			mat = rl.MatrixMultiply(mat, rl.MatrixTranslate(x, y, 0))
 
-			rect := RectWH(SplashFillSprite.Width, SplashFillSprite.Height)
+			rect := RectWH(SplashFillSprite[0].Width, SplashFillSprite[0].Height)
 
-			DrawSpriteTransfromed(SplashFillSprite, spriteN,
+			DrawSpriteTransfromed(SplashFillSprite[splash.SplashIndex], spriteN,
 				rect, mat, ToRlColor(noteFlash[splash.Direction]))
 
-			DrawSpriteTransfromed(SplashStrokeSprite, spriteN,
+			DrawSpriteTransfromed(SplashStrokeSprite[splash.SplashIndex], spriteN,
 				rect, mat, ToRlColor(noteStrokeLight[splash.Direction]))
 		}
 	}
