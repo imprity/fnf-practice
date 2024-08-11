@@ -257,7 +257,15 @@ func IsMouseButtonUp(id InputGroupId, button int32) bool {
 		return true
 	}
 
-	return rl.IsMouseButtonUp(button)
+	// NOTE : version of raylib currently using has a bug where
+	// IsMouseButtonUp is always returns true
+	// I could update the raylib library or pull the fix
+	// (https://github.com/raysan5/raylib/issues/3606)
+	//
+	// but this is a easier fix
+	//
+	// TODO : maybe update raylib to raylib5?
+	return !rl.IsMouseButtonDown(button)
 }
 
 func IsMouseButtonReleased(id InputGroupId, button int32) bool {

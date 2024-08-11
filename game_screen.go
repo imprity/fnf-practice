@@ -214,6 +214,9 @@ type GameScreen struct {
 
 	botPlay bool
 
+	// progress bar
+	isProgressBarInFocus bool
+
 	// rewind stuff
 	rewindQueue      CircularQueue[AnimatedRewind]
 	rewindT          float64
@@ -986,6 +989,30 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				gs.SetAudioPosition(gs.BookMark)
 				gs.ClearRewind()
 			}
+		}
+
+		// handle progress bar
+		//
+		// NOTE : I think handling progress bar last is important
+		// since user can drag their mouse while mashing reset key or
+		// scrolling their mouse.
+		//
+		// When that happens, we want progress bar to have the priority
+		if rl.CheckCollisionPointRec(MouseV(), gs.ProgressBarOuterRect()) &&
+			IsInputEnabled(gs.InputId) &&
+			IsMouseButtonDown(gs.InputId, rl.MouseButtonLeft) {
+			gs.isProgressBarInFocus = true
+		}
+
+		if IsMouseButtonUp(gs.InputId, rl.MouseButtonLeft) || !IsInputEnabled(gs.InputId) {
+			gs.isProgressBarInFocus = false
+		}
+
+		if gs.isProgressBarInFocus {
+			gs.ClearRewind()
+			gs.TempPause(time.Millisecond * 60)
+			positionArbitraryChange = true
+			gs.SetAudioPosition(gs.ProgressBarCursorTime())
 		}
 	}
 
@@ -2480,148 +2507,6 @@ func (gs *GameScreen) DrawBigBookMark() {
 	}
 }
 
-func (gs *GameScreen) DrawProgressBar() {
-	const centerX = SCREEN_WIDTH / 2
-
-	const barW = 300
-	const barH = 13
-	const barStroke = 4
-
-	const barMarginBottom = 10
-	const barMarginTop = 10
-
-	outRect := rl.Rectangle{Width: barW + barStroke*2, Height: barH + barStroke*2}
-	inRect := rl.Rectangle{Width: barW, Height: barH}
-
-	outRect.X = centerX - outRect.Width*0.5
-
-	if TheOptions.DownScroll {
-		outRect.Y = SCREEN_HEIGHT - barMarginBottom - outRect.Height
-	} else {
-		outRect.Y = barMarginTop
-	}
-
-	inRect.X = centerX - inRect.Width*0.5
-	inRect.Y = outRect.Y + barStroke
-
-	// draw background rect
-	rl.DrawRectangleRec(outRect, ToRlColor(FnfColor{0, 0, 0, 100}))
-
-	// draw decoding progress
-	{
-		decodingProgressBar := outRect
-		decodingProgressBar.Width *= f32(gs.AudioDecodedDuration()) / f32(gs.AudioDuration())
-		rl.DrawRectangleRec(decodingProgressBar, ToRlColor(FnfColor{0, 0, 0, 50}))
-	}
-
-	// draw audio position
-	{
-		audioPosBar := inRect
-		audioPosBar.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
-		rl.DrawRectangleRec(audioPosBar, ToRlColor(FnfColor{255, 255, 255, 255}))
-	}
-
-	// draw time stamp
-	{
-		const fontSize = 25
-		var font = FontClear
-		var textColor = rl.Color{0, 0, 0, 255}
-		const margin = 3
-
-		var timeY = outRect.Y + outRect.Height + 10
-
-		if TheOptions.DownScroll {
-			timeY = outRect.Y - fontSize - 10
-		}
-
-		rc := RectCenter(outRect)
-
-		songTime := gs.AudioPosition() - GSC.PadStart
-
-		absTime := AbsI(songTime)
-
-		minutes := int64(absTime / time.Minute)
-		seconds := int64((absTime % time.Minute) / time.Second)
-
-		minStr := fmt.Sprintf("%02d", minutes)
-		secStr := fmt.Sprintf("%02d", seconds)
-
-		if songTime < 0 {
-			minStr = "-" + minStr
-		}
-
-		sepSize := MeasureText(font, ":", fontSize, 0)
-		sepRect := rl.Rectangle{
-			X: rc.X - sepSize.X*0.5, Y: timeY, Width: sepSize.X, Height: sepSize.Y,
-		}
-		DrawText(font, ":", rl.Vector2{sepRect.X, sepRect.Y}, fontSize, 0, textColor)
-
-		minSize := MeasureText(font, minStr, fontSize, 0)
-		minPos := rl.Vector2{X: sepRect.X - minSize.X - margin, Y: timeY}
-		DrawText(font, minStr, minPos, fontSize, 0, textColor)
-
-		secPos := rl.Vector2{X: sepRect.X + sepRect.Width + margin, Y: timeY}
-		DrawText(font, secStr, secPos, fontSize, 0, textColor)
-	}
-
-	// draw miss events
-	const missRectW = 3
-
-	drawRectAt := func(at time.Duration) {
-		rectX := f32(at)/f32(gs.AudioDuration())*inRect.Width + inRect.X
-		rectX -= missRectW * 0.5
-
-		missRect := rl.Rectangle{
-			X: rectX, Y: inRect.Y, Width: missRectW, Height: inRect.Height,
-		}
-
-		rl.DrawRectangleRec(missRect, ToRlColor(FnfColor{0xFF, 0x66, 0x66, 0xFF}))
-	}
-
-	for _, events := range gs.NoteEvents {
-		for _, e := range events {
-			note := gs.Song.Notes[e.Index]
-			if note.Player == gs.mainPlayer() {
-				if e.IsMiss() {
-					drawRectAt(e.Time)
-				}
-			}
-		}
-	}
-
-	for _, miss := range gs.Mispresses {
-		if miss.Player == gs.mainPlayer() {
-			drawRectAt(miss.Time)
-		}
-	}
-
-	// draw bookmark
-
-	if gs.BookMarkSet {
-		// center, not top left corner
-		bookMarkX := inRect.X + barW*f32(gs.BookMark)/f32(gs.AudioDuration())
-		bookMarkY := inRect.Y + inRect.Height*0.5
-
-		srcRect := rl.Rectangle{
-			X: 0, Y: 0,
-			Width: f32(BookMarkSmallTex.Width), Height: f32(BookMarkSmallTex.Height),
-		}
-
-		dstRect := rl.Rectangle{
-			Width: srcRect.Width, Height: srcRect.Height,
-		}
-
-		dstRect.X = bookMarkX - dstRect.Width*0.5
-		dstRect.Y = bookMarkY - dstRect.Height*0.5
-
-		rl.DrawTexturePro(
-			BookMarkSmallTex,
-			srcRect, dstRect,
-			rl.Vector2{}, 0, ToRlColor(FnfColor{255, 255, 255, 255}),
-		)
-	}
-}
-
 func (gs *GameScreen) DrawBotPlayIcon() {
 	const centerX = SCREEN_WIDTH / 2
 
@@ -3276,8 +3161,208 @@ func (hm *GameHelpMessage) Free() {
 	rl.UnloadRenderTexture(hm.TextImage)
 }
 
+// =================================
+// progress bar stuff
+// =================================
+
+func (gs *GameScreen) progressBarRectImpl(getInner bool) rl.Rectangle {
+	const centerX = SCREEN_WIDTH / 2
+
+	const barW = 300 // inner width
+	const barH = 13  // inner height
+	const barStroke = 4
+
+	const barMarginBottom = 10
+	const barMarginTop = 10
+
+	outRect := rl.Rectangle{Width: barW + barStroke*2, Height: barH + barStroke*2}
+	outRect.X = centerX - outRect.Width*0.5
+
+	if TheOptions.DownScroll {
+		outRect.Y = SCREEN_HEIGHT - barMarginBottom - outRect.Height
+	} else {
+		outRect.Y = barMarginTop
+	}
+
+	inRect := rl.Rectangle{Width: barW, Height: barH}
+	inRect.X = centerX - inRect.Width*0.5
+	inRect.Y = outRect.Y + barStroke
+
+	if getInner {
+		return inRect
+	} else {
+		return outRect
+	}
+}
+
+func (gs *GameScreen) ProgressBarInnerRect() rl.Rectangle {
+	return gs.progressBarRectImpl(true)
+}
+
+func (gs *GameScreen) ProgressBarOuterRect() rl.Rectangle {
+	return gs.progressBarRectImpl(false)
+}
+
+func (gs *GameScreen) ProgressBarCursorTime() time.Duration {
+	inRect := gs.ProgressBarInnerRect()
+	cursorX := Clamp(MouseX(), inRect.X, inRect.X+inRect.Width)
+	cursorTime := time.Duration((f64(cursorX-inRect.X) / f64(inRect.Width)) * f64(gs.AudioDuration()))
+
+	return cursorTime
+}
+
+func (gs *GameScreen) DrawProgressBar() {
+	inRect := gs.ProgressBarInnerRect()
+	outRect := gs.ProgressBarOuterRect()
+
+	// draw background rect
+	rl.DrawRectangleRec(outRect, ToRlColor(FnfColor{0, 0, 0, 100}))
+
+	// draw decoding progress
+	{
+		decodingProgressBar := outRect
+		decodingProgressBar.Width *= f32(gs.AudioDecodedDuration()) / f32(gs.AudioDuration())
+		rl.DrawRectangleRec(decodingProgressBar, ToRlColor(FnfColor{0, 0, 0, 50}))
+	}
+
+	// draw audio position
+	{
+		audioPosBar := inRect
+		audioPosBar.Width *= f32(gs.AudioPosition()) / f32(gs.AudioDuration())
+		rl.DrawRectangleRec(audioPosBar, ToRlColor(FnfColor{255, 255, 255, 255}))
+	}
+
+	cursorOnBar := rl.CheckCollisionPointRec(MouseV(), outRect) && IsInputEnabled(gs.InputId)
+
+	timeStamp := gs.AudioPosition()
+	if cursorOnBar || gs.isProgressBarInFocus {
+		timeStamp = gs.ProgressBarCursorTime()
+	}
+	timeStamp -= GSC.PadStart
+
+	// draw time stamp
+	{
+		const fontSize = 25
+		const margin = 3
+
+		drawText := func(text string, pos rl.Vector2) {
+			if cursorOnBar || gs.isProgressBarInFocus {
+				DrawTextOutlined(SdfFontClear, text, pos, fontSize, 0,
+					ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0x2B, 0xB6, 0x20, 0xFF}), 3)
+			} else {
+				DrawText(FontClear, text, pos, fontSize, 0,
+					ToRlColor(FnfColor{0, 0, 0, 0xFF}))
+			}
+		}
+
+		var timeY = outRect.Y + outRect.Height + 10
+
+		if TheOptions.DownScroll {
+			timeY = outRect.Y - fontSize - 10
+		}
+
+		rc := RectCenter(outRect)
+
+		absTime := AbsI(timeStamp)
+
+		minutes := int64(absTime / time.Minute)
+		seconds := int64((absTime % time.Minute) / time.Second)
+
+		minStr := fmt.Sprintf("%02d", minutes)
+		secStr := fmt.Sprintf("%02d", seconds)
+
+		if timeStamp < 0 {
+			minStr = "-" + minStr
+		}
+
+		sepSize := MeasureText(SdfFontClear, ":", fontSize, 0)
+		sepRect := rl.Rectangle{
+			X: rc.X - sepSize.X*0.5, Y: timeY, Width: sepSize.X, Height: sepSize.Y,
+		}
+		drawText(":", rl.Vector2{sepRect.X, sepRect.Y})
+
+		minSize := MeasureText(SdfFontClear, minStr, fontSize, 0)
+		minPos := rl.Vector2{X: sepRect.X - minSize.X - margin, Y: timeY}
+		drawText(minStr, minPos)
+
+		secPos := rl.Vector2{X: sepRect.X + sepRect.Width + margin, Y: timeY}
+		drawText(secStr, secPos)
+	}
+
+	// draw miss events
+	const missRectW = 3
+
+	drawRectAt := func(at time.Duration) {
+		rectX := f32(at)/f32(gs.AudioDuration())*inRect.Width + inRect.X
+		rectX -= missRectW * 0.5
+
+		missRect := rl.Rectangle{
+			X: rectX, Y: inRect.Y, Width: missRectW, Height: inRect.Height,
+		}
+
+		rl.DrawRectangleRec(missRect, ToRlColor(FnfColor{0xFF, 0x66, 0x66, 0xFF}))
+	}
+
+	for _, events := range gs.NoteEvents {
+		for _, e := range events {
+			note := gs.Song.Notes[e.Index]
+			if note.Player == gs.mainPlayer() {
+				if e.IsMiss() {
+					drawRectAt(e.Time)
+				}
+			}
+		}
+	}
+
+	for _, miss := range gs.Mispresses {
+		if miss.Player == gs.mainPlayer() {
+			drawRectAt(miss.Time)
+		}
+	}
+
+	// draw bookmark
+	if gs.BookMarkSet {
+		// center, not top left corner
+		bookMarkX := inRect.X + inRect.Width*f32(gs.BookMark)/f32(gs.AudioDuration())
+		bookMarkY := inRect.Y + inRect.Height*0.5
+
+		srcRect := rl.Rectangle{
+			X: 0, Y: 0,
+			Width: f32(BookMarkSmallTex.Width), Height: f32(BookMarkSmallTex.Height),
+		}
+
+		dstRect := rl.Rectangle{
+			Width: srcRect.Width, Height: srcRect.Height,
+		}
+
+		dstRect.X = bookMarkX - dstRect.Width*0.5
+		dstRect.Y = bookMarkY - dstRect.Height*0.5
+
+		rl.DrawTexturePro(
+			BookMarkSmallTex,
+			srcRect, dstRect,
+			rl.Vector2{}, 0, ToRlColor(FnfColor{255, 255, 255, 255}),
+		)
+	}
+
+	// draw cursor
+	if cursorOnBar || gs.isProgressBarInFocus {
+		cursorX := Clamp(MouseX(), inRect.X, inRect.X+inRect.Width)
+
+		const cursorWidth = 3
+
+		rl.DrawRectangleRec(
+			rl.Rectangle{
+				X: cursorX - cursorWidth*0.5, Y: outRect.Y,
+				Width: cursorWidth, Height: outRect.Height,
+			},
+			ToRlColor(FnfColor{0, 255, 0, 255}),
+		)
+	}
+}
+
 // ====================================
-// end of help message related stuffs
+// end of progress bar stuffs
 // ====================================
 
 func drawLineWithSustainTex(from, to rl.Vector2, width float32, color FnfColor) {
