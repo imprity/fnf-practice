@@ -998,8 +998,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// scrolling their mouse.
 		//
 		// When that happens, we want progress bar to have the priority
-		if rl.CheckCollisionPointRec(MouseV(), gs.ProgressBarOuterRect()) &&
-			IsInputEnabled(gs.InputId) &&
+		if gs.ProgressBarHovering() &&
 			IsMouseButtonDown(gs.InputId, rl.MouseButtonLeft) {
 			gs.isProgressBarInFocus = true
 		}
@@ -3211,6 +3210,11 @@ func (gs *GameScreen) ProgressBarCursorTime() time.Duration {
 	return cursorTime
 }
 
+func (gs *GameScreen) ProgressBarHovering() bool {
+	return rl.CheckCollisionPointRec(MouseV(), gs.ProgressBarOuterRect()) &&
+		IsInputEnabled(gs.InputId)
+}
+
 func (gs *GameScreen) DrawProgressBar() {
 	inRect := gs.ProgressBarInnerRect()
 	outRect := gs.ProgressBarOuterRect()
@@ -3232,10 +3236,8 @@ func (gs *GameScreen) DrawProgressBar() {
 		rl.DrawRectangleRec(audioPosBar, ToRlColor(FnfColor{255, 255, 255, 255}))
 	}
 
-	cursorOnBar := rl.CheckCollisionPointRec(MouseV(), outRect) && IsInputEnabled(gs.InputId)
-
 	timeStamp := gs.AudioPosition()
-	if cursorOnBar || gs.isProgressBarInFocus {
+	if gs.ProgressBarHovering() || gs.isProgressBarInFocus {
 		timeStamp = gs.ProgressBarCursorTime()
 	}
 	timeStamp -= GSC.PadStart
@@ -3246,7 +3248,7 @@ func (gs *GameScreen) DrawProgressBar() {
 		const margin = 3
 
 		drawText := func(text string, pos rl.Vector2) {
-			if cursorOnBar || gs.isProgressBarInFocus {
+			if gs.ProgressBarHovering() || gs.isProgressBarInFocus {
 				DrawTextOutlined(SdfFontClear, text, pos, fontSize, 0,
 					ToRlColor(FnfColor{255, 255, 255, 255}), ToRlColor(FnfColor{0x2B, 0xB6, 0x20, 0xFF}), 3)
 			} else {
@@ -3346,7 +3348,7 @@ func (gs *GameScreen) DrawProgressBar() {
 	}
 
 	// draw cursor
-	if cursorOnBar || gs.isProgressBarInFocus {
+	if gs.ProgressBarHovering() || gs.isProgressBarInFocus {
 		cursorX := Clamp(MouseX(), inRect.X, inRect.X+inRect.Width)
 
 		const cursorWidth = 3
