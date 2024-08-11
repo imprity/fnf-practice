@@ -34,10 +34,12 @@ func init() {
 }
 
 var (
-	TheSelectScreen  *SelectScreen
-	TheDeleteScreen  *DeleteScreen
-	TheOptionsScreen *OptionsScreen
-	TheGameScreen    *GameScreen
+	TheSelectScreen          *SelectScreen
+	TheDeleteScreen          *DeleteScreen
+	TheOptionsMainScreen     *BaseOptionsScreen
+	TheOptionsGamePlayScreen *BaseOptionsScreen
+	TheOptionsControlsScreen *BaseOptionsScreen
+	TheGameScreen            *GameScreen
 
 	NextScreen Screen
 
@@ -141,12 +143,16 @@ func RunApplication() {
 	TheGameScreen = NewGameScreen()
 	TheSelectScreen = NewSelectScreen()
 	TheDeleteScreen = NewDeleteScreen()
-	TheOptionsScreen = NewOptionsScreen()
+	TheOptionsMainScreen = NewOptionsMainScreen()
+	TheOptionsGamePlayScreen = NewOptionsGamePlayScreen()
+	TheOptionsControlsScreen = NewOptionsControlsScreen()
 
 	screensToFree := []Screen{
 		TheGameScreen,
 		TheSelectScreen,
-		TheOptionsScreen,
+		TheOptionsMainScreen,
+		TheOptionsGamePlayScreen,
+		TheOptionsControlsScreen,
 	}
 
 	// queue freeing

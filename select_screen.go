@@ -153,7 +153,7 @@ func NewSelectScreen() *SelectScreen {
 	optionsItem.Type = MenuItemTrigger
 	optionsItem.TriggerCallback = func() {
 		ShowTransition(BlackPixel, func() {
-			SetNextScreen(TheOptionsScreen)
+			SetNextScreen(TheOptionsMainScreen)
 			HideTransition()
 		})
 	}
@@ -853,14 +853,14 @@ func (ds *DeleteScreen) AddSongList(
 		deleteAllItem.ColorSelected = FnfColor{0xF6, 0x08, 0x08, 0xFF}
 		deleteAllItem.ToggleCallback = func(bValue bool) {
 			for _, id := range songItemIds {
-				ds.Menu.SetItemBValue(id, bValue)
+				ds.Menu.SetItemBValue(id, true, bValue)
 			}
 		}
 
 		for _, item := range songItems {
 			item.ToggleCallback = func(bValue bool) {
 				if bValue == false {
-					ds.Menu.SetItemBValue(deleteAllItem.Id, false)
+					ds.Menu.SetItemBValue(deleteAllItem.Id, true, false)
 				}
 			}
 		}

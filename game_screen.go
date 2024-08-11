@@ -742,11 +742,11 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		// before menu popup
 		// =============================================
 		if !wasDrawingMenu && gs.DrawMenu {
-			gs.Menu.SetItemBValue(gs.BotPlayMenuItemId, gs.IsBotPlay())
+			gs.Menu.SetItemBValue(gs.BotPlayMenuItemId, false, gs.IsBotPlay())
 
-			gs.Menu.SetItemBValue(gs.RewindOnMistakeMenuItemId, gs.RewindOnMistake)
+			gs.Menu.SetItemBValue(gs.RewindOnMistakeMenuItemId, false, gs.RewindOnMistake)
 
-			gs.Menu.SetItemBValue(gs.OpponentModeMenuItemId, gs.OpponentMode)
+			gs.Menu.SetItemBValue(gs.OpponentModeMenuItemId, false, gs.OpponentMode)
 
 			var difficultyList []string
 			var difficultySelected int

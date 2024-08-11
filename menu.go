@@ -1497,17 +1497,19 @@ func (md *MenuDrawer) GetItemUserData(id MenuItemId) (any, bool) {
 // Sets item BValue.
 // Doesn't trigger item callback.
 // Returns true on success.
-func (md *MenuDrawer) SetItemBValue(id MenuItemId, bValue bool) bool {
+func (md *MenuDrawer) SetItemBValue(id MenuItemId, triggerAnimation bool, bValue bool) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		if item.BValue != bValue {
 			item.BValue = bValue
 
-			// Trigger item click animation if necessary
-			if item.Type == MenuItemTrigger {
-				item.NameClickTimer = GlobalTimerNow()
-			} else if item.Type == MenuItemToggle {
-				item.ValueClickTimer = GlobalTimerNow()
+			if triggerAnimation {
+				// Trigger item click animation if necessary
+				if item.Type == MenuItemTrigger {
+					item.NameClickTimer = GlobalTimerNow()
+				} else if item.Type == MenuItemToggle {
+					item.ValueClickTimer = GlobalTimerNow()
+				}
 			}
 		}
 
@@ -1529,16 +1531,17 @@ func (md *MenuDrawer) GetItemBValue(id MenuItemId) (bValue bool, ok bool) {
 // Sets item NValue.
 // Doesn't trigger item callback.
 // Returns true on success.
-func (md *MenuDrawer) SetItemNvalue(id MenuItemId, nValue float32) bool {
+func (md *MenuDrawer) SetItemNvalue(id MenuItemId, triggerAnimation bool, nValue float32) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		prevValue := item.NValue
 		item.NValue = nValue
 
-		if math.Abs(f64(nValue-prevValue)) > 0.0001 && // epsilon fresh from my ass
-			item.Type == MenuItemNumber {
-
-			item.ValueClickTimer = GlobalTimerNow()
+		if triggerAnimation {
+			if math.Abs(f64(nValue-prevValue)) > 0.0001 && // epsilon fresh from my ass
+				item.Type == MenuItemNumber {
+				item.ValueClickTimer = GlobalTimerNow()
+			}
 		}
 		return true
 	}
@@ -1558,15 +1561,17 @@ func (md *MenuDrawer) GetItemNValue(id MenuItemId) (float32, bool) {
 // Sets item ListSelected.
 // Doesn't trigger item callback.
 // Returns true on success.
-func (md *MenuDrawer) SetItemListSelected(id MenuItemId, selected int) bool {
+func (md *MenuDrawer) SetItemListSelected(id MenuItemId, triggerAnimation bool, selected int) bool {
 	item := md.GetItemById(id)
 	if item != nil {
 		if len(item.List) > 0 {
 			selected = Clamp(selected, 0, len(item.List)-1)
 
-			if selected != item.ListSelected && item.Type == MenuItemList {
-				item.ListSelected = selected
-				item.ValueClickTimer = GlobalTimerNow()
+			if triggerAnimation {
+				if selected != item.ListSelected && item.Type == MenuItemList {
+					item.ListSelected = selected
+					item.ValueClickTimer = GlobalTimerNow()
+				}
 			}
 		}
 		return true
