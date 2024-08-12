@@ -74,6 +74,12 @@ var (
 var HitSoundAudio []byte
 
 var (
+	OptionsMainSprite     Sprite
+	OptionsGamePlaySprite Sprite
+	OptionsControlsSprite Sprite
+)
+
+var (
 	texsToUnload []rl.Texture2D
 )
 
@@ -109,10 +115,10 @@ func loadAssets(isReload bool) {
 		return byteArray
 	}
 
-	loadTexture := func(path string, premultiply bool, fileType string) rl.Texture2D {
+	loadTexture := func(path string, premultiply bool) rl.Texture2D {
 		byteArray := loadData(path)
 
-		img := rl.LoadImageFromMemory(fileType, byteArray, int32(len(byteArray)))
+		img := rl.LoadImageFromMemory(filepath.Ext(path), byteArray, int32(len(byteArray)))
 
 		if !rl.IsImageReady(img) {
 			ErrorLogger.Fatalf("failed to load img : %v", path)
@@ -137,25 +143,31 @@ func loadAssets(isReload bool) {
 		return tex
 	}
 
+	loadSprite := func(jsonPath string, imgPath string, premultiply bool) Sprite {
+		jsonBytes := loadData(jsonPath)
+		buffer := bytes.NewBuffer(jsonBytes)
+
+		var err error
+		var sprite Sprite
+		if sprite, err = ParseSpriteJsonMetadata(buffer); err != nil {
+			ErrorLogger.Fatal(err)
+		}
+
+		sprite.Texture = loadTexture(imgPath, premultiply)
+
+		return sprite
+	}
+
 	// =============================
 	// load reloadable assets
 	// =============================
 
 	// load fnf arrows texture
-	{
-		var err error
-		ArrowsSprite, err = ParseSpriteJsonMetadata(bytes.NewBuffer(loadData("assets/arrows.json")))
-
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-
-		ArrowsSprite.Texture = loadTexture("assets/arrows.png", true, ".png")
-	}
+	ArrowsSprite = loadSprite("assets/arrows.json", "assets/arrows.png", true)
 
 	// load fnf arrows glow texture
 	{
-		glowTex := loadTexture("assets/arrows-glow.png", true, ".png")
+		glowTex := loadTexture("assets/arrows-glow.png", true)
 
 		ArrowsGlowSprite.Texture = glowTex
 
@@ -169,7 +181,7 @@ func loadAssets(isReload bool) {
 
 	// load ui arrows texture
 	{
-		uiArrowsTex := loadTexture("assets/ui-arrows.png", true, ".png")
+		uiArrowsTex := loadTexture("assets/ui-arrows.png", true)
 
 		UIarrowsSprite.Texture = uiArrowsTex
 
@@ -181,7 +193,7 @@ func loadAssets(isReload bool) {
 		UIarrowsSprite.Width = f32(uiArrowsTex.Width) / UIarrowsSpriteCount
 	}
 
-	SustainTex = loadTexture("assets/sustain-bar.png", true, ".png")
+	SustainTex = loadTexture("assets/sustain-bar.png", true)
 	if SustainTex.Width > SustainTex.Height {
 		ErrorLogger.Printf("SustainTex width(%v) is bigger than height(%v)",
 			SustainTex.Width, SustainTex.Height)
@@ -189,57 +201,26 @@ func loadAssets(isReload bool) {
 
 	// load checkbox sprite
 	{
-		CheckBoxBox = loadTexture("assets/checkbox-box.png", true, ".png")
-
-		jsonBytes := loadData("assets/checkbox-sprites.json")
-		buffer := bytes.NewBuffer(jsonBytes)
-
-		var err error
-
-		CheckBoxMark, err = ParseSpriteJsonMetadata(buffer)
-
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-
-		CheckBoxMark.Texture = loadTexture("assets/checkbox-sprites.png", true, ".png")
+		CheckBoxBox = loadTexture("assets/checkbox-box.png", true)
+		CheckBoxMark = loadSprite("assets/checkbox-sprites.json", "assets/checkbox-sprites.png", true)
 	}
 	// load dancing sprite
-	{
-		jsonBytes := loadData("assets/dancing-note.json")
-		buffer := bytes.NewBuffer(jsonBytes)
-		var err error
-		DancingNoteSprite, err = ParseSpriteJsonMetadata(buffer)
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-		DancingNoteSprite.Texture = loadTexture("assets/dancing-note.png", true, ".png")
-	}
+	DancingNoteSprite = loadSprite("assets/dancing-note.json", "assets/dancing-note.png", true)
 
 	// load splash fill sprite
 	for i := range 2 {
-		jsonBytes := loadData(fmt.Sprintf("assets/splash-fill%d.json", i+1))
-		buffer := bytes.NewBuffer(jsonBytes)
-		var err error
-		SplashFillSprite[i], err = ParseSpriteJsonMetadata(buffer)
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-		SplashFillSprite[i].Texture = loadTexture(
-			fmt.Sprintf("assets/splash-fill%d.png", i+1), true, ".png")
+		SplashFillSprite[i] = loadSprite(
+			fmt.Sprintf("assets/splash-fill%d.json", i+1),
+			fmt.Sprintf("assets/splash-fill%d.png", i+1), true,
+		)
 	}
 
 	// load splash stroke sprite
 	for i := range 2 {
-		jsonBytes := loadData(fmt.Sprintf("assets/splash-stroke%d.json", i+1))
-		buffer := bytes.NewBuffer(jsonBytes)
-		var err error
-		SplashStrokeSprite[i], err = ParseSpriteJsonMetadata(buffer)
-		if err != nil {
-			ErrorLogger.Fatal(err)
-		}
-		SplashStrokeSprite[i].Texture = loadTexture(
-			fmt.Sprintf("assets/splash-stroke%d.png", i+1), true, ".png")
+		SplashStrokeSprite[i] = loadSprite(
+			fmt.Sprintf("assets/splash-stroke%d.json", i+1),
+			fmt.Sprintf("assets/splash-stroke%d.png", i+1), true,
+		)
 	}
 
 	// check if splash fill and stroke have the same size and sprite count
@@ -260,14 +241,14 @@ func loadAssets(isReload bool) {
 		}
 	}
 
-	BookMarkBigTex = loadTexture("assets/bookmark-big.png", true, ".png")
-	BookMarkSmallTex = loadTexture("assets/bookmark-small.png", true, ".png")
+	BookMarkBigTex = loadTexture("assets/bookmark-big.png", true)
+	BookMarkSmallTex = loadTexture("assets/bookmark-small.png", true)
 
-	GameScreenBg = loadTexture("assets/game-background.png", true, ".png")
-	MenuScreenBg = loadTexture("assets/menu-background.png", true, ".png")
-	MenuScreenSimpleBg = loadTexture("assets/menu-background-simple.png", true, ".png")
-	SongLoadingScreen = loadTexture("assets/song-loading-screen.png", true, ".png")
-	DirSelectScreen = loadTexture("assets/directory-select-screen.png", true, ".png")
+	GameScreenBg = loadTexture("assets/game-background.png", true)
+	MenuScreenBg = loadTexture("assets/menu-background.png", true)
+	MenuScreenSimpleBg = loadTexture("assets/menu-background-simple.png", true)
+	SongLoadingScreen = loadTexture("assets/song-loading-screen.png", true)
+	DirSelectScreen = loadTexture("assets/directory-select-screen.png", true)
 
 	ratingImgPaths := [HitRatingSize]string{
 		"assets/bad.png",
@@ -276,10 +257,15 @@ func loadAssets(isReload bool) {
 	}
 
 	for r := FnfHitRating(0); r < HitRatingSize; r++ {
-		HitRatingTexs[r] = loadTexture(ratingImgPaths[r], true, ".png")
+		HitRatingTexs[r] = loadTexture(ratingImgPaths[r], true)
 	}
 
-	PopupBg = loadTexture("assets/popup-bg.png", true, ".png")
+	PopupBg = loadTexture("assets/popup-bg.png", true)
+
+	// load animated options icons
+	OptionsMainSprite = loadSprite("assets/options-main.json", "assets/options-main.png", true)
+	OptionsGamePlaySprite = loadSprite("assets/options-gameplay.json", "assets/options-gameplay.png", true)
+	OptionsControlsSprite = loadSprite("assets/options-controls.json", "assets/options-controls.png", true)
 
 	// create black pixel
 	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))

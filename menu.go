@@ -128,8 +128,8 @@ type MenuItem struct {
 	KeySelectTimer       time.Duration
 
 	// drawing callbacks
-	BeforeDrawing func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32)
-	AfterDrawing  func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32)
+	BeforeDrawing func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool)
+	AfterDrawing  func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool)
 
 	bound rl.Rectangle
 }
@@ -381,6 +381,8 @@ type MenuDrawer struct {
 	items []*MenuItem
 
 	idToIndexCache map[MenuItemId]int
+
+	justAppearedOnScreen bool
 }
 
 func NewMenuDrawer() *MenuDrawer {
@@ -389,6 +391,8 @@ func NewMenuDrawer() *MenuDrawer {
 	md.scrollAnimT = 1
 
 	md.InputId = NewInputGroupId()
+
+	md.justAppearedOnScreen = true
 
 	return md
 }
@@ -746,6 +750,11 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 
 	md.scrollAnimT = Lerp(md.scrollAnimT, 1.0, blend)
 
+	if md.justAppearedOnScreen {
+		md.yOffset = selectionY
+		md.scrollAnimT = 1
+	}
+
 	// ================================
 	// actually call item callback
 	// ================================
@@ -801,6 +810,10 @@ func (md *MenuDrawer) Draw() {
 	if md.IsHidden {
 		return
 	}
+
+	defer func() {
+		md.justAppearedOnScreen = false
+	}()
 
 	if md.DrawBackground {
 		rl.BeginBlendMode(md.Background.BlendMode)
@@ -1029,7 +1042,7 @@ func (md *MenuDrawer) Draw() {
 		}
 
 		if item.BeforeDrawing != nil {
-			item.BeforeDrawing(item, item.bound, selectionAnimT)
+			item.BeforeDrawing(item, item.bound, selectionAnimT, md.justAppearedOnScreen)
 		}
 
 		yCenter = yOffset + item.SizeRegular*0.5
@@ -1245,7 +1258,7 @@ func (md *MenuDrawer) Draw() {
 		itemBoundSet = false
 
 		if item.AfterDrawing != nil {
-			item.AfterDrawing(item, item.bound, selectionAnimT)
+			item.AfterDrawing(item, item.bound, selectionAnimT, md.justAppearedOnScreen)
 		}
 	}
 }
@@ -1649,8 +1662,7 @@ func (md *MenuDrawer) GetItemBound(id MenuItemId) (rl.Rectangle, bool) {
 }
 
 func (md *MenuDrawer) BeforeScreenTransition() {
-	md.scrollAnimT = 1
-	md.yOffset = md.calculateSelectionY(md.selectedIndex)
+	md.justAppearedOnScreen = true
 }
 
 func (md *MenuDrawer) BeforeScreenEnd() {
@@ -1659,4 +1671,60 @@ func (md *MenuDrawer) BeforeScreenEnd() {
 
 func (md *MenuDrawer) Free() {
 	// pass
+}
+
+// =====================================
+// misc utils
+// =====================================
+
+func AddAnimatedSpriteNextToMenuItem(
+	item *MenuItem,
+	sprite Sprite, duration time.Duration, height float32, marginRight float32,
+	color, colorSelected FnfColor,
+) {
+	if sprite.Height <= 0 {
+		return
+	}
+
+	now := time.Now()
+	selected := false
+
+	item.AfterDrawing = func(
+		it *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool,
+	) {
+		scale := height / sprite.Height
+
+		// NOTE : this could be separate parameter,
+		// like this function could have heightSelected
+		// and actual icon height would be lerped.
+		// But I don't think we need that much of fine control for now.
+		if it.IsSelectable() {
+			scale = scale * f32(Lerp(0.3, 1, f64(selectionAnimT)))
+		}
+
+		mat := rl.MatrixScale(scale, scale, 1)
+		mat = rl.MatrixMultiply(mat, rl.MatrixTranslate(
+			bound.X+bound.Width+marginRight,
+			bound.Y+bound.Height*0.5-sprite.Height*scale*0.5,
+			0,
+		))
+
+		frameTime := duration / time.Duration(sprite.Count)
+
+		prevSelected := selected
+		selected = selectionAnimT > 0.0001 // arbitrary epsilon
+		if (!prevSelected && selected) || justAppearedOnScreen {
+			now = time.Now()
+		}
+
+		spriteN := int(time.Now().Sub(now)/frameTime) % sprite.Count
+
+		col := LerpRGBA(color, colorSelected, f64(selectionAnimT))
+
+		DrawSpriteTransfromed(
+			sprite, spriteN,
+			RectWH(sprite.Width, sprite.Height),
+			mat, ToRlColor(col),
+		)
+	}
 }

@@ -119,13 +119,17 @@ func NewSelectScreen() *SelectScreen {
 		var directoryOpenBgCol = FnfColor{0x73, 0xFF, 0x99, 220}
 
 		// draw round bg
-		directoryOpen.BeforeDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+		directoryOpen.BeforeDrawing = func(
+			item *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool,
+		) {
 			bound = RectExpandPro(bound, 25, 25, 15, 15)
 			rl.DrawRectangleRounded(bound, 1, 10, ToRlColor(directoryOpenBgCol))
 		}
 
 		// draw help message
-		directoryOpen.AfterDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+		directoryOpen.AfterDrawing = func(
+			item *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool,
+		) {
 			helpMsgBound := ElementsBound(ss.searchDirHelpMsg)
 
 			itemCenter := RectCenter(bound)
@@ -157,6 +161,11 @@ func NewSelectScreen() *SelectScreen {
 			HideTransition()
 		})
 	}
+	AddAnimatedSpriteNextToMenuItem(
+		optionsItem,
+		OptionsMainSprite, time.Millisecond*2500, MenuItemDefaults.SizeSelected*0.8, 20,
+		FnfColor{0, 0, 0, 0}, optionsItem.ColorSelected,
+	)
 	ss.Menu.AddItems(optionsItem)
 
 	// ============================
@@ -334,7 +343,9 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 		}
 
 		// draw preview decoding progress
-		menuItem.AfterDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+		menuItem.AfterDrawing = func(
+			item *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool,
+		) {
 			if !(ss.PlayInstOnLoad || ss.PlayVoiceOnLoad) {
 				return
 			}
@@ -423,7 +434,9 @@ func (ss *SelectScreen) AddCollection(collection PathGroupCollection) {
 
 		rl.UnloadImage(pathImg)
 
-		dummyDeco.AfterDrawing = func(item *MenuItem, bound rl.Rectangle, selectionAnimT float32) {
+		dummyDeco.AfterDrawing = func(
+			item *MenuItem, bound rl.Rectangle, selectionAnimT float32, justAppearedOnScreen bool,
+		) {
 			// draw bg rectangle
 			bgRect := rl.Rectangle{
 				X: 0, Y: bound.Y,

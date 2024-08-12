@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// ============================
+// BaseOptionsScreen stuff
+// ============================
 type BaseOptionsScreen struct {
 	Menu *MenuDrawer
 
@@ -22,6 +25,15 @@ type BaseOptionsScreen struct {
 	onMatchItemsToOption []func()
 
 	selectFirstItem bool
+}
+
+func newBaseOptionsScreen() *BaseOptionsScreen {
+	op := new(BaseOptionsScreen)
+	op.Menu = NewMenuDrawer()
+	op.InputId = NewInputGroupId()
+	op.helpMessages = make(map[MenuItemId][]RichTextElement)
+
+	return op
 }
 
 func (op *BaseOptionsScreen) HelpMessageDefaultStyle() RichTextStyle {
@@ -161,14 +173,9 @@ func (op *BaseOptionsScreen) Free() {
 	op.Menu.Free()
 }
 
-func newBaseOptionsScreen() *BaseOptionsScreen {
-	op := new(BaseOptionsScreen)
-	op.Menu = NewMenuDrawer()
-	op.InputId = NewInputGroupId()
-	op.helpMessages = make(map[MenuItemId][]RichTextElement)
-
-	return op
-}
+// ===================================
+// end of BaseOptionsScreen stuff
+// ===================================
 
 func NewOptionsMainScreen() *BaseOptionsScreen {
 	op := newBaseOptionsScreen()
@@ -183,6 +190,13 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
+	AddAnimatedSpriteNextToMenuItem(
+		optionsDeco,
+		OptionsMainSprite,
+		Years150, // just stop at first frame
+		optionsDeco.SizeRegular*0.6, 20,
+		optionsDeco.Color, optionsDeco.ColorSelected,
+	)
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
@@ -243,7 +257,7 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 
 	op.AddHelpMessageTopRight(loadAudioDuringGpItem.Id,
 		50, 50, 460,
-		`Load audio during game paly. May cause some issues and definitely not recommended if you use slow PC.`,
+		`Load audio during game play. May cause some issues and definitely not recommended if you use slow PC.`,
 	)
 
 	gamePlayItem := NewMenuItem()
@@ -252,6 +266,11 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	gamePlayItem.TriggerCallback = func() {
 		SetNextScreen(TheOptionsGamePlayScreen)
 	}
+	AddAnimatedSpriteNextToMenuItem(
+		gamePlayItem,
+		OptionsGamePlaySprite, time.Millisecond*4000, MenuItemDefaults.SizeSelected*1.2, 20,
+		FnfColor{0, 0, 0, 0}, gamePlayItem.ColorSelected,
+	)
 	op.Menu.AddItems(gamePlayItem)
 
 	controlsItem := NewMenuItem()
@@ -260,6 +279,11 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	controlsItem.TriggerCallback = func() {
 		SetNextScreen(TheOptionsControlsScreen)
 	}
+	AddAnimatedSpriteNextToMenuItem(
+		controlsItem,
+		OptionsControlsSprite, time.Millisecond*3000, MenuItemDefaults.SizeSelected*0.9, 20,
+		FnfColor{0, 0, 0, 0}, controlsItem.ColorSelected,
+	)
 	op.Menu.AddItems(controlsItem)
 
 	// ===========================
@@ -311,6 +335,13 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
+	AddAnimatedSpriteNextToMenuItem(
+		optionsDeco,
+		OptionsGamePlaySprite,
+		Years150, // just stop at first frame
+		optionsDeco.SizeRegular*1.1, 20,
+		optionsDeco.Color, optionsDeco.ColorSelected,
+	)
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
@@ -459,6 +490,13 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
+	AddAnimatedSpriteNextToMenuItem(
+		optionsDeco,
+		OptionsControlsSprite,
+		Years150, // just stop at first frame
+		optionsDeco.SizeSelected*0.7, 20,
+		optionsDeco.Color, optionsDeco.ColorSelected,
+	)
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
