@@ -91,7 +91,6 @@ func NewSelectScreen() *SelectScreen {
 	directoryOpen.StrokeWidth = 0
 
 	directoryOpen.TriggerCallback = func() {
-		ss.StopPreviewPlayers()
 		ShowTransition(DirSelectScreen, func() {
 			defer HideTransition()
 
@@ -762,12 +761,10 @@ func (ss *SelectScreen) BeforeScreenTransition() {
 	ss.Menu.BeforeScreenTransition()
 
 	ss.GenerateHelpMsg()
-
-	ss.StopPreviewPlayers()
 }
 
 func (ss *SelectScreen) BeforeScreenEnd() {
-	ss.StopPreviewPlayers()
+	// pass
 }
 
 func (ss *SelectScreen) Free() {
