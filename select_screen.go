@@ -61,6 +61,12 @@ func NewSelectScreen() *SelectScreen {
 
 	// init main menu
 	ss.Menu = NewMenuDrawer()
+	// NOTE : This code needs some explanation...
+	// When I first made a menu, it actually moved on it's own at start due to bug
+	//
+	// But when I fixed the bug, it looked off because screen started perfectly still.
+	// So I'm starting the menu a bit lower and settle it back to it's position on update.
+	ss.Menu.UserOffsetY = -250
 
 	ss.IdToGroup = make(map[FnfPathGroupId]FnfPathGroup)
 
@@ -619,6 +625,12 @@ PREVIEW_ERROR:
 }
 
 func (ss *SelectScreen) Update(deltaTime time.Duration) {
+	// return the menu where it should be
+	{
+		blend := Clamp(float32(deltaTime.Seconds()*20), 0.00, 1.0)
+		ss.Menu.UserOffsetY = Lerp(ss.Menu.UserOffsetY, 0, blend)
+	}
+
 	ss.Menu.Update(deltaTime)
 
 	if AreKeysPressed(ss.InputId, NoteKeys(NoteDirLeft)...) {

@@ -368,6 +368,10 @@ type MenuDrawer struct {
 	Background     MenuBackground
 	DrawBackground bool
 
+	// user can set this value to offset the coordinate of menu items
+	UserOffsetX float32
+	UserOffsetY float32
+
 	selectedIndex int
 
 	yOffset float32
@@ -862,8 +866,8 @@ func (md *MenuDrawer) Draw() {
 		return float32(tt*0.1 + 0.9)
 	}
 
-	yOffset := md.yOffset
-	xOffset := float32(100)
+	yOffset := md.yOffset + md.UserOffsetY
+	xOffset := float32(100) + md.UserOffsetX
 
 	xAdvance := xOffset
 	yCenter := float32(0)
