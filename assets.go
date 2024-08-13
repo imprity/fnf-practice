@@ -71,16 +71,7 @@ var (
 
 var HitSoundAudio []byte
 
-// menu icons
-var (
-	OptionsMainSprite     Sprite
-	OptionsGamePlaySprite Sprite
-	OptionsControlsSprite Sprite
-
-	DancingNoteSprite Sprite
-
-	DeleteIconSprite Sprite
-)
+var DancingNoteSprite Sprite
 
 var (
 	texsToUnload []rl.Texture2D
@@ -263,14 +254,8 @@ func loadAssets(isReload bool) {
 
 	PopupBg = loadTexture("assets/popup-bg.png", true)
 
-	// load animated options icons
-	OptionsMainSprite = loadSprite("assets/menu-icons/options-main.json", "assets/menu-icons/options-main.png", true)
-	OptionsGamePlaySprite = loadSprite("assets/menu-icons/options-gameplay.json", "assets/menu-icons/options-gameplay.png", true)
-	OptionsControlsSprite = loadSprite("assets/menu-icons/options-controls.json", "assets/menu-icons/options-controls.png", true)
-
-	DancingNoteSprite = loadSprite("assets/menu-icons/dancing-note.json", "assets/menu-icons/dancing-note.png", true)
-
-	DeleteIconSprite = loadSprite("assets/menu-icons/delete-icon.json", "assets/menu-icons/delete-icon.png", true)
+	// load dancing notes
+	DancingNoteSprite = loadSprite("assets/dancing-note.json", "assets/dancing-note.png", true)
 
 	// create black pixel
 	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))

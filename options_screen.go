@@ -190,13 +190,6 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
-	AddAnimatedSpriteNextToMenuItem(
-		optionsDeco,
-		OptionsMainSprite,
-		Years150, // just stop at first frame
-		optionsDeco.SizeRegular*0.6, 20,
-		optionsDeco.Color, optionsDeco.ColorSelected,
-	)
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
@@ -266,11 +259,6 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	gamePlayItem.TriggerCallback = func() {
 		SetNextScreen(TheOptionsGamePlayScreen)
 	}
-	AddAnimatedSpriteNextToMenuItem(
-		gamePlayItem,
-		OptionsGamePlaySprite, time.Millisecond*4000, MenuItemDefaults.SizeSelected*1.2, 20,
-		FnfColor{0, 0, 0, 0}, gamePlayItem.ColorSelected,
-	)
 	op.Menu.AddItems(gamePlayItem)
 
 	controlsItem := NewMenuItem()
@@ -279,11 +267,6 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	controlsItem.TriggerCallback = func() {
 		SetNextScreen(TheOptionsControlsScreen)
 	}
-	AddAnimatedSpriteNextToMenuItem(
-		controlsItem,
-		OptionsControlsSprite, time.Millisecond*3000, MenuItemDefaults.SizeSelected*0.9, 20,
-		FnfColor{0, 0, 0, 0}, controlsItem.ColorSelected,
-	)
 	op.Menu.AddItems(controlsItem)
 
 	// ===========================
@@ -335,13 +318,6 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
-	AddAnimatedSpriteNextToMenuItem(
-		optionsDeco,
-		OptionsGamePlaySprite,
-		Years150, // just stop at first frame
-		optionsDeco.SizeRegular*1.1, 20,
-		optionsDeco.Color, optionsDeco.ColorSelected,
-	)
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
@@ -490,13 +466,6 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 	optionsDeco.FadeIfUnselected = false
 	optionsDeco.SizeRegular = MenuItemDefaults.SizeRegular * 1.7
 	optionsDeco.SizeSelected = MenuItemDefaults.SizeSelected * 1.7
-	AddAnimatedSpriteNextToMenuItem(
-		optionsDeco,
-		OptionsControlsSprite,
-		Years150, // just stop at first frame
-		optionsDeco.SizeSelected*0.7, 20,
-		optionsDeco.Color, optionsDeco.ColorSelected,
-	)
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()

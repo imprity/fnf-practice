@@ -160,11 +160,6 @@ func NewSelectScreen() *SelectScreen {
 			HideTransition()
 		})
 	}
-	AddAnimatedSpriteNextToMenuItem(
-		optionsItem,
-		OptionsMainSprite, time.Millisecond*2500, MenuItemDefaults.SizeSelected*0.8, 20,
-		FnfColor{0, 0, 0, 0}, optionsItem.ColorSelected,
-	)
 	ss.Menu.AddItems(optionsItem)
 
 	// ============================
@@ -177,11 +172,6 @@ func NewSelectScreen() *SelectScreen {
 	deleteSongsItem.TriggerCallback = func() {
 		ss.ShowDeleteMenu()
 	}
-	AddAnimatedSpriteNextToMenuItem(
-		deleteSongsItem,
-		DeleteIconSprite, time.Millisecond*3000, MenuItemDefaults.SizeSelected*1.1, 5,
-		FnfColor{0, 0, 0, 0}, deleteSongsItem.ColorSelected,
-	)
 	ss.Menu.AddItems(deleteSongsItem)
 	ss.DeleteSongsItemId = deleteSongsItem.Id
 	// =====================
@@ -834,11 +824,6 @@ func (ds *DeleteScreen) AddSongList(
 			},
 		)
 	}
-	AddAnimatedSpriteNextToMenuItem(
-		deleteConfirm,
-		DeleteIconSprite, time.Millisecond*3000, deleteConfirm.SizeSelected*1.4, 5,
-		FnfColor{0, 0, 0, 0}, deleteConfirm.StrokeColorSelected,
-	)
 	ds.Menu.AddItems(deleteConfirm)
 
 	var firstSongItemId MenuItemId = -1
