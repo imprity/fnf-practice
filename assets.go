@@ -45,8 +45,6 @@ var (
 	MenuScreenSimpleBg rl.Texture2D
 )
 
-var DancingNoteSprite Sprite
-
 var (
 	SongLoadingScreen rl.Texture2D
 	DirSelectScreen   rl.Texture2D
@@ -73,10 +71,15 @@ var (
 
 var HitSoundAudio []byte
 
+// menu icons
 var (
 	OptionsMainSprite     Sprite
 	OptionsGamePlaySprite Sprite
 	OptionsControlsSprite Sprite
+
+	DancingNoteSprite Sprite
+
+	DeleteIconSprite Sprite
 )
 
 var (
@@ -204,8 +207,6 @@ func loadAssets(isReload bool) {
 		CheckBoxBox = loadTexture("assets/checkbox-box.png", true)
 		CheckBoxMark = loadSprite("assets/checkbox-sprites.json", "assets/checkbox-sprites.png", true)
 	}
-	// load dancing sprite
-	DancingNoteSprite = loadSprite("assets/menu-icons/dancing-note.json", "assets/menu-icons/dancing-note.png", true)
 
 	// load splash fill sprite
 	for i := range 2 {
@@ -266,6 +267,10 @@ func loadAssets(isReload bool) {
 	OptionsMainSprite = loadSprite("assets/menu-icons/options-main.json", "assets/menu-icons/options-main.png", true)
 	OptionsGamePlaySprite = loadSprite("assets/menu-icons/options-gameplay.json", "assets/menu-icons/options-gameplay.png", true)
 	OptionsControlsSprite = loadSprite("assets/menu-icons/options-controls.json", "assets/menu-icons/options-controls.png", true)
+
+	DancingNoteSprite = loadSprite("assets/menu-icons/dancing-note.json", "assets/menu-icons/dancing-note.png", true)
+
+	DeleteIconSprite = loadSprite("assets/menu-icons/delete-icon.json", "assets/menu-icons/delete-icon.png", true)
 
 	// create black pixel
 	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))
