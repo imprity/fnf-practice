@@ -200,7 +200,7 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	op.Menu.AddItems(optionsDeco)
 
 	backItem := NewMenuItem()
-	backItem.Name = "Back To Menu"
+	backItem.Name = "Return To Menu"
 	backItem.Type = MenuItemTrigger
 	backItem.TriggerCallback = func() {
 		ShowTransition(BlackPixel, func() {
@@ -329,7 +329,7 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 	op.ShowScreenTransitionEffect = false
 
 	optionsDeco := NewMenuItem()
-	optionsDeco.Name = "Game Play Options"
+	optionsDeco.Name = "Game Play"
 	optionsDeco.Type = MenuItemDeco
 	optionsDeco.Color = FnfColor{0xE3, 0x9C, 0x02, 0xFF}
 	optionsDeco.FadeIfUnselected = false

@@ -553,7 +553,10 @@ func (ss *SelectScreen) ShowDeleteMenu() {
 	}
 
 	TheDeleteScreen.AddSongList(ss.Collections, collectionToDeco)
-	SetNextScreen(TheDeleteScreen)
+	ShowTransition(BlackPixel, func() {
+		defer HideTransition()
+		SetNextScreen(TheDeleteScreen)
+	})
 }
 
 func (ss *SelectScreen) StopPreviewPlayers() {
@@ -819,10 +822,9 @@ func (ds *DeleteScreen) AddSongList(
 				// if it's canceled, then do nothing
 				if !isCanceled {
 					if selected == "Yes" {
-						ds.PassDeletionListSelectScreen()
-					} else {
-						SetNextScreen(TheSelectScreen)
+						TheSelectScreen.DeletePathGroups(ds.GetPathGroupsToDelete())
 					}
+					SetNextScreen(TheSelectScreen)
 				}
 			},
 		)
@@ -911,11 +913,6 @@ func (ds *DeleteScreen) GetPathGroupsToDelete() []FnfPathGroupId {
 	}
 
 	return groups
-}
-
-func (ds *DeleteScreen) PassDeletionListSelectScreen() {
-	TheSelectScreen.DeletePathGroups(ds.GetPathGroupsToDelete())
-	SetNextScreen(TheSelectScreen)
 }
 
 func (ds *DeleteScreen) Update(deltaTime time.Duration) {

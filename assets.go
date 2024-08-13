@@ -205,7 +205,7 @@ func loadAssets(isReload bool) {
 		CheckBoxMark = loadSprite("assets/checkbox-sprites.json", "assets/checkbox-sprites.png", true)
 	}
 	// load dancing sprite
-	DancingNoteSprite = loadSprite("assets/dancing-note.json", "assets/dancing-note.png", true)
+	DancingNoteSprite = loadSprite("assets/menu-icons/dancing-note.json", "assets/menu-icons/dancing-note.png", true)
 
 	// load splash fill sprite
 	for i := range 2 {
@@ -263,9 +263,9 @@ func loadAssets(isReload bool) {
 	PopupBg = loadTexture("assets/popup-bg.png", true)
 
 	// load animated options icons
-	OptionsMainSprite = loadSprite("assets/options-main.json", "assets/options-main.png", true)
-	OptionsGamePlaySprite = loadSprite("assets/options-gameplay.json", "assets/options-gameplay.png", true)
-	OptionsControlsSprite = loadSprite("assets/options-controls.json", "assets/options-controls.png", true)
+	OptionsMainSprite = loadSprite("assets/menu-icons/options-main.json", "assets/menu-icons/options-main.png", true)
+	OptionsGamePlaySprite = loadSprite("assets/menu-icons/options-gameplay.json", "assets/menu-icons/options-gameplay.png", true)
+	OptionsControlsSprite = loadSprite("assets/menu-icons/options-controls.json", "assets/menu-icons/options-controls.png", true)
 
 	// create black pixel
 	blackPixelImg := rl.GenImageColor(2, 2, ToRlColor(FnfColor{0, 0, 0, 255}))

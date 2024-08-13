@@ -430,6 +430,7 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 	}
 
 	if md.IsHidden {
+		md.justAppearedOnScreen = true
 		return
 	}
 
