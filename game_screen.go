@@ -1972,7 +1972,7 @@ func (gs *GameScreen) Draw() {
 					susBegin = max(note.StartsAt, note.HoldReleaseAt)
 
 					if isHoldingNote {
-						susBegin = max(susBegin, gs.AudioPosition())
+						susBegin = gs.AudioPosition()
 					}
 				}
 
