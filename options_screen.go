@@ -209,8 +209,9 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 	fpsItem.NValue = float32(TheOptions.TargetFPS)
 	fpsItem.NValueMin = 30
 	fpsItem.NValueMax = 500
-	fpsItem.NValueInterval = 10
+	fpsItem.NValueInterval = 1
 	fpsItem.NValueFmtString = "%1.f"
+	fpsItem.LeftRightKeyRepeatRate = time.Millisecond * 25
 	fpsItem.NumberCallback = func(nValue float32) {
 		TheOptions.TargetFPS = int32(nValue)
 	}
@@ -434,6 +435,7 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 			ratingOpt.NValueMin = 15
 			ratingOpt.NValueMax = 2000
 			ratingOpt.NValueInterval = 1
+			ratingOpt.LeftRightKeyRepeatRate = time.Millisecond * 60
 			ratingOpt.NValueFmtString = "%1.f"
 			ratingOpt.NumberCallback = func(nValue float32) {
 				TheOptions.HitWindows[rating] = time.Duration(nValue) * time.Millisecond

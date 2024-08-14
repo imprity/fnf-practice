@@ -120,6 +120,9 @@ type MenuItem struct {
 	KeyStrokeWidthRegular  float32
 	KeyStrokeWidthSelected float32
 
+	LeftRightKeyFirstRate  time.Duration
+	LeftRightKeyRepeatRate time.Duration
+
 	// variables for animations
 	NameClickTimer       time.Duration
 	ValueClickTimer      time.Duration
@@ -164,6 +167,9 @@ var MenuItemDefaults = MenuItem{
 	KeyColorStrokeSelected: FnfColor{0, 0, 0, 0xFF},
 
 	KeyStrokeWidthSelected: 10,
+
+	LeftRightKeyFirstRate:  time.Millisecond * 200,
+	LeftRightKeyRepeatRate: time.Millisecond * 100,
 }
 
 func NewMenuItem() *MenuItem {
@@ -615,11 +621,15 @@ func (md *MenuDrawer) Update(deltaTime time.Duration) {
 			switch selected.Type {
 			case MenuItemList, MenuItemNumber, MenuItemToggle, MenuItemKey:
 				// check if user wants to go left or right
-				const firstRate = time.Millisecond * 200
-				const repeateRate = time.Millisecond * 110
-
-				wantGoLeft := HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirLeft)...)
-				wantGoRight := HandleKeyRepeat(md.InputId, firstRate, repeateRate, NoteKeys(NoteDirRight)...)
+				wantGoLeft := HandleKeyRepeat(md.InputId,
+					selected.LeftRightKeyFirstRate,
+					selected.LeftRightKeyRepeatRate,
+					NoteKeys(NoteDirLeft)...)
+				wantGoRight := HandleKeyRepeat(
+					md.InputId,
+					selected.LeftRightKeyFirstRate,
+					selected.LeftRightKeyRepeatRate,
+					NoteKeys(NoteDirRight)...)
 
 				// check if item can go left or right
 				canGoLeft := true
