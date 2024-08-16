@@ -5,7 +5,7 @@ You can add songs from other [Friday Night Funkin](https://github.com/FunkinCrew
 # Features
 ### Demo Video ([FUN](https://youtu.be/2TPd4YU-eEs?t=451) by [bb-panzu](https://www.youtube.com/@bbpanzu213))
 
-https://github.com/user-attachments/assets/035c5b0f-308c-4b83-90f7-adcf64919f8e
+https://github.com/user-attachments/assets/65638686-fd48-42c1-a0b9-f19a7bfc374f
 
 - Review your mistakes.
 - Change the audio playback speed.
