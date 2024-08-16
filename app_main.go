@@ -278,7 +278,11 @@ func RunApplication() {
 				ReloadAssets()
 			}
 
-			// update stuffs
+			// NOTE : this should be the first thing that gets updated
+			// update automation
+			UpdateDemoState()
+
+			// update other stuffs
 			UpdateAudio()
 			UpdatePopup(updateDelta)
 			UpdateTransition()
@@ -302,9 +306,10 @@ func RunApplication() {
 			// ========================
 			FnfBeginTextureMode(TheRenderTexture)
 			{
-				screen.Draw() //draw screen
-				DrawPopup()   // draw popup
+				screen.Draw()
+				DrawPopup()
 				DrawAlert()
+				DrawDemoState()
 			}
 			FnfEndTextureMode()
 
