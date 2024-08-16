@@ -280,7 +280,7 @@ func RunApplication() {
 
 			// NOTE : this should be the first thing that gets updated
 			// update automation
-			UpdateAutomation()
+			UpdateDemoState()
 
 			// update other stuffs
 			UpdateAudio()
@@ -309,7 +309,7 @@ func RunApplication() {
 				screen.Draw()
 				DrawPopup()
 				DrawAlert()
-				DrawAutomation()
+				DrawDemoState()
 			}
 			FnfEndTextureMode()
 

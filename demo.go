@@ -10,50 +10,54 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-const AutomationRecordKey = rl.KeyF8
-const AutomationPlayKey = rl.KeyF10
+const DemoRecordKey = rl.KeyF8
+const DemoPlayKey = rl.KeyF10
 
-const AutomationEventDumpPath string = "./auto-dump.txt"
-const AutomationEventLoadPath string = "./auto-play.txt"
+const DemoEventDumpPath string = "./demo-dump.txt"
+const DemoEventLoadPath string = "./demo-play.txt"
 
-type AutomationEventType int
+// how long should we wait before the demo
+const DemoWaitDuration = 200
+
+type DemoEventType int
 
 const (
-	AutomationEventTypePress AutomationEventType = iota
-	AutomationEventTypeRelease
+	DemoEventTypePress DemoEventType = iota
+	DemoEventTypeRelease
+	DemoEventTypeNOP
 )
 
-type AutomationEvent struct {
+type DemoEvent struct {
 	Frame         int64
 	RelativeFrame int64
 	Key           FnfBinding
-	Type          AutomationEventType
+	Type          DemoEventType
 }
 
-var TheAutomationManager struct {
+var TheDemoManager struct {
 	frameCounter int64
 
 	isRecording bool
 	isPlaying   bool
 
-	eventsRecorded []AutomationEvent
-	eventsToPlay   []AutomationEvent
+	eventsRecorded []DemoEvent
+	eventsToPlay   []DemoEvent
 
-	playStartFrme     int64
-	playEventStartsAt int
+	playStartFrame int64
+	playEventIndex int
 
 	isKeyDown [FnfBindingSize]bool
 }
 
-func UpdateAutomation() {
+func UpdateDemoState() {
 	GIT_TAG_VERSION = "DEMO-VERSION"
 
-	am := &TheAutomationManager
+	am := &TheDemoManager
 
 	// record and play logic
 	wasRecording := am.isRecording
 
-	if rl.IsKeyPressed(AutomationRecordKey) {
+	if rl.IsKeyPressed(DemoRecordKey) {
 		am.isRecording = !am.isRecording
 
 		// check if we are playing and if it is,
@@ -70,10 +74,13 @@ func UpdateAutomation() {
 			//
 			// Format :
 			// "binding name" "Press or Release" "relative frame"
+			// or
+			// NOP "relative frame"
 			//
 			// Example :
 			// key P 12
 			// key R 15
+			// NOP 30
 
 			// update relative frame
 			lastFrame := am.eventsRecorded[0].Frame
@@ -88,7 +95,7 @@ func UpdateAutomation() {
 
 			for _, event := range am.eventsRecorded {
 				pressOrRelease := "P"
-				if event.Type == AutomationEventTypeRelease {
+				if event.Type == DemoEventTypeRelease {
 					pressOrRelease = "R"
 				}
 				line := fmt.Sprintf("%s %s %d\n",
@@ -100,7 +107,7 @@ func UpdateAutomation() {
 			// try to save dump
 			var dumpPath string
 			var err error
-			if dumpPath, err = RelativePath(AutomationEventDumpPath); err != nil {
+			if dumpPath, err = RelativePath(DemoEventDumpPath); err != nil {
 				ErrorLogger.Printf("failed to save event dump %v", err)
 				DisplayAlert("failed to save event dump")
 				goto DUMP_END
@@ -112,7 +119,7 @@ func UpdateAutomation() {
 				goto DUMP_END
 			}
 
-			DisplayAlert(fmt.Sprintf("saved events to %s", AutomationEventDumpPath))
+			DisplayAlert(fmt.Sprintf("saved events to %s", DemoEventDumpPath))
 
 		DUMP_END:
 		}
@@ -123,7 +130,7 @@ func UpdateAutomation() {
 	}
 
 	wasPlaying := am.isPlaying
-	if rl.IsKeyPressed(AutomationPlayKey) {
+	if rl.IsKeyPressed(DemoPlayKey) {
 		am.isPlaying = !am.isPlaying
 
 		// check if we are recording and if it is,
@@ -142,7 +149,7 @@ func UpdateAutomation() {
 			var err error
 
 			var filePath string
-			filePath, err = RelativePath(AutomationEventLoadPath)
+			filePath, err = RelativePath(DemoEventLoadPath)
 
 			var file []byte
 			if err == nil {
@@ -154,7 +161,7 @@ func UpdateAutomation() {
 				if utf8.Valid(file) {
 					fileStr = string(file)
 				} else {
-					err = fmt.Errorf("file %s is not a valid utf8 string", AutomationEventLoadPath)
+					err = fmt.Errorf("file %s is not a valid utf8 string", DemoEventLoadPath)
 				}
 			}
 
@@ -162,7 +169,11 @@ func UpdateAutomation() {
 				ErrorLogger.Printf("failed to load events %v", err)
 				DisplayAlert("failed to load events")
 				am.isPlaying = false
-			} else {
+			} else { // we do play!
+				am.playStartFrame = am.frameCounter
+				am.playEventIndex = 0
+
+				// parse demo file
 				strToBind := make(map[string]FnfBinding)
 				for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
 					strToBind[binding.String()] = binding
@@ -170,7 +181,7 @@ func UpdateAutomation() {
 
 				lines := strings.Split(fileStr, "\n")
 
-				var frame int64
+				var frame int64 = am.frameCounter + DemoWaitDuration
 
 				for _, line := range lines {
 					// try to find comment
@@ -179,55 +190,66 @@ func UpdateAutomation() {
 					}
 					fields := strings.Fields(line)
 
-					ok := true
+					if len(fields) >= 2 && fields[0] == "NOP" {
+						if relativeFrame, convErr := strconv.ParseInt(fields[1], 10, 64); convErr == nil {
+							am.eventsToPlay = append(am.eventsToPlay, DemoEvent{
+								Frame: relativeFrame + frame,
+								Type:  DemoEventTypeNOP,
+							})
 
-					if len(fields) < 3 {
-						ok = false
-					}
-
-					var key FnfBinding
-					if ok {
-						key, ok = strToBind[fields[0]]
-					}
-
-					var eventType AutomationEventType
-					if ok {
-						if fields[1] == "P" {
-							eventType = AutomationEventTypePress
-						} else if fields[1] == "R" {
-							eventType = AutomationEventTypeRelease
-						} else {
-							ok = false
+							frame += relativeFrame
 						}
-					}
+					} else if len(fields) >= 3 {
+						ok := true
 
-					var relativeFrame int64
-					if ok {
-						var convErr error
-						relativeFrame, convErr = strconv.ParseInt(fields[2], 10, 64)
-
-						if convErr != nil {
-							ok = false
+						var key FnfBinding
+						if ok {
+							key, ok = strToBind[fields[0]]
 						}
-						if relativeFrame < 0 {
-							ok = false
+
+						var eventType DemoEventType
+						if ok {
+							if fields[1] == "P" {
+								eventType = DemoEventTypePress
+							} else if fields[1] == "R" {
+								eventType = DemoEventTypeRelease
+							} else {
+								ok = false
+							}
 						}
-					}
 
-					if ok {
-						am.eventsToPlay = append(am.eventsToPlay, AutomationEvent{
-							Frame: relativeFrame + frame,
-							Key:   key,
-							Type:  eventType,
-						})
+						var relativeFrame int64
+						if ok {
+							var convErr error
+							relativeFrame, convErr = strconv.ParseInt(fields[2], 10, 64)
 
-						frame += relativeFrame
+							if convErr != nil {
+								ok = false
+							}
+							if relativeFrame < 0 {
+								ok = false
+							}
+						}
+
+						if ok {
+							am.eventsToPlay = append(am.eventsToPlay, DemoEvent{
+								Frame: relativeFrame + frame,
+								Key:   key,
+								Type:  eventType,
+							})
+
+							frame += relativeFrame
+						}
 					}
 				}
-
-				am.playStartFrme = am.frameCounter + 1
-				am.playEventStartsAt = 0
 			}
+		}
+
+		// demo playing canceled due to user input
+		// display the status
+		if wasPlaying && !am.isPlaying {
+			DisplayAlert("demo play canceled")
+			StopDemoPressingKeys()
 		}
 	}
 
@@ -236,52 +258,65 @@ func UpdateAutomation() {
 			keyDown := rl.IsKeyDown(TheKM[binding])
 			if am.isKeyDown[binding] != keyDown {
 				if keyDown {
-					am.eventsRecorded = append(am.eventsRecorded, AutomationEvent{
+					am.eventsRecorded = append(am.eventsRecorded, DemoEvent{
 						Frame: am.frameCounter,
 						Key:   binding,
-						Type:  AutomationEventTypePress,
+						Type:  DemoEventTypePress,
 					})
 				} else {
-					am.eventsRecorded = append(am.eventsRecorded, AutomationEvent{
+					am.eventsRecorded = append(am.eventsRecorded, DemoEvent{
 						Frame: am.frameCounter,
 						Key:   binding,
-						Type:  AutomationEventTypeRelease,
+						Type:  DemoEventTypeRelease,
 					})
 				}
 			}
 			am.isKeyDown[binding] = keyDown
 		}
 	} else if am.isPlaying {
-		for ; am.playEventStartsAt < len(am.eventsToPlay); am.playEventStartsAt++ {
-			event := am.eventsToPlay[am.playEventStartsAt]
-			frame := event.Frame + am.playStartFrme
+		for ; am.playEventIndex < len(am.eventsToPlay); am.playEventIndex++ {
+			event := am.eventsToPlay[am.playEventIndex]
+			frame := event.Frame
 
 			if frame <= am.frameCounter {
-				rlEvent := rl.AutomationEvent{}
-				rlEvent.Params[0] = TheKM[event.Key]
+				if event.Type != DemoEventTypeNOP {
+					rlEvent := rl.AutomationEvent{}
+					rlEvent.Params[0] = TheKM[event.Key]
 
-				if event.Type == AutomationEventTypePress {
-					rlEvent.Type = 2 // raylib's INPUT_KEY_DOWN
-				} else if event.Type == AutomationEventTypeRelease {
-					rlEvent.Type = 1 // raylib's INPUT_KEY_UP
+					if event.Type == DemoEventTypePress {
+						rlEvent.Type = 2 // raylib's INPUT_KEY_DOWN
+					} else if event.Type == DemoEventTypeRelease {
+						rlEvent.Type = 1 // raylib's INPUT_KEY_UP
+					}
+
+					rl.PlayAutomationEvent(rlEvent)
 				}
-
-				rl.PlayAutomationEvent(rlEvent)
 			} else {
 				break
 			}
 		}
 
-		if am.playEventStartsAt >= len(am.eventsToPlay) {
+		if am.playEventIndex >= len(am.eventsToPlay) {
 			am.isPlaying = false
+			StopDemoPressingKeys()
 		}
 	}
 
 	am.frameCounter++
 }
 
-func DrawAutomation() {
-	am := &TheAutomationManager
+func StopDemoPressingKeys() {
+	for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
+		rlEvent := rl.AutomationEvent{}
+		rlEvent.Params[0] = TheKM[binding]
+		rlEvent.Type = 1 // raylib's INPUT_KEY_UP
+
+		rl.PlayAutomationEvent(rlEvent)
+	}
+}
+
+func DrawDemoState() {
+	am := &TheDemoManager
 
 	if am.isRecording {
 		const radius = 20
@@ -291,13 +326,20 @@ func DrawAutomation() {
 			radius,
 			ToRlColor(FnfColor{255, 0, 0, 255}),
 		)
+	} else if am.isPlaying {
+		if am.frameCounter-am.playStartFrame < DemoWaitDuration {
+			rl.DrawRectangle(
+				0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+				ToRlColor(FnfColor{76, 237, 116, 255}),
+			)
+		}
 	}
 }
 
-func dumpAutomationEvents(events []AutomationEvent) {
+func dumpDemoEvents(events []DemoEvent) {
 	for i, event := range events {
 		pressOrRelease := "P"
-		if event.Type == AutomationEventTypeRelease {
+		if event.Type == DemoEventTypeRelease {
 			pressOrRelease = "R"
 		}
 		line := fmt.Sprintf("%d: \"%s\" \"%s\" F:\"%d\" RF:\"%d\"",
