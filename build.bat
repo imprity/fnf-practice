@@ -19,6 +19,7 @@ echo git_ver_str %git_ver_str%
 
 if "%1" == "clean" (
 	del fnf-practice.exe
+	del fnf-practice-demo.exe
 	del fnf-practice-debug.exe
 	del font-gen.exe
 	del font-gen-debug.exe
@@ -40,6 +41,14 @@ if "%1"=="font-gen" (
 	set "to_build=font-gen.exe"
 	set "build_source=font_gen.go"
 	call :build_command
+	if !errorlevel! neq 0 exit /b !errorlevel!
+
+	echo "BUILD SUCCESS"
+	goto :quit
+)
+
+if "%1" == "demo" (
+	call :build_demo_command
 	if !errorlevel! neq 0 exit /b !errorlevel!
 
 	echo "BUILD SUCCESS"
@@ -86,6 +95,9 @@ if "%1"=="all" (
 	call :build_command
 	if !errorlevel! neq 0 exit /b !errorlevel!
 
+	call :build_demo_command
+	if !errorlevel! neq 0 exit /b !errorlevel!
+
 	set "to_build=font-gen.exe"
 	set "build_source=font_gen.go"
 	call :build_command
@@ -114,6 +126,18 @@ goto :quit
 	echo to_build : %to_build%
 	echo build_source : %build_source%
 	go build -o "%to_build%" -tags=noaudio -gcflags=all="-e -l -N" "%build_source%"
+	exit /b !errorlevel!
+
+:build_demo_command
+	echo building demo
+	echo to_build : fnf-practice-demo.exe
+	echo build_source : main.go
+
+	go build -o "fnf-practice-demo.exe" ^
+		-tags=noaudio,demoreplay ^
+		-gcflags=all="-e" ^
+		"main.go"
+
 	exit /b !errorlevel!
 
 :create_release

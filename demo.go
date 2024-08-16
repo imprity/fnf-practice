@@ -1,3 +1,19 @@
+//go:build demoreplay
+
+
+// This is a small script to generate demo recording.
+// Made for me to record trailer video.
+//
+// Format :
+// "binding name" "Press or Release" "relative frame"
+// or
+// NOP "relative frame"
+//
+// Example :
+// key P 12
+// key R 15
+// NOP 30
+
 package fnf
 
 import (
@@ -70,18 +86,6 @@ func UpdateDemoState() {
 		}
 
 		if wasRecording && !am.isRecording && len(am.eventsRecorded) > 0 {
-			// dump frames to a log
-			//
-			// Format :
-			// "binding name" "Press or Release" "relative frame"
-			// or
-			// NOP "relative frame"
-			//
-			// Example :
-			// key P 12
-			// key R 15
-			// NOP 30
-
 			// update relative frame
 			lastFrame := am.eventsRecorded[0].Frame
 
