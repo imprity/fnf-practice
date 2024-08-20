@@ -45,7 +45,7 @@ It's not exactly a 1 to 1 replication of other mods.
 ### Windows
 On Windows, you need [Go](https://go.dev/) compiler and [tdm-gcc](https://jmeubank.github.io/tdm-gcc/)(for cgo) to build from the source. Once installed, run
 ```console
-> build.bat
+> go run build.go
 ```
 to build the app. (At least, that's how I do it.)
 
@@ -54,7 +54,7 @@ On Linux, you need [Go](https://go.dev/) compiler and some c compiler. Also on L
 
 Once installed, run
 ```console
-> ./build.sh
+> go run build.go
 ```
 to build the app.
 
