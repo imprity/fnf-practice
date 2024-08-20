@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -92,14 +93,14 @@ func UnloadAssets() {
 func loadAssets(isReload bool) {
 	unloadAssets(isReload)
 
-	loadData := func(path string) []byte {
+	loadData := func(pathStr string) []byte {
 		var byteArray []byte
 		var err error
 
 		if *FlagHotReloading {
-			byteArray, err = os.ReadFile(path)
+			byteArray, err = os.ReadFile(filepath.Clean(pathStr))
 		} else {
-			byteArray, err = fs.ReadFile(EmebededAssets, path)
+			byteArray, err = fs.ReadFile(EmebededAssets, path.Clean(pathStr))
 		}
 
 		if err != nil {

@@ -817,15 +817,19 @@ func GetPixelDataSize(width, height, format int32) int32 {
 	return v
 }
 
+// S#########################################################
+
 // Vector3ToFloat - Converts Vector3 to float32 slice
 func Vector3ToFloat(vec Vector3) []float32 {
-	data := make([]float32, 0)
+	data := make([]float32, 3)
 	data[0] = vec.X
 	data[1] = vec.Y
 	data[2] = vec.Z
 
 	return data
 }
+
+// E#########################################################
 
 // MatrixToFloat - Converts Matrix to float32 slice
 func MatrixToFloat(mat Matrix) []float32 {

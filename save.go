@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -57,6 +58,7 @@ func checkFileExists(path string) (bool, error) {
 }
 
 func encodeToJsonFile(path string, v any) error {
+	path = filepath.Clean(path)
 	var buffer bytes.Buffer
 
 	encoder := json.NewEncoder(&buffer)
@@ -81,6 +83,7 @@ func encodeToJsonFile(path string, v any) error {
 }
 
 func decodeJsonFile(path string, v any) error {
+	path = filepath.Clean(path)
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return err

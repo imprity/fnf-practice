@@ -386,6 +386,7 @@ func isPathGroupGood(group FnfPathGroup, songs [DifficultySize]FnfSong) error {
 }
 
 func tryParseFile(path string) (FnfSong, error) {
+	path = filepath.Clean(path)
 	jsonFile, err := os.Open(path)
 	defer jsonFile.Close()
 
