@@ -1,4 +1,4 @@
-//go:build !demoreplay
+//go:build !fnfdemo
 
 package fnf
 

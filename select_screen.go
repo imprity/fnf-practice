@@ -753,7 +753,7 @@ func (ss *SelectScreen) Draw() {
 			factory.Print("version ")
 
 			factory.SetStyle(styleRed)
-			factory.Print(GIT_TAG_VERSION)
+			factory.Print(VERSION_TAG)
 		}
 
 		elements := factory.Elements(TextAlignLeft, 0, 0)

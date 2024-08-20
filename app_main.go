@@ -7,8 +7,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"log"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"strings"
 
@@ -23,14 +21,20 @@ const (
 )
 
 //go:embed git_tag.txt
-var GIT_TAG_VERSION string
+var VERSION_TAG string
 
 func init() {
 	// normalize
-	GIT_TAG_VERSION = strings.ReplaceAll(GIT_TAG_VERSION, "\r\n", "\n")
+	VERSION_TAG = strings.ReplaceAll(VERSION_TAG, "\r\n", "\n")
 	// remove new lines
-	GIT_TAG_VERSION = strings.ReplaceAll(GIT_TAG_VERSION, "\n", " ")
-	GIT_TAG_VERSION = strings.TrimSpace(GIT_TAG_VERSION)
+	VERSION_TAG = strings.ReplaceAll(VERSION_TAG, "\n", " ")
+	VERSION_TAG = strings.TrimSpace(VERSION_TAG)
+}
+
+var VersionTagSuffixes []string
+
+func AddSuffixToVersionTag(suffix string) {
+	VersionTagSuffixes = append(VersionTagSuffixes, suffix)
 }
 
 var (
@@ -78,22 +82,20 @@ func GetRenderedScreenRect() rl.Rectangle {
 }
 
 var (
-	FlagPProf           = flag.Bool("pprof", false, "run with pprof server")
 	FlagHotReloading    = flag.Bool("hot", false, "enable hot reloading")
 	FlagBotObeyGameRule = flag.Bool("bot-obey-game-rule", false,
 		"make bots actually play the game rather than pretending to play")
 )
 
 func RunApplication() {
-	flag.Parse()
+	defer println("program closed successfully!")
 
-	if *FlagPProf {
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
+	//add suffixes to VERSION_TAG
+	for _, suffix := range VersionTagSuffixes {
+		VERSION_TAG += suffix
 	}
 
-	defer println("program closed successfully!")
+	flag.Parse()
 
 	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowAlwaysRun)
 

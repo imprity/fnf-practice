@@ -78,7 +78,7 @@ func SimpleErrorFromError(err error) SimpleError {
 	}
 }
 
-var GIT_TAG_VERSION string
+var GitTagStr string
 
 var (
 	ErrLogger  = log.New(os.Stderr, "[ FAIL! ] : ", log.Lshortfile)
@@ -94,15 +94,15 @@ func main() {
 	{
 		Logger.Print("getting git version string")
 
-		if gitTag, err := GetGitTagVersion(); err.IsFail {
-			GIT_TAG_VERSION = "unknown"
+		if gitTag, err := GetGitTagStr(); err.IsFail {
+			GitTagStr = "unknown"
 		} else {
-			GIT_TAG_VERSION = gitTag
+			GitTagStr = gitTag
 		}
 
 		Logger.Print("writing it to git_tag.txt")
-		if err := os.WriteFile("git_tag.txt", []byte(GIT_TAG_VERSION), 0664); err != nil {
-			ErrLogger.Print("failed to write to git_tag.txt : %v", err)
+		if err := os.WriteFile("git_tag.txt", []byte(GitTagStr), 0664); err != nil {
+			ErrLogger.Printf("failed to write to git_tag.txt : %v", err)
 			CrashOnError(ErrorDefault)
 		}
 	}
@@ -140,11 +140,11 @@ func main() {
 		// delete release folder
 		Logger.Print("deleting release folder")
 		if err := os.RemoveAll("release"); err != nil {
-			ErrLogger.Print("failed to delete release folder : %v", err)
+			ErrLogger.Printf("failed to delete release folder : %v", err)
 			return ErrorDefault
 		}
 
-		releaseFolderName := "fnf-practice-win64-v" + GIT_TAG_VERSION
+		releaseFolderName := "fnf-practice-win64-v" + GitTagStr
 		releaseFolder := filepath.Join("release", releaseFolderName)
 
 		if err := MkDir(releaseFolder); err.IsFail {
@@ -221,7 +221,7 @@ func main() {
 	Logger.Print("SUCCESS!!")
 }
 
-func GetGitTagVersion() (string, SimpleError) {
+func GetGitTagStr() (string, SimpleError) {
 	cmd := exec.Command(
 		"git", "describe", "--tags", "--always", "--abbrev=0",
 	)
@@ -303,11 +303,15 @@ func BuildApp(
 	tags := "noaudio"
 
 	if demo {
-		tags += ",demoreplay"
+		tags += ",fnfdemo"
 	}
 
 	if pprof {
-		tags += ",pprof"
+		tags += ",fnfpprof"
+	}
+
+	if debug {
+		tags += ",fnfdebug"
 	}
 
 	gcFlags := "-e"

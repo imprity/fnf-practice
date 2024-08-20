@@ -11,6 +11,7 @@ type DebugMsg struct {
 }
 
 var DebugMsgs []DebugMsg
+var PersistentDebugMsgs []DebugMsg
 
 func DebugPrint(key, value string) {
 	for i, msg := range DebugMsgs {
@@ -21,6 +22,20 @@ func DebugPrint(key, value string) {
 	}
 
 	DebugMsgs = append(DebugMsgs, DebugMsg{
+		Key:   key,
+		Value: value,
+	})
+}
+
+func DebugPrintPersist(key, value string) {
+	for i, msg := range PersistentDebugMsgs {
+		if msg.Key == key {
+			DebugMsgs[i].Value = value
+			return
+		}
+	}
+
+	PersistentDebugMsgs = append(PersistentDebugMsgs, DebugMsg{
 		Key:   key,
 		Value: value,
 	})
@@ -63,46 +78,51 @@ func DrawDebugMsgs() {
 		offsetY += strSize.Y + msgHozMargin*2
 	}
 
-	// print debug key and values
-	for _, kv := range DebugMsgs {
-		k := kv.Key
-		v := kv.Value
+	addTextsFromMsgs := func(msgs []DebugMsg) {
+		for _, kv := range msgs {
+			k := kv.Key
+			v := kv.Value
 
-		keyText := k + " : "
+			keyText := k + " : "
 
-		keySize := rl.MeasureTextEx(defaultFont, keyText, fontSize, fontSpacing)
+			keySize := rl.MeasureTextEx(defaultFont, keyText, fontSize, fontSpacing)
 
-		keyRect := rl.Rectangle{
-			X: offsetX, Y: offsetY,
-			Width: keySize.X, Height: keySize.Y,
+			keyRect := rl.Rectangle{
+				X: offsetX, Y: offsetY,
+				Width: keySize.X, Height: keySize.Y,
+			}
+
+			texts = append(texts, textPos{
+				Text: keyText,
+				Pos:  rl.Vector2{X: keyRect.X, Y: keyRect.Y},
+			})
+
+			valueSize := rl.MeasureTextEx(defaultFont, v, fontSize, fontSpacing)
+
+			valueRect := rl.Rectangle{
+				X:      keyRect.X + keyRect.Width + keyValueMargin,
+				Y:      offsetY,
+				Width:  valueSize.X,
+				Height: valueSize.Y,
+			}
+
+			texts = append(texts, textPos{
+				Text: v,
+				Pos:  rl.Vector2{X: valueRect.X, Y: valueRect.Y},
+			})
+
+			msgRect := RectUnion(keyRect, valueRect)
+
+			textRect = RectUnion(textRect, msgRect)
+
+			offsetX = 0
+			offsetY += msgRect.Height + msgHozMargin
 		}
-
-		texts = append(texts, textPos{
-			Text: keyText,
-			Pos:  rl.Vector2{X: keyRect.X, Y: keyRect.Y},
-		})
-
-		valueSize := rl.MeasureTextEx(defaultFont, v, fontSize, fontSpacing)
-
-		valueRect := rl.Rectangle{
-			X:      keyRect.X + keyRect.Width + keyValueMargin,
-			Y:      offsetY,
-			Width:  valueSize.X,
-			Height: valueSize.Y,
-		}
-
-		texts = append(texts, textPos{
-			Text: v,
-			Pos:  rl.Vector2{X: valueRect.X, Y: valueRect.Y},
-		})
-
-		msgRect := RectUnion(keyRect, valueRect)
-
-		textRect = RectUnion(textRect, msgRect)
-
-		offsetX = 0
-		offsetY += msgRect.Height + msgHozMargin
 	}
+
+	// print debug key and values
+	addTextsFromMsgs(PersistentDebugMsgs)
+	addTextsFromMsgs(DebugMsgs)
 
 	bgRect := textRect
 

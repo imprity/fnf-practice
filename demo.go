@@ -1,5 +1,4 @@
-//go:build demoreplay
-
+//go:build fnfdemo
 
 // This is a small script to generate demo recording.
 // Made for me to record trailer video.
@@ -35,6 +34,11 @@ const DemoEventLoadPath string = "./demo-play.txt"
 // how long should we wait before the demo
 const DemoWaitDuration = 200
 
+func init() {
+	AddSuffixToVersionTag("-DEMO")
+	DebugPrintPersist("demo", "true")
+}
+
 type DemoEventType int
 
 const (
@@ -66,8 +70,6 @@ var TheDemoManager struct {
 }
 
 func UpdateDemoState() {
-	GIT_TAG_VERSION = "DEMO-VERSION"
-
 	am := &TheDemoManager
 
 	// record and play logic
