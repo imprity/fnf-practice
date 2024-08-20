@@ -155,18 +155,18 @@ func NoteKeys(dir NoteDir) []int32 {
 	case NoteDirRight:
 		return []int32{TheKM[NoteKeyRight0], TheKM[NoteKeyRight1]}
 	default:
-		ErrorLogger.Fatal("invalid direction %v", dir)
+		ErrorLogger.Fatalf("invalid direction %v", dir)
 		return []int32{}
 	}
 }
 
 func NoteDirAndIndexToBinding(dir NoteDir, index int) FnfBinding {
 	if !(0 <= dir && dir < NoteDirSize) {
-		ErrorLogger.Fatal("invalid dir \"%v\"", dir)
+		ErrorLogger.Fatalf("invalid dir \"%v\"", dir)
 	}
 
 	if !(0 <= index && index <= 1) {
-		ErrorLogger.Fatal("invalid index \"%v\"", index)
+		ErrorLogger.Fatalf("invalid index \"%v\"", index)
 	}
 
 	switch dir {
