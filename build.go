@@ -206,8 +206,12 @@ func main() {
 		if err := buildFontGen(); err.IsFail {
 			CrashOnError(err)
 		}
-		if err := buildRelease(); err.IsFail {
-			CrashOnError(err)
+		if runtime.GOOS == "windows" {
+			if err := buildRelease(); err.IsFail {
+				CrashOnError(err)
+			}
+		} else {
+			WarnLogger.Print("not building release since not running on windows")
 		}
 	case "release":
 		if err := buildRelease(); err.IsFail {
