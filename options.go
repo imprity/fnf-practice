@@ -233,6 +233,8 @@ type Options struct {
 	HitSoundVolume float64
 
 	NoteSplash bool
+
+	AudioOffset time.Duration
 }
 
 var DefaultOptions Options
@@ -261,6 +263,8 @@ func init() {
 	DefaultOptions.HitSoundVolume = 0
 
 	DefaultOptions.NoteSplash = true
+
+	DefaultOptions.AudioOffset = 0
 
 	// set TheOptions to DefaultOptions
 	TheOptions = DefaultOptions

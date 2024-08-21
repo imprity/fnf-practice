@@ -340,6 +340,23 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 	}
 	op.Menu.AddItems(backItem)
 
+	audioOffsetItem := NewMenuItem()
+	audioOffsetItem.Name = "Audio Offset"
+	audioOffsetItem.Type = MenuItemNumber
+	audioOffsetItem.NValue = float32(TheOptions.AudioOffset)
+	audioOffsetItem.NValueMin = 0
+	audioOffsetItem.NValueMax = 500
+	audioOffsetItem.NValueInterval = 1
+	audioOffsetItem.NValueFmtString = "%1.f"
+	audioOffsetItem.LeftRightKeyRepeatRate = time.Millisecond * 10
+	audioOffsetItem.NumberCallback = func(nValue float32) {
+		TheOptions.AudioOffset = time.Duration(nValue) * time.Millisecond
+	}
+	op.Menu.AddItems(audioOffsetItem)
+	op.OnMatchItemsToOption(func() {
+		op.Menu.SetItemNvalue(audioOffsetItem.Id, false, f32(TheOptions.AudioOffset/time.Millisecond))
+	})
+
 	downScrollItem := NewMenuItem()
 	downScrollItem.Name = "Down Scroll"
 	downScrollItem.Type = MenuItemToggle
@@ -458,7 +475,7 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 
 		op.OnMatchItemsToOption(func() {
 			for r := FnfHitRating(0); r < HitRatingSize; r++ {
-				op.Menu.SetItemNvalue(ratingItems[r], false, f32(TheOptions.HitWindows[r])/f32(time.Millisecond))
+				op.Menu.SetItemNvalue(ratingItems[r], false, f32(TheOptions.HitWindows[r]/time.Millisecond))
 			}
 		})
 	}
