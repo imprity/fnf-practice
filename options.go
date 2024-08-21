@@ -237,6 +237,8 @@ type Options struct {
 	AudioOffset time.Duration
 }
 
+const AudioOffsetMax time.Duration = 500 * time.Millisecond
+
 var DefaultOptions Options
 
 var TheOptions Options

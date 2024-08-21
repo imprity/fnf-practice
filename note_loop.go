@@ -143,7 +143,7 @@ func UpdateNotesAndStatesForHuman(
 	isKeyPressed [NoteDirSize]bool,
 	prevAudioPos time.Duration,
 	audioPos time.Duration,
-	audioDuration time.Duration,
+	audioEnd time.Duration,
 	isPlayingAudio bool,
 	hitWindow time.Duration,
 	noteIndexStart int,
@@ -338,7 +338,7 @@ func UpdateNotesAndStatesForHuman(
 		}
 	}
 
-	if !isPlayingAudio && AbsI(audioDuration-audioPos) < time.Millisecond { // when song is done
+	if !isPlayingAudio && audioEnd-time.Millisecond < audioPos { // when song is done
 		for dir := range NoteDirSize {
 			// release notes that are being held
 			if pState.IsHoldingAnyNote(dir) {

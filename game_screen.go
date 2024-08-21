@@ -92,6 +92,9 @@ var GSC struct {
 	PadStart time.Duration
 	PadEnd   time.Duration
 
+	// how long should we wait before we stop the audio
+	StopAfter time.Duration
+
 	// constants about note rendering
 	//
 	// NOTE : these positions are calculated based on note center!! (I know it's bad...)
@@ -121,8 +124,9 @@ var GSC struct {
 }
 
 func init() {
-	GSC.PadStart = time.Millisecond * 500 // 0.5 seconds
-	GSC.PadEnd = time.Millisecond * 100   // 0.1 seconds
+	GSC.PadStart = time.Millisecond * 500  // 0.5 seconds
+	GSC.StopAfter = time.Millisecond * 100 // 0.1 seconds
+	GSC.PadEnd = AudioOffsetMax + GSC.StopAfter
 
 	GSC.NotesMarginLeft = 145
 	GSC.NotesMarginRight = 145
@@ -384,7 +388,7 @@ func (gs *GameScreen) LoadSongs(
 		gs.VoicePlayer.SetSpeed(1)
 	}
 
-	gs.SetAudioPosition(0)
+	gs.SetAudioPositionNoOffset(0)
 
 	return nil
 }
@@ -414,6 +418,10 @@ func (gs *GameScreen) PlayAudio() {
 		return
 	}
 
+	if gs.AudioPosition() > GSC.PadEnd+gs.AudioDurationUnpadded()+GSC.StopAfter {
+		return
+	}
+
 	gs.InstPlayer.Play()
 	if gs.VoicePlayer.IsReady() && gs.Song.NeedsVoices {
 		gs.VoicePlayer.Play()
@@ -434,7 +442,7 @@ func (gs *GameScreen) PauseAudio() {
 	}
 }
 
-func (gs *GameScreen) AudioPosition() time.Duration {
+func (gs *GameScreen) AudioPositionNoOffset() time.Duration {
 	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return 0
@@ -443,36 +451,11 @@ func (gs *GameScreen) AudioPosition() time.Duration {
 	return gs.audioPosition
 }
 
-func (gs *GameScreen) TempPause(howLong time.Duration) {
-	if gs.IsPlayingAudio() {
-		gs.wasPlayingWhenTempPause = true
-	}
-
-	gs.PauseAudio()
-
-	counter := int((howLong * time.Duration(TheOptions.TargetFPS)) / time.Second)
-
-	counter = max(counter, 2)
-
-	gs.tempPauseFrameCounter = max(gs.tempPauseFrameCounter, counter)
+func (gs *GameScreen) AudioPosition() time.Duration {
+	return gs.AudioPositionNoOffset() - TheOptions.AudioOffset
 }
 
-func (gs *GameScreen) OnlyTemporarilyPaused() bool {
-	return gs.tempPauseFrameCounter > 0 &&
-		gs.wasPlayingWhenTempPause && !gs.IsPlayingAudio()
-}
-
-func (gs *GameScreen) ClearTempPause() {
-	gs.wasPlayingWhenTempPause = false
-	gs.tempPauseFrameCounter = -10
-}
-
-func (gs *GameScreen) ClearRewind() {
-	gs.rewindStarted = false
-	gs.rewindQueue.Clear()
-}
-
-func (gs *GameScreen) SetAudioPosition(at time.Duration) {
+func (gs *GameScreen) SetAudioPositionNoOffset(at time.Duration) {
 	if !gs.IsSongLoaded {
 		ErrorLogger.Printf("GameScreen: Called when song is not loaded")
 		return
@@ -487,6 +470,14 @@ func (gs *GameScreen) SetAudioPosition(at time.Duration) {
 	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.SetPosition(at)
 	}
+}
+
+func (gs *GameScreen) SetAudioPosition(at time.Duration) {
+	gs.SetAudioPositionNoOffset(at + TheOptions.AudioOffset)
+}
+
+func (gs *GameScreen) AudioDurationUnpadded() time.Duration {
+	return gs.AudioDuration() - (GSC.PadStart + GSC.PadEnd)
 }
 
 func (gs *GameScreen) AudioDuration() time.Duration {
@@ -554,6 +545,12 @@ func (gs *GameScreen) SetAudioSpeed(speed float64) {
 	gs.AudioSpeedSetAt = GlobalTimerNow()
 }
 
+// Not valid when compared with AudioPositionNoOffset.
+// Compare with result from AudioPosition
+func (gs *GameScreen) AudioStopAt() time.Duration {
+	return GSC.PadStart + gs.AudioDurationUnpadded() + GSC.StopAfter
+}
+
 func (gs *GameScreen) SetZoom(zoom float32) {
 	gs.zoom = zoom
 	gs.ZoomSetAt = GlobalTimerNow()
@@ -561,6 +558,35 @@ func (gs *GameScreen) SetZoom(zoom float32) {
 
 func (gs *GameScreen) Zoom() float32 {
 	return gs.zoom
+}
+
+func (gs *GameScreen) TempPause(howLong time.Duration) {
+	if gs.IsPlayingAudio() {
+		gs.wasPlayingWhenTempPause = true
+	}
+
+	gs.PauseAudio()
+
+	counter := int((howLong * time.Duration(TheOptions.TargetFPS)) / time.Second)
+
+	counter = max(counter, 2)
+
+	gs.tempPauseFrameCounter = max(gs.tempPauseFrameCounter, counter)
+}
+
+func (gs *GameScreen) OnlyTemporarilyPaused() bool {
+	return gs.tempPauseFrameCounter > 0 &&
+		gs.wasPlayingWhenTempPause && !gs.IsPlayingAudio()
+}
+
+func (gs *GameScreen) ClearTempPause() {
+	gs.wasPlayingWhenTempPause = false
+	gs.tempPauseFrameCounter = -10
+}
+
+func (gs *GameScreen) ClearRewind() {
+	gs.rewindStarted = false
+	gs.rewindQueue.Clear()
 }
 
 func (gs *GameScreen) IsBotPlay() bool {
@@ -724,6 +750,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				"Log Note Event [%s]",
 				GetKeyName(TheKM[ToggleLogNoteEvent]),
 			), tf)
+	}
+
+	// =============================================
+	// stopping after we finished playing audio
+	// =============================================
+	if gs.AudioPosition() > GSC.PadEnd+gs.AudioDurationUnpadded()+GSC.StopAfter {
+		gs.PauseAudio()
 	}
 
 	// =============================================
@@ -945,7 +978,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		{
 			changedFromScroll := false
 
-			pos := gs.AudioPosition()
+			pos := gs.AudioPositionNoOffset()
 
 			var keyT time.Duration = -gs.PixelsToTime(3.8 * f32(deltaTime) / f32(time.Millisecond))
 			if TheOptions.DownScroll {
@@ -980,13 +1013,13 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				gs.ClearRewind()
 				gs.TempPause(time.Millisecond * 60)
 				positionArbitraryChange = true
-				gs.SetAudioPosition(pos)
+				gs.SetAudioPositionNoOffset(pos)
 			}
 		}
 
 		if AreKeysPressed(gs.InputId, TheKM[SongResetKey]) {
 			positionArbitraryChange = true
-			gs.SetAudioPosition(0)
+			gs.SetAudioPositionNoOffset(0)
 			gs.ClearRewind()
 		}
 
@@ -1018,7 +1051,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			gs.ClearRewind()
 			gs.TempPause(time.Millisecond * 60)
 			positionArbitraryChange = true
-			gs.SetAudioPosition(gs.ProgressBarCursorTime())
+			gs.SetAudioPositionNoOffset(gs.ProgressBarCursorTime())
 		}
 	}
 
@@ -1071,6 +1104,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		}
 	}
 
+	prevAudioPos -= TheOptions.AudioOffset
 	audioPos := gs.AudioPosition()
 
 	wasKeyPressed := gs.isKeyPressed
@@ -1118,7 +1152,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 				gs.isKeyPressed[player],
 				prevAudioPos,
 				audioPos,
-				gs.AudioDuration(),
+				gs.AudioStopAt(),
 				gs.IsPlayingAudio(),
 				HitWindow(),
 				gs.noteIndexStart,
@@ -1137,7 +1171,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 					gs.isKeyPressed[player],
 					prevAudioPos,
 					audioPos,
-					gs.AudioDuration(),
+					gs.AudioStopAt(),
 					gs.IsPlayingAudio(),
 					HitWindow(),
 					gs.noteIndexStart,
@@ -2768,7 +2802,7 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.OpponentMode = false
 
-	gs.SetAudioPosition(0)
+	gs.SetAudioPositionNoOffset(0)
 
 	gs.ResetGameStates()
 
@@ -3245,7 +3279,7 @@ func (gs *GameScreen) DrawProgressBar() {
 		rl.DrawRectangleRec(audioPosBar, ToRlColor(FnfColor{255, 255, 255, 255}))
 	}
 
-	timeStamp := gs.AudioPosition()
+	timeStamp := gs.AudioPositionNoOffset()
 	if gs.ProgressBarHovering() || gs.isProgressBarInFocus {
 		timeStamp = gs.ProgressBarCursorTime()
 	}

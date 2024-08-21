@@ -345,7 +345,7 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 	audioOffsetItem.Type = MenuItemNumber
 	audioOffsetItem.NValue = float32(TheOptions.AudioOffset)
 	audioOffsetItem.NValueMin = 0
-	audioOffsetItem.NValueMax = 500
+	audioOffsetItem.NValueMax = f32(AudioOffsetMax / time.Millisecond)
 	audioOffsetItem.NValueInterval = 1
 	audioOffsetItem.NValueFmtString = "%1.f"
 	audioOffsetItem.LeftRightKeyRepeatRate = time.Millisecond * 10
