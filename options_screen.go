@@ -220,6 +220,17 @@ func NewOptionsMainScreen() *BaseOptionsScreen {
 		op.Menu.SetItemNvalue(fpsItem.Id, false, f32(TheOptions.TargetFPS))
 	})
 
+	displayFpsItem := NewMenuItem()
+	displayFpsItem.Name = "Display FPS"
+	displayFpsItem.Type = MenuItemToggle
+	displayFpsItem.ToggleCallback = func(bValue bool) {
+		TheOptions.DisplayFPS = bValue
+	}
+	op.Menu.AddItems(displayFpsItem)
+	op.OnMatchItemsToOption(func() {
+		op.Menu.SetItemBValue(displayFpsItem.Id, false, TheOptions.DisplayFPS)
+	})
+
 	volumeItem := NewMenuItem()
 	volumeItem.Name = "Volume"
 	volumeItem.Type = MenuItemNumber

@@ -692,9 +692,16 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		return
 	}
 
+	// print bpm to debug
 	{
 		bpm := gs.Song.GetBpmAt(gs.AudioPosition())
 		DebugPrint("BPM", fmt.Sprintf("%.2f", bpm))
+	}
+
+	// set fps diplay position
+	if TheOptions.DownScroll {
+		rect := gs.HelpMessage.TotalRect()
+		FpsDisplayY = rect.Y + rect.Height + 10
 	}
 
 	// note logging toggle
@@ -2783,6 +2790,8 @@ func (gs *GameScreen) BeforeScreenEnd() {
 	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.QuitBackgroundDecoding()
 	}
+
+	FpsDisplayY = FpsDisplayYDefault
 }
 
 func (gs *GameScreen) Free() {

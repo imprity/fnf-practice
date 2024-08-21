@@ -87,6 +87,16 @@ var (
 		"make bots actually play the game rather than pretending to play")
 )
 
+const (
+	FpsDisplayXDefault = 10
+	FpsDisplayYDefault = 10
+)
+
+var (
+	FpsDisplayX float32 = FpsDisplayXDefault
+	FpsDisplayY float32 = FpsDisplayYDefault
+)
+
 func RunApplication() {
 	defer println("program closed successfully!")
 
@@ -312,6 +322,7 @@ func RunApplication() {
 				DrawPopup()
 				DrawAlert()
 				DrawDemoState()
+				DrawFpsDisplay(fpsEstimate)
 			}
 			FnfEndTextureMode()
 
@@ -373,6 +384,18 @@ func RunApplication() {
 				timeAccumulator = 0
 			}
 		}
+	}
+}
+
+func DrawFpsDisplay(fps float64) {
+	if TheOptions.DisplayFPS {
+		DrawText(
+			FontClear,
+			fmt.Sprintf("FPS: %.2f", fps),
+			rl.Vector2{FpsDisplayX, FpsDisplayY},
+			20, 0,
+			ToRlColor(FnfColor{255, 0, 0, 255}),
+		)
 	}
 }
 

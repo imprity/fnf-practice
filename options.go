@@ -216,6 +216,8 @@ func NoteKeysArr() [NoteDirSize][]int32 {
 type Options struct {
 	TargetFPS int32
 
+	DisplayFPS bool
+
 	Volume float64
 
 	DownScroll bool
@@ -240,6 +242,8 @@ var TheOptions Options
 func init() {
 	// set default option values
 	DefaultOptions.TargetFPS = 60
+	DefaultOptions.DisplayFPS = true
+
 	DefaultOptions.Volume = 1.0
 
 	DefaultOptions.HitWindows[HitRatingBad] = time.Millisecond * 135
