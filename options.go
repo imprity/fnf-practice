@@ -24,13 +24,16 @@ const (
 	PauseKey
 	EscapeKey
 
+	SongResetKey
+
 	NoteScrollUpKey
 	NoteScrollDownKey
 
 	AudioSpeedUpKey
 	AudioSpeedDownKey
 
-	SongResetKey
+	AudioOffsetUpKey
+	AudioOffsetDownKey
 
 	SetBookMarkKey
 	JumpToBookMarkKey
@@ -79,6 +82,9 @@ func init() {
 	DefaultKM[AudioSpeedUpKey] = rl.KeyEqual
 	DefaultKM[AudioSpeedDownKey] = rl.KeyMinus
 
+	DefaultKM[AudioOffsetUpKey] = rl.KeyNine
+	DefaultKM[AudioOffsetDownKey] = rl.KeyEight
+
 	DefaultKM[SongResetKey] = rl.KeyR
 
 	DefaultKM[SetBookMarkKey] = rl.KeyB
@@ -123,6 +129,9 @@ func init() {
 
 	KeyHumanName[AudioSpeedUpKey] = "speed up"
 	KeyHumanName[AudioSpeedDownKey] = "speed down"
+
+	KeyHumanName[AudioOffsetUpKey] = "audio offset up"
+	KeyHumanName[AudioOffsetDownKey] = "audio offset down"
 
 	KeyHumanName[SongResetKey] = "reset"
 

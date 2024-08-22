@@ -242,6 +242,21 @@ func LoadSettings() error {
 			}
 		}
 
+		// check if there are any duplicate keys
+		{
+			keyMap := make(map[int32]int)
+
+			for binding := FnfBinding(0); binding < FnfBindingSize; binding++ {
+				keyMap[newKeyMap[binding]] = keyMap[newKeyMap[binding]] + 1
+			}
+
+			for key, count := range keyMap {
+				if count >= 2 { // meaning there is a duplicate key
+					return fmt.Errorf("key %s is assigend to multiple actions", GetKeyName(key))
+				}
+			}
+		}
+
 		TheOptions = js.Options
 		TheKM = newKeyMap
 

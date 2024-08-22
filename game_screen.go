@@ -219,8 +219,6 @@ type GameScreen struct {
 
 	botPlay bool
 
-	tempPauseIfHolidngCtrl bool
-
 	// progress bar
 	isProgressBarInFocus bool
 
@@ -856,22 +854,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 	}
 
 	// =============================================
-	// temp pause if holding ctrl
-	// =============================================
-	if gs.tempPauseIfHolidngCtrl {
-		if AreKeysDown(gs.InputId, rl.KeyLeftControl, rl.KeyRightControl) {
-			gs.TempPause(time.Millisecond * 60)
-		}else {
-			gs.tempPauseIfHolidngCtrl = false
-			// save settings
-			if err := SaveSettings(); err != nil{
-				ErrorLogger.Printf("failed to save settings %v", err)
-				DisplayAlert("failed to save settings")
-			}
-		}
-	}
-
-	// =============================================
 	// update help message
 	// =============================================
 	gs.HelpMessage.Update(deltaTime)
@@ -953,16 +935,14 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		changedSpeed := false
 		audioSpeed := gs.AudioSpeed()
 
-		if !AreKeysDown(gs.InputId, rl.KeyLeftControl, rl.KeyRightControl) {
-			if AreKeysPressed(gs.InputId, TheKM[AudioSpeedDownKey]) {
-				changedSpeed = true
-				audioSpeed -= 0.1
-			}
+		if AreKeysPressed(gs.InputId, TheKM[AudioSpeedDownKey]) {
+			changedSpeed = true
+			audioSpeed -= 0.1
+		}
 
-			if AreKeysPressed(gs.InputId, TheKM[AudioSpeedUpKey]) {
-				changedSpeed = true
-				audioSpeed += 0.1
-			}
+		if AreKeysPressed(gs.InputId, TheKM[AudioSpeedUpKey]) {
+			changedSpeed = true
+			audioSpeed += 0.1
 		}
 
 		if changedSpeed {
@@ -1080,20 +1060,18 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 		// handle changing audio offset
 
-		if AreKeysDown(gs.InputId, rl.KeyLeftControl, rl.KeyRightControl) {
-			const firstRate = time.Millisecond*100
+		{
+			const firstRate = time.Millisecond * 100
 			const repeatRate = time.Millisecond * 10
 
 			changedAudioOffset := false
 
-			if HandleKeyRepeat(gs.InputId, firstRate, repeatRate, TheKM[AudioSpeedDownKey]) {
+			if HandleKeyRepeat(gs.InputId, firstRate, repeatRate, TheKM[AudioOffsetDownKey]) {
 				TheOptions.AudioOffset -= time.Millisecond
-				gs.tempPauseIfHolidngCtrl = true
 				changedAudioOffset = true
 			}
-			if HandleKeyRepeat(gs.InputId, firstRate, repeatRate, TheKM[AudioSpeedUpKey]) {
+			if HandleKeyRepeat(gs.InputId, firstRate, repeatRate, TheKM[AudioOffsetUpKey]) {
 				TheOptions.AudioOffset += time.Millisecond
-				gs.tempPauseIfHolidngCtrl = true
 				changedAudioOffset = true
 			}
 
@@ -1101,7 +1079,7 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 
 			if changedAudioOffset {
 				gs.ClearRewind()
-				gs.TempPause(time.Millisecond * 60)
+				gs.TempPause(time.Millisecond * 220)
 				positionArbitraryChange = true
 				gs.AudioOffsetSetAt = GlobalTimerNow()
 			}
@@ -2698,7 +2676,7 @@ func (gs *GameScreen) drawFadingTextImpl(labelText, numberText string, delta tim
 }
 
 func (gs *GameScreen) DrawFadingText() {
-	changedTimes := [3]time.Duration {
+	changedTimes := [3]time.Duration{
 		gs.AudioSpeedSetAt,
 		gs.ZoomSetAt,
 		gs.AudioOffsetSetAt,
@@ -2734,7 +2712,6 @@ func (gs *GameScreen) DrawFadingText() {
 		)
 	}
 }
-
 
 func (gs *GameScreen) DrawPlayerEventCounter() {
 	const textSize = 24
@@ -2872,8 +2849,6 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.positionChangedWhilePaused = false
 
-	gs.tempPauseIfHolidngCtrl = false
-
 	for _, player := range gs.hitSoundPlayers {
 		player.SetVolume(TheOptions.HitSoundVolume)
 	}
@@ -2889,6 +2864,11 @@ func (gs *GameScreen) BeforeScreenEnd() {
 	}
 	if gs.VoicePlayer.IsReady() {
 		gs.VoicePlayer.QuitBackgroundDecoding()
+	}
+
+	if err := SaveSettings(); err != nil {
+		ErrorLogger.Printf("failed to save settings %v", err)
+		DisplayAlert("failed to save settings")
 	}
 
 	FpsDisplayY = FpsDisplayYDefault
@@ -2979,6 +2959,7 @@ func (hm *GameHelpMessage) InitTextImage() {
 
 	printKeyBinding(f1, "audio speed up", AudioSpeedUpKey)
 	printKeyBinding(f1, "audio speed down", AudioSpeedDownKey)
+	f1.Print("\n")
 
 	printKeyBinding(f1, "set bookmark", SetBookMarkKey)
 	printKeyBinding(f1, "jump to bookmark", JumpToBookMarkKey)
@@ -2988,10 +2969,9 @@ func (hm *GameHelpMessage) InitTextImage() {
 	printKeyBinding(f2, "note spacing down", ZoomOutKey)
 	f2.Print("\n")
 
-	printLabelAndText(f2, "audio offset up", "ctrl + " + GetKeyName(TheKM[AudioSpeedUpKey]))
-	printLabelAndText(f2, "audio offset down", "ctrl + " + GetKeyName(TheKM[AudioSpeedDownKey]))
+	printKeyBinding(f2, "audio offset up", AudioOffsetUpKey)
+	printKeyBinding(f2, "audio offset down", AudioOffsetDownKey)
 	f2.Print("\n")
-
 
 	elements1 := f1.Elements(TextAlignLeft, 0, 20)
 	elements2 := f2.Elements(TextAlignLeft, 0, 20)

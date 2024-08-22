@@ -157,9 +157,8 @@ func (op *BaseOptionsScreen) BeforeScreenTransition() {
 func (op *BaseOptionsScreen) BeforeScreenEnd() {
 	// TODO : options screen doesn't save settings
 	// if it's quit by user
-	err := SaveSettings()
-	if err != nil {
-		ErrorLogger.Println(err)
+	if err := SaveSettings(); err != nil {
+		ErrorLogger.Printf("failed to save settings %v", err)
 		DisplayAlert("failed to save settings")
 	}
 
@@ -513,8 +512,8 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 			keyItem.Name = name
 			keyItem.Type = MenuItemKey
 			keyItem.SizeRegular = 65
-			keyItem.SizeSelected = 70
-			keyItem.BottomMargin = 15
+			keyItem.SizeSelected = 65
+			keyItem.BottomMargin = 8
 			keyItem.NameMinWidth = 270
 			keyItem.SelectedLeftMargin = 5
 			keyItem.AddKeys(keys...)
@@ -523,6 +522,8 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 
 			return keyItem
 		}
+
+		const extraBottomMargin = 30
 
 		displaySorryMsg := func(newKey int32, duplicateOf FnfBinding) {
 			defaultStyle := PopupDefaultRichTextStyle()
@@ -586,6 +587,10 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 			op.OnMatchItemsToOption(func() {
 				op.Menu.SetItemKeyValues(item.Id, NoteKeys(dir))
 			})
+
+			if dir == NoteDirSize-1 {
+				item.BottomMargin += extraBottomMargin
+			}
 		}
 
 		debugKeys := []FnfBinding{
@@ -630,10 +635,20 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 			}
 
 			switch key {
+			case AudioOffsetUpKey, AudioOffsetDownKey:
+				item.NameMinWidth = 455
+			case SetBookMarkKey, JumpToBookMarkKey:
+				item.NameMinWidth = 455
 			case AudioSpeedUpKey, AudioSpeedDownKey:
 				item.NameMinWidth = 290
 			case ZoomInKey, ZoomOutKey:
-				item.NameMinWidth = 460
+				item.NameMinWidth = 455
+			}
+
+			// add extra bottom margin
+			switch key {
+			case SongResetKey, NoteScrollDownKey, AudioSpeedDownKey, AudioOffsetDownKey, JumpToBookMarkKey:
+				item.BottomMargin += extraBottomMargin
 			}
 
 			op.OnMatchItemsToOption(func() {

@@ -19,25 +19,27 @@ func _() {
 	_ = x[SelectKey-8]
 	_ = x[PauseKey-9]
 	_ = x[EscapeKey-10]
-	_ = x[NoteScrollUpKey-11]
-	_ = x[NoteScrollDownKey-12]
-	_ = x[AudioSpeedUpKey-13]
-	_ = x[AudioSpeedDownKey-14]
-	_ = x[SongResetKey-15]
-	_ = x[SetBookMarkKey-16]
-	_ = x[JumpToBookMarkKey-17]
-	_ = x[ZoomOutKey-18]
-	_ = x[ZoomInKey-19]
-	_ = x[ToggleDebugMsg-20]
-	_ = x[ToggleLogNoteEvent-21]
-	_ = x[ToggleDebugGraphics-22]
-	_ = x[ReloadAssetsKey-23]
-	_ = x[FnfBindingSize-24]
+	_ = x[SongResetKey-11]
+	_ = x[NoteScrollUpKey-12]
+	_ = x[NoteScrollDownKey-13]
+	_ = x[AudioSpeedUpKey-14]
+	_ = x[AudioSpeedDownKey-15]
+	_ = x[AudioOffsetUpKey-16]
+	_ = x[AudioOffsetDownKey-17]
+	_ = x[SetBookMarkKey-18]
+	_ = x[JumpToBookMarkKey-19]
+	_ = x[ZoomOutKey-20]
+	_ = x[ZoomInKey-21]
+	_ = x[ToggleDebugMsg-22]
+	_ = x[ToggleLogNoteEvent-23]
+	_ = x[ToggleDebugGraphics-24]
+	_ = x[ReloadAssetsKey-25]
+	_ = x[FnfBindingSize-26]
 }
 
-const _FnfBinding_name = "NoteKeyLeft0NoteKeyLeft1NoteKeyDown0NoteKeyDown1NoteKeyUp0NoteKeyUp1NoteKeyRight0NoteKeyRight1SelectKeyPauseKeyEscapeKeyNoteScrollUpKeyNoteScrollDownKeyAudioSpeedUpKeyAudioSpeedDownKeySongResetKeySetBookMarkKeyJumpToBookMarkKeyZoomOutKeyZoomInKeyToggleDebugMsgToggleLogNoteEventToggleDebugGraphicsReloadAssetsKeyFnfBindingSize"
+const _FnfBinding_name = "NoteKeyLeft0NoteKeyLeft1NoteKeyDown0NoteKeyDown1NoteKeyUp0NoteKeyUp1NoteKeyRight0NoteKeyRight1SelectKeyPauseKeyEscapeKeySongResetKeyNoteScrollUpKeyNoteScrollDownKeyAudioSpeedUpKeyAudioSpeedDownKeyAudioOffsetUpKeyAudioOffsetDownKeySetBookMarkKeyJumpToBookMarkKeyZoomOutKeyZoomInKeyToggleDebugMsgToggleLogNoteEventToggleDebugGraphicsReloadAssetsKeyFnfBindingSize"
 
-var _FnfBinding_index = [...]uint16{0, 12, 24, 36, 48, 58, 68, 81, 94, 103, 111, 120, 135, 152, 167, 184, 196, 210, 227, 237, 246, 260, 278, 297, 312, 326}
+var _FnfBinding_index = [...]uint16{0, 12, 24, 36, 48, 58, 68, 81, 94, 103, 111, 120, 132, 147, 164, 179, 196, 212, 230, 244, 261, 271, 280, 294, 312, 331, 346, 360}
 
 func (i FnfBinding) String() string {
 	if i < 0 || i >= FnfBinding(len(_FnfBinding_index)-1) {
