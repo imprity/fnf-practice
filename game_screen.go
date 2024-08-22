@@ -179,8 +179,9 @@ type GameScreen struct {
 
 	HelpMessage *GameHelpMessage
 
-	AudioSpeedSetAt time.Duration
-	ZoomSetAt       time.Duration
+	AudioSpeedSetAt  time.Duration
+	ZoomSetAt        time.Duration
+	AudioOffsetSetAt time.Duration
 
 	BookMark    time.Duration
 	BookMarkSet bool
@@ -217,6 +218,8 @@ type GameScreen struct {
 	zoom float32
 
 	botPlay bool
+
+	tempPauseIfHolidngCtrl bool
 
 	// progress bar
 	isProgressBarInFocus bool
@@ -808,10 +811,6 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		gs.TempPause(time.Millisecond * 5)
 	}
 
-	if !rl.IsWindowFocused() || rl.IsWindowMinimized() {
-		gs.TempPause(time.Millisecond * 5)
-	}
-
 	if gs.DrawMenu {
 		gs.Menu.EnableInput()
 		DisableInput(gs.InputId)
@@ -845,6 +844,29 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			if gs.OpponentMode != opponentMode {
 				gs.OpponentMode = opponentMode
 				gs.ResetGameStates()
+			}
+		}
+	}
+
+	// =============================================
+	// temp pause if unfocused
+	// =============================================
+	if !rl.IsWindowFocused() || rl.IsWindowMinimized() {
+		gs.TempPause(time.Millisecond * 5)
+	}
+
+	// =============================================
+	// temp pause if holding ctrl
+	// =============================================
+	if gs.tempPauseIfHolidngCtrl {
+		if AreKeysDown(gs.InputId, rl.KeyLeftControl, rl.KeyRightControl) {
+			gs.TempPause(time.Millisecond * 60)
+		}else {
+			gs.tempPauseIfHolidngCtrl = false
+			// save settings
+			if err := SaveSettings(); err != nil{
+				ErrorLogger.Printf("failed to save settings %v", err)
+				DisplayAlert("failed to save settings")
 			}
 		}
 	}
@@ -931,14 +953,16 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 		changedSpeed := false
 		audioSpeed := gs.AudioSpeed()
 
-		if AreKeysPressed(gs.InputId, TheKM[AudioSpeedDownKey]) {
-			changedSpeed = true
-			audioSpeed -= 0.1
-		}
+		if !AreKeysDown(gs.InputId, rl.KeyLeftControl, rl.KeyRightControl) {
+			if AreKeysPressed(gs.InputId, TheKM[AudioSpeedDownKey]) {
+				changedSpeed = true
+				audioSpeed -= 0.1
+			}
 
-		if AreKeysPressed(gs.InputId, TheKM[AudioSpeedUpKey]) {
-			changedSpeed = true
-			audioSpeed += 0.1
+			if AreKeysPressed(gs.InputId, TheKM[AudioSpeedUpKey]) {
+				changedSpeed = true
+				audioSpeed += 0.1
+			}
 		}
 
 		if changedSpeed {
@@ -1052,6 +1076,35 @@ func (gs *GameScreen) Update(deltaTime time.Duration) {
 			gs.TempPause(time.Millisecond * 60)
 			positionArbitraryChange = true
 			gs.SetAudioPositionNoOffset(gs.ProgressBarCursorTime())
+		}
+
+		// handle changing audio offset
+
+		if AreKeysDown(gs.InputId, rl.KeyLeftControl, rl.KeyRightControl) {
+			const firstRate = time.Millisecond*100
+			const repeatRate = time.Millisecond * 10
+
+			changedAudioOffset := false
+
+			if HandleKeyRepeat(gs.InputId, firstRate, repeatRate, TheKM[AudioSpeedDownKey]) {
+				TheOptions.AudioOffset -= time.Millisecond
+				gs.tempPauseIfHolidngCtrl = true
+				changedAudioOffset = true
+			}
+			if HandleKeyRepeat(gs.InputId, firstRate, repeatRate, TheKM[AudioSpeedUpKey]) {
+				TheOptions.AudioOffset += time.Millisecond
+				gs.tempPauseIfHolidngCtrl = true
+				changedAudioOffset = true
+			}
+
+			TheOptions.AudioOffset = Clamp(TheOptions.AudioOffset, 0, AudioOffsetMax)
+
+			if changedAudioOffset {
+				gs.ClearRewind()
+				gs.TempPause(time.Millisecond * 60)
+				positionArbitraryChange = true
+				gs.AudioOffsetSetAt = GlobalTimerNow()
+			}
 		}
 	}
 
@@ -2263,14 +2316,13 @@ func (gs *GameScreen) Draw() {
 	gs.DrawProgressBar()
 
 	// ============================================
-	// draw audio speed or zoom
+	// draw fading text
 	// ============================================
-	if TimeSinceNow(gs.AudioSpeedSetAt) < TimeSinceNow(gs.ZoomSetAt) {
-		gs.DrawAudioSpeed()
-	} else {
-		gs.DrawZoom()
-	}
+	gs.DrawFadingText()
 
+	// ============================================
+	// draw event counter
+	// ============================================
 	gs.DrawPlayerEventCounter()
 
 	// ============================================
@@ -2609,15 +2661,7 @@ func (gs *GameScreen) DrawPauseIcon() {
 		fontSize, 0, ToRlColor(FnfColor{0, 0, 0, 200}))
 }
 
-func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
-	var delta time.Duration
-
-	if drawZoom {
-		delta = TimeSinceNow(gs.ZoomSetAt)
-	} else {
-		delta = TimeSinceNow(gs.AudioSpeedSetAt)
-	}
-
+func (gs *GameScreen) drawFadingTextImpl(labelText, numberText string, delta time.Duration) {
 	if delta < time.Millisecond*800 {
 		var t float32
 
@@ -2629,26 +2673,15 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 			t = 1 - t
 		}
 
-		var text string
-		var numberText string
-
-		if drawZoom {
-			text = "note spacing"
-			numberText = fmt.Sprintf("%.2f x", gs.Zoom())
-		} else {
-			text = "audio speed"
-			numberText = fmt.Sprintf("%.1f x", gs.AudioSpeed())
-		}
-
 		const fontSize = 65
 
-		textSize := MeasureText(FontRegular, text, fontSize, 0)
+		textSize := MeasureText(FontRegular, labelText, fontSize, 0)
 
 		textX := SCREEN_WIDTH*0.5 - textSize.X*0.5
 		textY := f32(50)
 
 		DrawText(
-			FontRegular, text, rl.Vector2{textX, textY},
+			FontRegular, labelText, rl.Vector2{textX, textY},
 			fontSize, 0, ToRlColor(FnfColor{0, 0, 0, uint8(255 * t)}))
 
 		numberTextSize := MeasureText(FontRegular, numberText, fontSize, 0)
@@ -2664,13 +2697,44 @@ func (gs *GameScreen) drawAudioSpeedOrZoom(drawZoom bool) {
 	}
 }
 
-func (gs *GameScreen) DrawAudioSpeed() {
-	gs.drawAudioSpeedOrZoom(false)
+func (gs *GameScreen) DrawFadingText() {
+	changedTimes := [3]time.Duration {
+		gs.AudioSpeedSetAt,
+		gs.ZoomSetAt,
+		gs.AudioOffsetSetAt,
+	}
+
+	maxTime := -Years150
+	maxTimeIndex := 0
+
+	for i, t := range changedTimes {
+		if t > maxTime {
+			maxTime = t
+			maxTimeIndex = i
+		}
+	}
+
+	delta := TimeSinceNow(maxTime)
+
+	switch maxTimeIndex {
+	case 0: // audio speed
+		gs.drawFadingTextImpl(
+			"audio speed", fmt.Sprintf("%.1f x", gs.AudioSpeed()),
+			delta,
+		)
+	case 1: // zoom
+		gs.drawFadingTextImpl(
+			"note spacing", fmt.Sprintf("%.2f x", gs.Zoom()),
+			delta,
+		)
+	case 2: // audio offset
+		gs.drawFadingTextImpl(
+			"audio offset", fmt.Sprintf("%d ms", TheOptions.AudioOffset.Milliseconds()),
+			delta,
+		)
+	}
 }
 
-func (gs *GameScreen) DrawZoom() {
-	gs.drawAudioSpeedOrZoom(true)
-}
 
 func (gs *GameScreen) DrawPlayerEventCounter() {
 	const textSize = 24
@@ -2808,6 +2872,8 @@ func (gs *GameScreen) BeforeScreenTransition() {
 
 	gs.positionChangedWhilePaused = false
 
+	gs.tempPauseIfHolidngCtrl = false
+
 	for _, player := range gs.hitSoundPlayers {
 		player.SetVolume(TheOptions.HitSoundVolume)
 	}
@@ -2885,15 +2951,22 @@ func (hm *GameHelpMessage) InitTextImage() {
 	styleRed := style
 	styleRed.Fill = FnfColor{0xF6, 0x08, 0x08, 0xFF}
 
-	printKeyBinding := func(f *RichTextFactory, name string, binding FnfBinding) {
+	printLabelAndText := func(f *RichTextFactory, label, text string) {
 		f.SetStyle(style)
-		f.Print(name + " : ")
+		f.Print(label + " : ")
 		f.SetStyle(styleRed)
-		f.Print(GetKeyName(TheKM[binding]) + "\n")
+		f.Print(text + "\n")
+	}
+
+	printKeyBinding := func(f *RichTextFactory, name string, binding FnfBinding) {
+		printLabelAndText(f, name, GetKeyName(TheKM[binding]))
 	}
 
 	f1 := NewRichTextFactory(100)
 	f1.LineBreakRule = LineBreakNever
+
+	f2 := NewRichTextFactory(100)
+	f2.LineBreakRule = LineBreakNever
 
 	printKeyBinding(f1, "pause/play", PauseKey)
 	f1.Print("\n")
@@ -2904,19 +2977,21 @@ func (hm *GameHelpMessage) InitTextImage() {
 	f1.Metadata = 0
 	f1.Print("\n")
 
-	printKeyBinding(f1, "note spacing up", ZoomInKey)
-	printKeyBinding(f1, "note spacing down", ZoomOutKey)
-	f1.Print("\n")
+	printKeyBinding(f1, "audio speed up", AudioSpeedUpKey)
+	printKeyBinding(f1, "audio speed down", AudioSpeedDownKey)
 
 	printKeyBinding(f1, "set bookmark", SetBookMarkKey)
 	printKeyBinding(f1, "jump to bookmark", JumpToBookMarkKey)
 	f1.Print("\n")
 
-	f2 := NewRichTextFactory(100)
-	f2.LineBreakRule = LineBreakNever
+	printKeyBinding(f2, "note spacing up", ZoomInKey)
+	printKeyBinding(f2, "note spacing down", ZoomOutKey)
+	f2.Print("\n")
 
-	printKeyBinding(f2, "audio speed up", AudioSpeedUpKey)
-	printKeyBinding(f2, "audio speed down", AudioSpeedDownKey)
+	printLabelAndText(f2, "audio offset up", "ctrl + " + GetKeyName(TheKM[AudioSpeedUpKey]))
+	printLabelAndText(f2, "audio offset down", "ctrl + " + GetKeyName(TheKM[AudioSpeedDownKey]))
+	f2.Print("\n")
+
 
 	elements1 := f1.Elements(TextAlignLeft, 0, 20)
 	elements2 := f2.Elements(TextAlignLeft, 0, 20)
@@ -3149,7 +3224,6 @@ func (hm *GameHelpMessage) Update(deltaTime time.Duration) {
 		}
 	}
 
-	//delta := rl.GetFrameTime() * 1000
 	delta := float32(deltaTime.Seconds() * 1000)
 
 	if hm.DoShow {
