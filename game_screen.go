@@ -2298,69 +2298,72 @@ func (gs *GameScreen) Draw() {
 			DrawTextureTransfromed(tex, texRect, mat, ToRlColor(Col01(1, 1, 1, alpha)))
 		}
 
-		maxHitRating := max(
-			TheOptions.HitWindows[HitRatingBad],
-			TheOptions.HitWindows[HitRatingGood],
-			TheOptions.HitWindows[HitRatingSick],
-		)
-
-		for i := range gs.PopupQueue.Length {
-			popup := gs.PopupQueue.At(i)
-
-			if AbsI(popup.Diff) > maxHitRating {
-				continue
-			}
-
-			delta := timeNow - popup.Start
-
-			start := rl.Vector2{
-				X: float32(SCREEN_WIDTH/2) - 110,
-				Y: SCREEN_HEIGHT - GSC.NotesMarginBottom - 105,
-			}
-
-			if TheOptions.MiddleScroll {
-				start.X = SCREEN_WIDTH - 235
-			}
-
-			tossed, alpha := calcTrajectory(
-				start,
-				10, 15,
-				f32(f64(delta)/f64(diffDuration)),
+		if TheOptions.DisplayHitMs {
+			maxHitRating := max(
+				TheOptions.HitWindows[HitRatingBad],
+				TheOptions.HitWindows[HitRatingGood],
+				TheOptions.HitWindows[HitRatingSick],
 			)
 
-			const fontSize = 50
-			const marginVert = -2
-			const marginHoz = 12
-			const roundness = 0.3
-			const segments = 4
+			for i := range gs.PopupQueue.Length {
+				popup := gs.PopupQueue.At(i)
 
-			textSize := MeasureText(FontBold, popup.DiffStr, fontSize, 0)
+				if AbsI(popup.Diff) > maxHitRating {
+					continue
+				}
 
-			a := uint8(255 * alpha)
+				delta := timeNow - popup.Start
 
-			rect := rl.Rectangle{
-				Width:  textSize.X + marginHoz*2,
-				Height: textSize.Y + marginVert*2,
+				start := rl.Vector2{
+					X: float32(SCREEN_WIDTH/2) - 110,
+					Y: SCREEN_HEIGHT - GSC.NotesMarginBottom - 105,
+				}
+
+				if TheOptions.MiddleScroll {
+					//start.X = SCREEN_WIDTH - 235
+					start.X = SCREEN_WIDTH - 100
+				}
+
+				tossed, alpha := calcTrajectory(
+					start,
+					10, 15,
+					f32(f64(delta)/f64(diffDuration)),
+				)
+
+				const fontSize = 50
+				const marginVert = -2
+				const marginHoz = 12
+				const roundness = 0.3
+				const segments = 4
+
+				textSize := MeasureText(FontBold, popup.DiffStr, fontSize, 0)
+
+				a := uint8(255 * alpha)
+
+				rect := rl.Rectangle{
+					Width:  textSize.X + marginHoz*2,
+					Height: textSize.Y + marginVert*2,
+				}
+
+				rect.X = tossed.X - rect.Width
+				rect.Y = tossed.Y
+
+				rl.DrawRectangleRoundedLines(rect, roundness, segments,
+					4,
+					ToRlColor(FnfColor{0, 0, 0, a}),
+				)
+
+				rl.DrawRectangleRounded(rect, roundness, segments,
+					ToRlColor(FnfColor{255, 255, 255, a}),
+				)
+
+				DrawText(
+					FontBold, popup.DiffStr,
+					rl.Vector2{rect.X + marginHoz, rect.Y + marginVert},
+					fontSize, 0,
+					ToRlColor(FnfColor{0, 0, 0, a}),
+				)
 			}
-
-			rect.X = tossed.X - rect.Width
-			rect.Y = tossed.Y
-
-			rl.DrawRectangleRoundedLines(rect, roundness, segments,
-				4,
-				ToRlColor(FnfColor{0, 0, 0, a}),
-			)
-
-			rl.DrawRectangleRounded(rect, roundness, segments,
-				ToRlColor(FnfColor{255, 255, 255, a}),
-			)
-
-			DrawText(
-				FontBold, popup.DiffStr,
-				rl.Vector2{rect.X + marginHoz, rect.Y + marginVert},
-				fontSize, 0,
-				ToRlColor(FnfColor{0, 0, 0, a}),
-			)
 		}
 
 		dequeue := 0

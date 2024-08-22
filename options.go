@@ -241,6 +241,8 @@ type Options struct {
 
 	HitSoundVolume float64
 
+	DisplayHitMs bool
+
 	NoteSplash bool
 
 	AudioOffset time.Duration
@@ -272,6 +274,8 @@ func init() {
 	DefaultOptions.MiddleScroll = false
 
 	DefaultOptions.HitSoundVolume = 0
+
+	DefaultOptions.DisplayHitMs = false
 
 	DefaultOptions.NoteSplash = true
 

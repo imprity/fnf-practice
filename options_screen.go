@@ -427,6 +427,17 @@ func NewOptionsGamePlayScreen() *BaseOptionsScreen {
 		op.Menu.SetItemNvalue(hitSoundItem.Id, false, float32(TheOptions.HitSoundVolume)*10)
 	})
 
+	displayHitMsItem := NewMenuItem()
+	displayHitMsItem.Name = "Display Hit ms"
+	displayHitMsItem.Type = MenuItemToggle
+	displayHitMsItem.ToggleCallback = func(bValue bool) {
+		TheOptions.DisplayHitMs = bValue
+	}
+	op.Menu.AddItems(displayHitMsItem)
+	op.OnMatchItemsToOption(func() {
+		op.Menu.SetItemBValue(displayHitMsItem.Id, false, TheOptions.DisplayHitMs)
+	})
+
 	// ================================
 	// add rating options
 	// ================================
