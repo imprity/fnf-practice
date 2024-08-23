@@ -2965,7 +2965,7 @@ func (gs *GameScreen) BeforeScreenEnd() {
 	}
 
 	if err := SaveSettings(); err != nil {
-		ErrorLogger.Printf("failed to save settings %v", err)
+		ErrorLogger.Printf("failed to save settings: %v", err)
 		DisplayAlert("failed to save settings")
 	}
 

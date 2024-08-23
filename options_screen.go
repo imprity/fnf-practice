@@ -658,7 +658,13 @@ func NewOptionsControlsScreen() *BaseOptionsScreen {
 
 			// add extra bottom margin
 			switch key {
-			case SongResetKey, NoteScrollDownKey, AudioSpeedDownKey, AudioOffsetDownKey, JumpToBookMarkKey:
+			case SongResetKey,
+				NoteScrollDownKey,
+				AudioSpeedDownKey,
+				AudioOffsetDownKey,
+				JumpToBookMarkKey,
+				ZoomInKey:
+
 				item.BottomMargin += extraBottomMargin
 			}
 

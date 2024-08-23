@@ -41,6 +41,8 @@ const (
 	ZoomOutKey
 	ZoomInKey
 
+	ScreenshotKey
+
 	ToggleDebugMsg
 	ToggleLogNoteEvent
 	ToggleDebugGraphics
@@ -93,6 +95,8 @@ func init() {
 	DefaultKM[ZoomOutKey] = rl.KeyLeftBracket
 	DefaultKM[ZoomInKey] = rl.KeyRightBracket
 
+	DefaultKM[ScreenshotKey] = rl.KeyF12
+
 	DefaultKM[ToggleDebugMsg] = rl.KeyF1
 	DefaultKM[ToggleLogNoteEvent] = rl.KeyF2
 	DefaultKM[ToggleDebugGraphics] = rl.KeyF3
@@ -140,6 +144,8 @@ func init() {
 
 	KeyHumanName[ZoomOutKey] = "note spacing up"
 	KeyHumanName[ZoomInKey] = "note spacing down"
+
+	KeyHumanName[ScreenshotKey] = "screenshot"
 
 	KeyHumanName[ToggleDebugMsg] = "toggle debug message"
 	KeyHumanName[ToggleLogNoteEvent] = "toggle note event"

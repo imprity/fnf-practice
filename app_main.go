@@ -137,6 +137,7 @@ func RunApplication() {
 	InitUnitext()
 	InitAlert()
 	InitTransition()
+	InitScreenshot()
 	defer FreeTransition()
 	InitPopupDialog()
 	defer FreePopupDialog()
@@ -300,6 +301,7 @@ func RunApplication() {
 			UpdateTransition()
 			UpdateMenuManager(updateDelta)
 			UpdateAlert(updateDelta)
+			UpdateScreenshot()
 
 			//update screen
 			if !TheTransitionManager.ShowTransition {
