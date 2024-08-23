@@ -36,7 +36,7 @@
 #define SUPPORT_MODULE_RTEXTURES        1
 #define SUPPORT_MODULE_RTEXT            1       // WARNING: It requires SUPPORT_MODULE_RTEXTURES to load sprite font textures
 #define SUPPORT_MODULE_RMODELS          1
-#define SUPPORT_MODULE_RAUDIO           1
+// #define SUPPORT_MODULE_RAUDIO           1
 
 //------------------------------------------------------------------------------------
 // Module: rcore - Configuration Flags
@@ -59,9 +59,9 @@
 // Use a partial-busy wait loop, in this case frame sleeps for most of the time, but then runs a busy loop at the end for accuracy
 #define SUPPORT_PARTIALBUSY_WAIT_LOOP    1
 // Allow automatic screen capture of current screen pressing F12, defined in KeyCallback()
-#define SUPPORT_SCREEN_CAPTURE          1
+// #define SUPPORT_SCREEN_CAPTURE          1
 // Allow automatic gif recording of current screen pressing CTRL+F12, defined in KeyCallback()
-#define SUPPORT_GIF_RECORDING           1
+// #define SUPPORT_GIF_RECORDING           1
 // Support CompressData() and DecompressData() functions
 #define SUPPORT_COMPRESSION_API         1
 // Support automatic generated events, loading and recording of those events when required

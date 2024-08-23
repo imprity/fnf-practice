@@ -349,9 +349,11 @@ RLAPI const char *raylib_version = RAYLIB_VERSION;  // raylib version exported s
 
 CoreData CORE = { 0 };               // Global CORE state context
 
-#if defined(SUPPORT_SCREEN_CAPTURE)
+// S#######################################
+
 static int screenshotCounter = 0;    // Screenshots counter
-#endif
+
+// E#######################################
 
 #if defined(SUPPORT_GIF_RECORDING)
 int gifFrameCounter = 0;             // GIF frames counter
@@ -1780,7 +1782,7 @@ void TakeScreenshot(const char *fileName)
 
     char path[512] = { 0 };
     strcpy(path, TextFormat("%s/%s", CORE.Storage.basePath, GetFileName(fileName)));
-    
+
     ExportImage(image, path);           // WARNING: Module required: rtextures
     RL_FREE(imgData);
 
